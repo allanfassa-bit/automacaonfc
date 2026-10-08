@@ -17,6 +17,9 @@ dotenv.config();
 // Ensure NGINX has public bypass for QR codes and NFC plates across container reboots
 function ensureNginxPublicBypass() {
   try {
+    if (!syncFs.existsSync('/etc/nginx')) {
+      return;
+    }
     const luaPath = '/etc/nginx/user_auth_verification.lua';
     const includePath = '/etc/nginx/nginx_auth.conf.include';
     let needsReload = false;
@@ -86,9 +89,11 @@ location ~ ^/(r|qr|p|nfc|tag|l|m|minisite)(/|$) {
   }
 }
 
-// Run immediately and every 20 seconds to guarantee permanence
-ensureNginxPublicBypass();
-setInterval(ensureNginxPublicBypass, 20000);
+// Run immediately and every 20 seconds only when NGINX is present
+if (syncFs.existsSync('/etc/nginx')) {
+  ensureNginxPublicBypass();
+  setInterval(ensureNginxPublicBypass, 20000);
+}
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -137,6 +142,52 @@ interface CachedLeadItem {
 }
 
 const leadsMemoryCache = new Map<string, CachedLeadItem>();
+
+// Pre-load physical client plates into cache so redirects resolve in 0ms without waiting for database
+const INITIAL_PHYSICAL_PLATES: CachedLeadItem[] = [
+  {
+    id: 'empre08',
+    name: 'PADARIA SUIÇA',
+    city: 'Marília',
+    googleMapsUrl: 'https://search.google.com/local/writereview?placeid=ChIJx2ytYDXXv5QRQzIXgn7RRrc',
+    nfcRedirectActive: 'gmb'
+  },
+  {
+    id: 'empresa08',
+    name: 'PADARIA SUIÇA',
+    city: 'Marília',
+    googleMapsUrl: 'https://search.google.com/local/writereview?placeid=ChIJx2ytYDXXv5QRQzIXgn7RRrc',
+    nfcRedirectActive: 'gmb'
+  },
+  {
+    id: 'assadosdojapa',
+    name: 'ASSADOS DO JAPA',
+    city: 'Marília',
+    googleMapsUrl: 'https://www.google.com/search?q=ASSADOS+DO+JAPA#lrd=0x0:0x0,3',
+    nfcRedirectActive: 'gmb'
+  },
+  {
+    id: 'danipontello',
+    name: 'Dani pontello',
+    city: 'Marília',
+    googleMapsUrl: 'https://www.google.com/search?q=Dani%20pontello#lrd=0x0:0x0,3',
+    nfcRedirectActive: 'gmb'
+  }
+];
+
+for (const plate of INITIAL_PHYSICAL_PLATES) {
+  leadsMemoryCache.set(plate.id.toLowerCase(), plate);
+}
+// Instant Aliases
+leadsMemoryCache.set('suica', INITIAL_PHYSICAL_PLATES[0]);
+leadsMemoryCache.set('padaria', INITIAL_PHYSICAL_PLATES[0]);
+leadsMemoryCache.set('padariasuica', INITIAL_PHYSICAL_PLATES[0]);
+leadsMemoryCache.set('japa', INITIAL_PHYSICAL_PLATES[2]);
+leadsMemoryCache.set('assados', INITIAL_PHYSICAL_PLATES[2]);
+leadsMemoryCache.set('cbcell', INITIAL_PHYSICAL_PLATES[3]);
+leadsMemoryCache.set('cb_cell', INITIAL_PHYSICAL_PLATES[3]);
+leadsMemoryCache.set('pontello', INITIAL_PHYSICAL_PLATES[3]);
+
 let lastLeadsSyncTimestamp = 0;
 
 async function syncLeadsMemoryCache(force = false) {
