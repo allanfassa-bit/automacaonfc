@@ -211,14 +211,14 @@ app.use((req, res, next) => {
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
   
-  // CORS policy: Allow only our workspace domains dynamically
+  // CORS policy: Allow workspace, Render, and custom domains dynamically
   const origin = req.headers.origin;
-  if (origin && (origin.endsWith('.run.app') || origin.startsWith('http://localhost:'))) {
+  if (origin && (origin.endsWith('.run.app') || origin.endsWith('.onrender.com') || origin.startsWith('http://localhost:') || origin.startsWith('https://'))) {
     res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   } else {
-    res.setHeader('Access-Control-Allow-Origin', 'null');
+    res.setHeader('Access-Control-Allow-Origin', '*');
   }
   
   if (req.method === 'OPTIONS') {
@@ -769,6 +769,7 @@ const handleDynamicRedirect = async (req: express.Request, res: express.Response
       }
     }
 
+    // 1. Specific known client aliases
     if (
       lowerClean.includes('suica') || 
       lowerClean.includes('padaria') || 
@@ -780,6 +781,24 @@ const handleDynamicRedirect = async (req: express.Request, res: express.Response
     ) {
       if (!targetCandidates.includes('empre08')) targetCandidates.unshift('empre08');
       if (!targetCandidates.includes('empresa08')) targetCandidates.unshift('empresa08');
+    }
+
+    if (
+      lowerClean.includes('japa') ||
+      lowerClean.includes('assado') ||
+      lowerClean === 'assadosdojapa' ||
+      lowerClean === 'assados_do_japa'
+    ) {
+      if (!targetCandidates.includes('assadosdojapa')) targetCandidates.unshift('assadosdojapa');
+    }
+
+    if (
+      lowerClean.includes('cbcell') ||
+      lowerClean.includes('cb_cell') ||
+      lowerClean.includes('pontello') ||
+      lowerClean.includes('dani')
+    ) {
+      if (!targetCandidates.includes('danipontello')) targetCandidates.unshift('danipontello');
     }
 
     if (lowerClean.startsWith('empresa')) {
