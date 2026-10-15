@@ -8,6 +8,28 @@
 
 export const DEFAULT_RENDER_DOMAIN = 'https://automacaonfc.onrender.com';
 
+/**
+ * Universal Sanitizer: Guarantees that no QR code, NFC tag, or public link ever points to
+ * Google AI Studio dev containers (ais-dev-..., .run.app, localhost), replacing them with
+ * the official production domain (https://automacaonfc.onrender.com) or the client's verified domain.
+ */
+export function sanitizePublicUrl(url: string): string {
+  if (!url || typeof url !== 'string') return '';
+  let cleaned = url.trim();
+  if (
+    cleaned.includes('.run.app') ||
+    cleaned.includes('ais-dev-') ||
+    cleaned.includes('ais-pre-') ||
+    cleaned.includes('localhost') ||
+    cleaned.includes('127.0.0.1') ||
+    cleaned.includes('scf.usercontent.goog')
+  ) {
+    // Replace dev/internal origin with the official production domain
+    cleaned = cleaned.replace(/^https?:\/\/[^\/]+/i, DEFAULT_RENDER_DOMAIN);
+  }
+  return cleaned;
+}
+
 export function getPublicAppOrigin(): string {
   if (typeof window === 'undefined') return DEFAULT_RENDER_DOMAIN;
   
@@ -19,9 +41,13 @@ export function getPublicAppOrigin(): string {
         cleanCustom.includes('localhost') ||
         cleanCustom.includes('127.0.0.1') ||
         cleanCustom.includes('.run.app') ||
+        cleanCustom.includes('ais-dev-') ||
+        cleanCustom.includes('ais-pre-') ||
         cleanCustom.includes('scf.usercontent.goog');
       if (!isTempOrLocal) {
         return cleanCustom;
+      } else {
+        localStorage.removeItem('alf_custom_public_domain');
       }
     }
   } catch (_) {}
@@ -36,7 +62,8 @@ export function getPublicAppOrigin(): string {
     origin.includes('ais-pre-') ||
     origin.includes('.run.app') ||
     origin.includes('localhost') ||
-    origin.includes('127.0.0.1')
+    origin.includes('127.0.0.1') ||
+    origin.includes('scf.usercontent.goog')
   ) {
     return DEFAULT_RENDER_DOMAIN;
   }
@@ -48,19 +75,43 @@ export function setCustomPublicDomain(domain: string): void {
   try {
     if (!domain || !domain.trim()) {
       localStorage.removeItem('alf_custom_public_domain');
-    } else {
-      let clean = domain.trim().replace(/\/+$/, '');
-      if (!/^https?:\/\//i.test(clean)) {
-        clean = 'https://' + clean;
-      }
-      localStorage.setItem('alf_custom_public_domain', clean);
+      return;
     }
+    let clean = domain.trim().replace(/\/+$/, '');
+    if (
+      clean.includes('.run.app') ||
+      clean.includes('ais-dev-') ||
+      clean.includes('ais-pre-') ||
+      clean.includes('localhost') ||
+      clean.includes('127.0.0.1')
+    ) {
+      // Never allow saving internal dev container as public domain
+      localStorage.removeItem('alf_custom_public_domain');
+      return;
+    }
+    if (!/^https?:\/\//i.test(clean)) {
+      clean = 'https://' + clean;
+    }
+    localStorage.setItem('alf_custom_public_domain', clean);
   } catch (_) {}
 }
 
 export function getCustomPublicDomain(): string {
   try {
-    return localStorage.getItem('alf_custom_public_domain') || '';
+    const val = (localStorage.getItem('alf_custom_public_domain') || '').trim();
+    if (!val) return '';
+    if (
+      val.includes('.run.app') ||
+      val.includes('ais-dev-') ||
+      val.includes('ais-pre-') ||
+      val.includes('localhost') ||
+      val.includes('127.0.0.1') ||
+      val.includes('scf.usercontent.goog')
+    ) {
+      localStorage.removeItem('alf_custom_public_domain');
+      return '';
+    }
+    return val;
   } catch (_) {
     return '';
   }
@@ -68,8 +119,8 @@ export function getCustomPublicDomain(): string {
 
 export function hasCustomPublicDomain(): boolean {
   try {
-    const val = localStorage.getItem('alf_custom_public_domain');
-    return Boolean(val && val.trim().startsWith('http'));
+    const val = getCustomPublicDomain();
+    return Boolean(val && val.startsWith('http'));
   } catch (_) {
     return false;
   }
@@ -78,21 +129,21 @@ export function hasCustomPublicDomain(): boolean {
 export function getTestRedirectUrl(leadId: string): string {
   const cleanId = (leadId || '').replace(/[^a-zA-Z0-9_\-]/g, '');
   const base = getPublicAppOrigin();
-  return `${base}/r/${cleanId}`;
+  return sanitizePublicUrl(`${base}/r/${cleanId}`);
 }
 
 export function getDynamicQrUrl(leadId: string, channel?: string): string {
   const cleanId = (leadId || '').replace(/[^a-zA-Z0-9_\-]/g, '');
   const custom = getCustomPublicDomain();
-  const base = (custom && custom.trim().startsWith('http'))
-    ? `${custom.trim().replace(/\/+$/, '')}/r/${cleanId}`
+  const base = (custom && custom.startsWith('http'))
+    ? `${custom.replace(/\/+$/, '')}/r/${cleanId}`
     : `${getPublicAppOrigin()}/r/${cleanId}`;
   
   if (channel && channel.trim()) {
     const cleanChannel = channel.trim().toLowerCase();
-    return `${base}?to=${encodeURIComponent(cleanChannel)}`;
+    return sanitizePublicUrl(`${base}?to=${encodeURIComponent(cleanChannel)}`);
   }
-  return base;
+  return sanitizePublicUrl(base);
 }
 
 export function getDynamicInstagramUrl(leadId: string): string {

@@ -26,7 +26,7 @@ import {
   downloadCardNfcPng,
   downloadCompleteArtworkKitZip
 } from '../utils/nfcPlateGenerator';
-import { getDynamicQrUrl, getDirectLeadUrl } from '../utils/publicUrlHelper';
+import { getDynamicQrUrl, getDirectLeadUrl, sanitizePublicUrl } from '../utils/publicUrlHelper';
 import { getPlateIdentification } from '../utils/plateNumberHelper';
 import { openHighDefinitionPrintWindow } from '../utils/platePrintHelper';
 
@@ -90,13 +90,14 @@ export function NfcArtworkDownloadModal({
     ? effectiveInstaUrl.replace(/.*instagram\.com\//, '').replace(/^@/, '').replace(/\/$/, '')
     : (currentLead?.name ? currentLead.name.replace(/\s+/g, '').toLowerCase() : 'seuperfil');
 
-  const permanentUrl = currentLead
+  const rawPermanentUrl = currentLead
     ? (qrTargetMode === 'direct'
         ? (selectedTheme === 'instagram_official' && effectiveInstaUrl
             ? (effectiveInstaUrl.startsWith('http') ? effectiveInstaUrl : `https://instagram.com/${effectiveInstaUrl.replace(/^@/, '')}`)
             : getDirectLeadUrl(currentLead))
         : getDynamicQrUrl(currentLead.id))
     : (qrTargetMode === 'direct' ? 'https://maps.google.com' : getDynamicQrUrl('demo'));
+  const permanentUrl = sanitizePublicUrl(rawPermanentUrl);
 
   // Sync theme if initialTheme changes or lead has instagram configured
   useEffect(() => {

@@ -44,6 +44,7 @@ import {
   formatCurrency
 } from '../utils/cardapioExporter';
 import { generateQrDataUrl } from '../utils/qrCodeGenerator';
+import { getPublicAppOrigin } from '../utils/publicUrlHelper';
 import { PublicCardapioViewer } from './PublicCardapioViewer';
 import JSZip from 'jszip';
 
@@ -142,7 +143,7 @@ export const CardapioDigitalManager: React.FC<CardapioDigitalManagerProps> = ({
 
   // Build the public URL for this cardapio
   const getCardapioPublicUrl = (tableNum: string = '01') => {
-    const origin = window.location.origin;
+    const origin = getPublicAppOrigin();
     return `${origin}/?cardapio=${activeMenu.id}&mesa=${tableNum}`;
   };
 

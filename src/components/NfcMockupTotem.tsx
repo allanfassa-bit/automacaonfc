@@ -36,7 +36,7 @@ import {
   downloadCompleteArtworkKitZip,
   ArtworkTheme
 } from '../utils/nfcPlateGenerator';
-import { getPublicAppOrigin, getDynamicQrUrl, getDynamicInstagramUrl, getDynamicGoogleUrl } from '../utils/publicUrlHelper';
+import { getPublicAppOrigin, getDynamicQrUrl, getDynamicInstagramUrl, getDynamicGoogleUrl, sanitizePublicUrl } from '../utils/publicUrlHelper';
 import { getPlateIdentification } from '../utils/plateNumberHelper';
 
 export type TotemTheme =
@@ -133,10 +133,10 @@ export const NfcMockupTotem: React.FC<NfcMockupTotemProps> = ({
   const [qrTargetMode, setQrTargetMode] = useState<'direct_google' | 'dynamic_cloud'>('dynamic_cloud');
   const totemRef = useRef<HTMLDivElement>(null);
 
-  // Clean public shared origin
+  // Clean public shared origin strictly mapped to production domain
   const cloudUrl = getDynamicQrUrl(leadId);
   const directUrl = reviewLink || 'https://maps.google.com';
-  const effectivePermanentUrl = qrTargetMode === 'direct_google' ? directUrl : (nfcRedirectUrl || cloudUrl);
+  const effectivePermanentUrl = sanitizePublicUrl(qrTargetMode === 'direct_google' ? directUrl : (nfcRedirectUrl || cloudUrl));
   const plateInfo = getPlateIdentification(leadId, businessName);
 
   // Sync customInstaUrl when instagramUrl prop changes

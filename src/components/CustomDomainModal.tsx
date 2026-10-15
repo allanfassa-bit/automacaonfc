@@ -47,6 +47,13 @@ export const CustomDomainModal: React.FC<CustomDomainModalProps> = ({
 
   const handleSave = () => {
     const cleaned = domainInput.trim();
+    if (cleaned && (cleaned.includes('.run.app') || cleaned.includes('ais-dev-') || cleaned.includes('localhost'))) {
+      setTestResult({
+        ok: false,
+        message: 'Atenção: O endereço do Google AI Studio (.run.app) é um ambiente interno de testes. Utilize o domínio do Render (https://automacaonfc.onrender.com) ou o seu próprio domínio profissional (ex: https://placas.suaempresa.com.br) para que o QR Code funcione para qualquer cliente.'
+      });
+      return;
+    }
     setCustomPublicDomain(cleaned);
     setSaveSuccess(true);
     if (onDomainSaved) {

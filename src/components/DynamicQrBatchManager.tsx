@@ -62,7 +62,8 @@ import {
   getCustomPublicDomain,
   getDirectLeadUrl,
   hasCustomPublicDomain,
-  getTestRedirectUrl
+  getTestRedirectUrl,
+  sanitizePublicUrl
 } from '../utils/publicUrlHelper';
 import { getPlateIdentification } from '../utils/plateNumberHelper';
 
@@ -2586,8 +2587,12 @@ export function DynamicQrBatchManager({ leads, onSelectLead, onNavigateToPortal 
                   <button
                     type="button"
                     onClick={() => {
+                      if (customDomainInput && (customDomainInput.includes('.run.app') || customDomainInput.includes('ais-dev-') || customDomainInput.includes('localhost'))) {
+                        alert('Atenção: O endereço do Google AI Studio (.run.app) é um ambiente interno de testes temporário. Para que os clientes na rua não caiam na tela de login da Google, use o domínio oficial do Render (https://automacaonfc.onrender.com) ou o seu domínio próprio (ex: https://placas.suaempresa.com.br)!');
+                        return;
+                      }
                       setCustomPublicDomain(customDomainInput);
-                      alert('Domínio configurado com sucesso! Todos os novos QR Codes e placas geradas usarão este endereço.');
+                      alert('Domínio configurado com sucesso! Todos os novos QR Codes e placas geradas usarão este endereço oficial.');
                       setIsDomainModalOpen(false);
                     }}
                     className="flex-1 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black py-2.5 rounded-xl text-xs uppercase tracking-wider transition cursor-pointer shadow-lg"

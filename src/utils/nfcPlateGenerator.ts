@@ -2,6 +2,7 @@ import QRCode from 'qrcode';
 import JSZip from 'jszip';
 import { generateQrDataUrl } from './qrCodeGenerator';
 import { getPlateIdentification } from './plateNumberHelper';
+import { sanitizePublicUrl } from './publicUrlHelper';
 
 export type ArtworkTheme =
   | 'emerald_green'
@@ -1806,12 +1807,17 @@ export async function generatePlate10x10DataUrl(
   options: ArtworkOptions,
   resolution: '4k' | '2.4k' = '4k'
 ): Promise<string> {
+  const sanitizedPermanentUrl = sanitizePublicUrl(options.permanentUrl);
+  const sanitizedOptions: ArtworkOptions = {
+    ...options,
+    permanentUrl: sanitizedPermanentUrl
+  };
   const {
     businessName = '',
     leadId = 'TAG01',
-    permanentUrl,
+    permanentUrl = sanitizedPermanentUrl,
     theme = 'emerald_green'
-  } = options;
+  } = sanitizedOptions;
 
   // Ultra HD: 4000 x 4000 px @ 600 DPI (4K Ultra-HD), or 2400 x 2400 px
   const baseSize = 2400;
@@ -2218,12 +2224,17 @@ export async function generateCardNfcDataUrl(
   options: ArtworkOptions,
   orientation: 'horizontal' | 'vertical' = 'horizontal'
 ): Promise<string> {
+  const sanitizedPermanentUrl = sanitizePublicUrl(options.permanentUrl);
+  const sanitizedOptions: ArtworkOptions = {
+    ...options,
+    permanentUrl: sanitizedPermanentUrl
+  };
   const {
     businessName = '',
     leadId = 'TAG01',
-    permanentUrl,
+    permanentUrl = sanitizedPermanentUrl,
     theme = 'emerald_green'
-  } = options;
+  } = sanitizedOptions;
 
   const isHorizontal = orientation === 'horizontal';
   const width = isHorizontal ? 2040 : 1296;
@@ -2554,26 +2565,31 @@ export async function downloadPlatePng(options: ArtworkOptions, fileNamePrefix?:
  * Generate Complete Graphic Production Kit (ZIP)
  */
 export async function generateArtworkZipKit(options: ArtworkOptions): Promise<Blob> {
+  const cleanPermanentUrl = sanitizePublicUrl(options.permanentUrl);
+  const sanitizedOptions: ArtworkOptions = {
+    ...options,
+    permanentUrl: cleanPermanentUrl
+  };
   const zip = new JSZip();
   const folder = zip.folder(`Kit_Grafica_NFC_${(options.businessName || 'Empresa').replace(/[^a-zA-Z0-9]/g, '_')}`);
 
   // 1. Placa 10x10 cm Ultra HD 4K (4000x4000 px @ 600 DPI)
-  const plate10x10Url = await generatePlate10x10DataUrl(options, '4k');
+  const plate10x10Url = await generatePlate10x10DataUrl(sanitizedOptions, '4k');
   const plate10x10Base64 = plate10x10Url.split(',')[1];
   folder?.file('01_Placa_10x10cm_Balcao_UltraHD_600DPI.png', plate10x10Base64, { base64: true });
 
   // 2. Cartão CR80 Horizontal
-  const cardHorizUrl = await generateCardNfcDataUrl(options, 'horizontal');
+  const cardHorizUrl = await generateCardNfcDataUrl(sanitizedOptions, 'horizontal');
   const cardHorizBase64 = cardHorizUrl.split(',')[1];
   folder?.file('02_Cartao_NFC_CR80_Horizontal_5.4x8.5cm.png', cardHorizBase64, { base64: true });
 
   // 3. Cartão CR80 Vertical
-  const cardVertUrl = await generateCardNfcDataUrl(options, 'vertical');
+  const cardVertUrl = await generateCardNfcDataUrl(sanitizedOptions, 'vertical');
   const cardVertBase64 = cardVertUrl.split(',')[1];
   folder?.file('03_Cartao_NFC_CR80_Vertical_8.5x5.4cm.png', cardVertBase64, { base64: true });
 
   // 4. QR Code individual em alta definição
-  const standaloneQrUrl = await generateQrDataUrl(options.permanentUrl, { width: 1200, margin: 1 });
+  const standaloneQrUrl = await generateQrDataUrl(cleanPermanentUrl, { width: 1200, margin: 1 });
   const standaloneQrBase64 = standaloneQrUrl.split(',')[1];
   folder?.file('04_QRCode_Dinamico_1200x1200px.png', standaloneQrBase64, { base64: true });
 
@@ -2584,7 +2600,7 @@ ALF AUTOMAÇÃO - MANUAL TÉCNICO DE PRODUÇÃO GRÁFICA & GRAVAÇÃO NFC
 
 CLIENTE: ${options.businessName || 'Empresa'}
 TAG ID: ${options.leadId || 'TAG01'}
-LINK DE REDIRECIONAMENTO INTELIGENTE: ${options.permanentUrl}
+LINK DE REDIRECIONAMENTO INTELIGENTE: ${cleanPermanentUrl}
 
 1. ESPECIFICAÇÕES DA PLACA 10x10 CM:
    - Tamanho Final: 10,0 cm x 10,0 cm

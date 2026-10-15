@@ -33,7 +33,8 @@ import {
   getDirectLeadUrl, 
   getTestRedirectUrl,
   validateGoogleReviewUrl,
-  getOfficialSearchReviewFallback
+  getOfficialSearchReviewFallback,
+  sanitizePublicUrl
 } from './utils/publicUrlHelper';
 import {
   Search,
@@ -2140,8 +2141,8 @@ function MainApp() {
 
     try {
       setIsDownloadingQr(true);
-      // Use direct URL (e.g. Google review link) by default so customers scanning the physical plate or code NEVER receive 403 Forbidden!
-      const targetUrl = getDirectLeadUrl(target);
+      const rawTargetUrl = (portalQrMode === 'dynamic' && target.id) ? getDynamicQrUrl(target.id) : getDirectLeadUrl(target);
+      const targetUrl = sanitizePublicUrl(rawTargetUrl);
       const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=${resolution}x${resolution}&format=png&margin=10&data=${encodeURIComponent(targetUrl)}`;
 
       const response = await fetch(qrApiUrl);

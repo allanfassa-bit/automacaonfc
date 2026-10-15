@@ -30,6 +30,7 @@ import {
 import { SYSTEM_TAB_OPTIONS, CLIENT_PERMISSION_OPTIONS } from './SellerRegisterModal';
 import { db } from '../firebase';
 import { collection, getDocs, doc, setDoc } from 'firebase/firestore';
+import { getPublicAppOrigin } from '../utils/publicUrlHelper';
 
 export interface SystemUserData {
   id: string;
@@ -549,7 +550,7 @@ export const UserManagementPanel: React.FC<UserManagementPanelProps> = ({ curren
           <button
             type="button"
             onClick={() => {
-              const inviteUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/?register=seller`;
+              const inviteUrl = `${getPublicAppOrigin()}/?register=seller`;
               navigator.clipboard.writeText(inviteUrl);
               setCopiedInviteLink(true);
               setTimeout(() => setCopiedInviteLink(false), 3000);
