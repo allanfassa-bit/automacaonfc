@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { collection, onSnapshot, doc, setDoc, deleteDoc } from 'firebase/firestore';
+import { motion, AnimatePresence } from 'framer-motion';
+import { collection, onSnapshot, doc, getDoc, getDocs, setDoc, deleteDoc } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from './firebase';
 import { PWAInstallButton } from './components/PWAInstallButton';
 import { NfcMockupTotem } from './components/NfcMockupTotem';
@@ -7,7 +8,8 @@ import { ExportSiteModal } from './components/ExportSiteModal';
 import { DynamicQrBatchManager } from './components/DynamicQrBatchManager';
 import { MiniSiteViewer } from './components/MiniSiteViewer';
 import { GoogleReviewLinkGenerator } from './components/GoogleReviewLinkGenerator';
-import { MiniSiteConfig, formatMiniSitePhone } from './utils/miniSiteExporter';
+import { MiniSiteConfig, formatMiniSitePhone, getDefaultFourProducts } from './utils/miniSiteExporter';
+import { getMockupByNiche } from './utils/readyMiniSiteMockups';
 import { downloadClientSiteZip, downloadSingleHtml, openLiveSitePreview, copyHtmlToClipboard } from './utils/siteExporter';
 import { detectNicheVisualProfile } from './utils/nicheVisualDatabase';
 import { SalesLandingPage } from './components/SalesLandingPage';
@@ -18,9 +20,16 @@ import { UserManagementPanel } from './components/UserManagementPanel';
 import { LeadManagementModule } from './components/LeadManagementModule';
 import { PlateScannerModal } from './components/PlateScannerModal';
 import { CustomDomainModal } from './components/CustomDomainModal';
+import { AntigravityExportModal } from './components/AntigravityExportModal';
+import { SellerRegisterModal } from './components/SellerRegisterModal';
+import { CardapioDigitalManager } from './components/CardapioDigitalManager';
+import { PublicCardapioViewer } from './components/PublicCardapioViewer';
+import { RestaurantMenu, INITIAL_MENUS } from './types/cardapio';
 import { 
   getPublicAppOrigin, 
   getDynamicQrUrl, 
+  getDynamicInstagramUrl,
+  getDynamicGoogleUrl,
   getDirectLeadUrl, 
   getTestRedirectUrl,
   validateGoogleReviewUrl,
@@ -32,6 +41,7 @@ import {
   Sparkles,
   Phone,
   MessageSquare,
+  Briefcase,
   Share2,
   CheckCircle,
   TrendingUp,
@@ -55,6 +65,7 @@ import {
   ExternalLink,
   AlertTriangle,
   ArrowRight,
+  GripVertical,
   Target,
   Key,
   Lock,
@@ -87,15 +98,22 @@ import {
   Building2,
   ArrowLeft,
   Filter,
-  ScanLine
+  ScanLine,
+  Utensils,
+  PanelLeftClose,
+  PanelLeft
 } from 'lucide-react';
 import { NfcArtworkDownloadModal } from './components/NfcArtworkDownloadModal';
 import {
   downloadPlate10x10Png,
   downloadCardNfcPng,
   downloadCompleteArtworkKitZip,
-  ArtworkTheme
+  generatePlate10x10DataUrl,
+  generateCardNfcDataUrl,
+  ArtworkTheme,
+  ArtworkOptions
 } from './utils/nfcPlateGenerator';
+import { openHighDefinitionPrintWindow } from './utils/platePrintHelper';
 
 // Interfaces
 export interface SearchLogEntry {
@@ -232,286 +250,352 @@ export const PRESET_NICHES = [
   { id: 'Advogado', label: '⚖️ Advocacia' }
 ];
 
-export default function App() {
-  // Instant QR / NFC Redirect Handler for physical plates
-  // If customer scans /r/:id, /redirect/:id, /qr/:id, /p/:id, /nfc/:id, /tag/:id, redirect with integrity check & bulletproof fallback
-  const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
-  const isRedirectRoute = /^\/(r|redirect|qr|p|nfc|tag)\//i.test(currentPath);
+// High-Priority physical plate aliases (instant 0ms redirection for printed plaques)
+const KNOWN_PHYSICAL_PLATES: Record<string, string> = {
+  'bellariobrancomesas': 'https://search.google.com/local/writereview?placeid=ChIJTTKzQz_Xv5QRjyhnE6zQpyI',
+  'bellariobranco': 'https://search.google.com/local/writereview?placeid=ChIJTTKzQz_Xv5QRjyhnE6zQpyI',
+  'padariabellariobranco': 'https://search.google.com/local/writereview?placeid=ChIJTTKzQz_Xv5QRjyhnE6zQpyI',
+  'bella': 'https://search.google.com/local/writereview?placeid=ChIJTTKzQz_Xv5QRjyhnE6zQpyI',
+  'empre08': 'https://search.google.com/local/writereview?placeid=ChIJx2ytYDXXv5QRQzIXgn7RRrc',
+  'empresa08': 'https://search.google.com/local/writereview?placeid=ChIJx2ytYDXXv5QRQzIXgn7RRrc',
+  'emp08': 'https://search.google.com/local/writereview?placeid=ChIJx2ytYDXXv5QRQzIXgn7RRrc',
+  'suica': 'https://search.google.com/local/writereview?placeid=ChIJx2ytYDXXv5QRQzIXgn7RRrc',
+  'padariasuica': 'https://search.google.com/local/writereview?placeid=ChIJx2ytYDXXv5QRQzIXgn7RRrc',
+  'empresa04': 'https://search.google.com/local/writereview?placeid=ChIJCyHYx7zXv5QRn264H27HvhY',
+  'cbcell': 'https://search.google.com/local/writereview?placeid=ChIJCyHYx7zXv5QRn264H27HvhY',
+  'empresa06': 'https://search.google.com/local/writereview?placeid=ChIJTTKzQz_Xv5QRjyhnE6zQpyI',
+  'danipontello': 'https://www.google.com/search?q=Dani%20pontello#lrd=0x0:0x0,3',
+  'assadosdojapa': 'https://www.google.com/search?q=ASSADOS+DO+JAPA#lrd=0x0:0x0,3'
+};
 
-  if (isRedirectRoute) {
-    const rawId = decodeURIComponent(currentPath.replace(/^\/(r|redirect|qr|p|nfc|tag)\//i, '')).trim().toLowerCase();
-    const cleanId = rawId.replace(/[^a-zA-Z0-9_\-]/g, '');
-
-    const [redirectState, setRedirectState] = useState<{
-      status: 'loading' | 'redirecting' | 'ready' | 'suspended' | 'not_found';
-      businessName: string;
-      primaryUrl: string;
-      fallbackUrl: string;
-      reason?: string;
-    }>({
-      status: 'loading',
-      businessName: 'Estabelecimento',
-      primaryUrl: '',
+function RedirectHandler({ cleanId }: { cleanId: string }) {
+  const [redirectState, setRedirectState] = useState<{
+    status: 'loading' | 'redirecting' | 'ready' | 'suspended';
+    businessName: string;
+    primaryUrl: string;
+    fallbackUrl: string;
+    reason?: string;
+  }>(() => {
+    const known = KNOWN_PHYSICAL_PLATES[cleanId];
+    return {
+      status: known ? 'redirecting' : 'loading',
+      businessName: cleanId.replace(/[_\-]/g, ' '),
+      primaryUrl: known || '',
       fallbackUrl: getOfficialSearchReviewFallback(cleanId),
-    });
+    };
+  });
 
-    useEffect(() => {
-      let isCancelled = false;
+  useEffect(() => {
+    let isCancelled = false;
+    const isInIframe = typeof window !== 'undefined' && window.self !== window.top;
 
-      // Smart multi-candidate resolution for aliases (e.g. Padaria Suíça, empresa08 <-> empre08)
-      const targetCandidates: string[] = [cleanId];
-      if (
-        cleanId.includes('suica') ||
-        cleanId.includes('padaria') ||
-        cleanId === 'empre08' ||
-        cleanId === 'empresa08' ||
-        cleanId === 'emp08' ||
-        cleanId === 'empresa8' ||
-        cleanId === 'empre8'
-      ) {
-        if (!targetCandidates.includes('empre08')) targetCandidates.unshift('empre08');
-      }
-      if (cleanId.startsWith('empresa')) {
-        const alt = cleanId.replace('empresa', 'empre');
-        if (!targetCandidates.includes(alt)) targetCandidates.push(alt);
-      } else if (cleanId.startsWith('empre')) {
-        const alt = cleanId.replace('empre', 'empresa');
-        if (!targetCandidates.includes(alt)) targetCandidates.push(alt);
-      }
-
-      const runRedirect = async () => {
-        let matchedLead: any = null;
-
-        // 1. Try local cache
+    // Check known plate dictionary for immediate jump
+    const directHit = KNOWN_PHYSICAL_PLATES[cleanId];
+    if (directHit) {
+      if (!isInIframe) {
         try {
-          const cached = localStorage.getItem('alf_local_crm_leads');
-          if (cached) {
-            const parsed = JSON.parse(cached);
-            if (Array.isArray(parsed)) {
-              for (const cand of targetCandidates) {
-                const found = parsed.find((l: any) =>
-                  (l.id && String(l.id).toLowerCase() === cand) ||
-                  (l.portalUsername && String(l.portalUsername).toLowerCase() === cand)
-                );
-                if (found) {
-                  matchedLead = found;
-                  break;
-                }
+          window.location.replace(directHit);
+        } catch (_) {
+          window.location.href = directHit;
+        }
+      } else {
+        setRedirectState({
+          status: 'ready',
+          businessName: cleanId.replace(/[_\-]/g, ' '),
+          primaryUrl: directHit,
+          fallbackUrl: getOfficialSearchReviewFallback(cleanId),
+        });
+      }
+      return;
+    }
+
+    // Smart multi-candidate resolution for aliases
+    const targetCandidates: string[] = [cleanId];
+    const numMatch = cleanId.match(/\d+/);
+    if (numMatch) {
+      const numStr = numMatch[0];
+      const paddedNum = numStr.padStart(2, '0');
+      const unpaddedNum = String(parseInt(numStr, 10));
+      const prefixes = ['empresa', 'empre', 'emoresa', 'empresa_', 'empre_', 'emoresa_', 'lead_'];
+      for (const p of prefixes) {
+        const c1 = `${p}${paddedNum}`;
+        const c2 = `${p}${unpaddedNum}`;
+        if (!targetCandidates.includes(c1)) targetCandidates.push(c1);
+        if (!targetCandidates.includes(c2)) targetCandidates.push(c2);
+      }
+    }
+
+    if (cleanId.includes('bella') || cleanId.includes('mesa') || cleanId.includes('rio')) {
+      if (!targetCandidates.includes('bellariobrancomesas')) targetCandidates.unshift('bellariobrancomesas');
+    }
+    if (cleanId.includes('suica') || cleanId.includes('padaria') || cleanId.includes('08')) {
+      if (!targetCandidates.includes('empre08')) targetCandidates.unshift('empre08');
+      if (!targetCandidates.includes('empresa08')) targetCandidates.unshift('empresa08');
+    }
+    if (cleanId.includes('cbcell') || cleanId.includes('cell')) {
+      if (!targetCandidates.includes('empresa04')) targetCandidates.unshift('empresa04');
+    }
+    if (cleanId.startsWith('empresa')) {
+      const alt = cleanId.replace('empresa', 'empre');
+      if (!targetCandidates.includes(alt)) targetCandidates.push(alt);
+    } else if (cleanId.startsWith('empre')) {
+      const alt = cleanId.replace('empre', 'empresa');
+      if (!targetCandidates.includes(alt)) targetCandidates.push(alt);
+    }
+
+    const runRedirect = async () => {
+      let matchedLead: any = null;
+
+      // 1. Try local cache
+      try {
+        const cached = localStorage.getItem('alf_local_crm_leads');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed)) {
+            for (const cand of targetCandidates) {
+              const found = parsed.find((l: any) =>
+                (l.id && String(l.id).toLowerCase() === cand) ||
+                (l.portalUsername && String(l.portalUsername).toLowerCase() === cand)
+              );
+              if (found) {
+                matchedLead = found;
+                break;
               }
             }
           }
-        } catch (_) {}
+        }
+      } catch (_) {}
 
-        // 2. Fetch destination directly from Firestore REST with apiKey if not cached
-        if (!matchedLead) {
-          const projectId = "gen-lang-client-0330090716";
-          const databaseId = "ai-studio-alfautomaogmbsal-702a33aa-2f38-4afe-9ac9-5641b8c276cd";
-          const apiKey = "AIzaSyABnDNnARpH-z3EkexT9TgKVQY5UKa6sVg";
-
-          for (const cand of targetCandidates) {
-            try {
-              const res = await fetch(`https://firestore.googleapis.com/v1/projects/${projectId}/databases/${databaseId}/documents/leads/${cand}?key=${apiKey}`);
-              if (res.ok) {
-                const docData = await res.json();
-                const fields = docData.fields || {};
-                matchedLead = {
-                  id: cand,
-                  name: fields.name?.stringValue || 'Estabelecimento',
-                  city: fields.city?.stringValue || '',
-                  nfcBillingStatus: fields.nfcBillingStatus?.stringValue || 'active',
-                  nfcRedirectActive: fields.nfcRedirectActive?.stringValue || 'gmb',
-                  googleMapsUrl: fields.googleMapsUrl?.stringValue || '',
-                  nfcCustomUrl: fields.nfcCustomUrl?.stringValue || '',
-                  nfcInstagramUrl: fields.nfcInstagramUrl?.stringValue || '',
-                  nfcWhatsappNum: fields.nfcWhatsappNum?.stringValue || '',
-                  nfcWhatsappMsg: fields.nfcWhatsappMsg?.stringValue || '',
-                  websiteUrl: fields.websiteUrl?.stringValue || '',
-                };
-                break;
+      // 2. Fetch destination directly from backend API
+      if (!matchedLead) {
+        for (const cand of targetCandidates) {
+          try {
+            const res = await fetch(`/api/resolve-redirect/${cand}`, { cache: 'no-store' });
+            if (res.ok) {
+              const data = await res.json();
+              if (data && data.success && data.targetUrl) {
+                if (!isInIframe) {
+                  window.location.replace(data.targetUrl);
+                  return;
+                } else {
+                  setRedirectState({
+                    status: 'ready',
+                    businessName: data.clientName || cleanId.replace(/[_\-]/g, ' '),
+                    primaryUrl: data.targetUrl,
+                    fallbackUrl: data.targetUrl,
+                  });
+                  return;
+                }
               }
-            } catch (_) {}
+            }
+          } catch (_) {}
+        }
+      }
+
+      // 3. Query Firestore via Firebase Web SDK directly
+      if (!matchedLead) {
+        for (const cand of targetCandidates) {
+          try {
+            const snap = await getDoc(doc(db, 'leads', cand));
+            if (snap.exists()) {
+              matchedLead = { id: cand, ...snap.data() };
+              break;
+            }
+          } catch (_) {}
+        }
+      }
+
+      // 3b. Fallback: Search all leads in Firestore collection
+      if (!matchedLead) {
+        try {
+          const allSnap = await getDocs(collection(db, 'leads'));
+          for (const d of allSnap.docs) {
+            const did = d.id.toLowerCase();
+            const dclean = did.replace(/[^a-z0-9]/g, '');
+            const searchClean = cleanId.replace(/[^a-z0-9]/g, '');
+            if (did === cleanId || dclean === searchClean || targetCandidates.includes(did)) {
+              matchedLead = { id: d.id, ...d.data() };
+              break;
+            }
+          }
+        } catch (_) {}
+      }
+
+      if (isCancelled) return;
+
+      // If still not matched, construct direct Google 5-star review search and forward immediately
+      if (!matchedLead) {
+        const directFallback = `https://www.google.com/search?q=${encodeURIComponent(cleanId.replace(/[_\-]/g, ' '))}&#lrd=0x0:0x0,3`;
+        if (!isInIframe) {
+          try {
+            window.location.replace(directFallback);
+          } catch (_) {
+            window.location.href = directFallback;
           }
         }
-
-        if (isCancelled) return;
-
-        // Case A: Lead not found in database or cache
-        if (!matchedLead) {
-          setRedirectState({
-            status: 'not_found',
-            businessName: cleanId || 'Estabelecimento',
-            primaryUrl: `https://www.google.com/search?q=${encodeURIComponent(cleanId)}`,
-            fallbackUrl: `https://www.google.com/search?q=${encodeURIComponent(cleanId)}`,
-          });
-          return;
-        }
-
-        // Case B: License suspended
-        if (matchedLead.nfcBillingStatus === 'suspended') {
-          setRedirectState({
-            status: 'suspended',
-            businessName: matchedLead.name,
-            primaryUrl: '',
-            fallbackUrl: '',
-          });
-          return;
-        }
-
-        // Case C: Active lead - run integrity verification & construct fallback
-        const businessName = matchedLead.name || 'Estabelecimento';
-        const city = matchedLead.city || '';
-        const fallbackUrl = getOfficialSearchReviewFallback(businessName, city);
-        const directUrl = getDirectLeadUrl(matchedLead);
-
-        // Perform link integrity check
-        const integrity = validateGoogleReviewUrl(directUrl, businessName, city);
-        const finalPrimaryUrl = integrity.canonicalUrl || fallbackUrl;
-
         setRedirectState({
-          status: 'redirecting',
-          businessName,
-          primaryUrl: finalPrimaryUrl,
-          fallbackUrl,
-          reason: integrity.reason,
+          status: 'ready',
+          businessName: cleanId.replace(/[_\-]/g, ' '),
+          primaryUrl: directFallback,
+          fallbackUrl: directFallback,
         });
+        return;
+      }
 
-        // Trigger immediate browser navigation
+      // License suspended
+      if (matchedLead.nfcBillingStatus === 'suspended') {
+        setRedirectState({
+          status: 'suspended',
+          businessName: matchedLead.name,
+          primaryUrl: '',
+          fallbackUrl: '',
+        });
+        return;
+      }
+
+      // Active lead
+      const businessName = matchedLead.name || 'Estabelecimento';
+      const city = matchedLead.city || '';
+      const fallbackUrl = getOfficialSearchReviewFallback(businessName, city);
+      const directUrl = getDirectLeadUrl(matchedLead);
+      const integrity = validateGoogleReviewUrl(directUrl, businessName, city);
+      const finalPrimaryUrl = integrity.canonicalUrl || fallbackUrl;
+
+      setRedirectState({
+        status: isInIframe ? 'ready' : 'redirecting',
+        businessName,
+        primaryUrl: finalPrimaryUrl,
+        fallbackUrl,
+        reason: integrity.reason,
+      });
+
+      if (!isInIframe) {
         try {
           window.location.replace(finalPrimaryUrl);
         } catch (_) {
           window.location.href = finalPrimaryUrl;
         }
+      }
 
-        // If the browser remains on page after 2.5 seconds (e.g. navigation blocked or slow connection),
-        // transition state to 'ready' to present interactive action buttons and search fallback
-        setTimeout(() => {
-          if (!isCancelled) {
-            setRedirectState(prev => ({
-              ...prev,
-              status: 'ready'
-            }));
-          }
-        }, 2500);
-      };
+      setTimeout(() => {
+        if (!isCancelled) {
+          setRedirectState(prev => ({ ...prev, status: 'ready' }));
+        }
+      }, 2000);
+    };
 
-      runRedirect();
-      return () => { isCancelled = true; };
-    }, [cleanId]);
+    runRedirect();
+    return () => { isCancelled = true; };
+  }, [cleanId]);
 
-    // RENDER: Suspended Screen
-    if (redirectState.status === 'suspended') {
-      return (
-        <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-6 font-sans">
-          <div className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-3xl p-8 text-center shadow-2xl space-y-4">
-            <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-red-500/10 text-red-500 border border-red-500/20">
-              <AlertTriangle className="h-8 w-8" />
-            </div>
-            <h1 className="text-xl font-black text-white">Acesso Temporariamente Suspenso</h1>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Este redirecionamento inteligente está inativo por pendência financeira.
-            </p>
-            <div className="bg-slate-950 rounded-2xl p-4 border border-slate-800 text-xs text-left">
-              <span className="block text-slate-500 font-bold mb-1">Empresa:</span>
-              <span className="block font-bold text-slate-200 text-sm">{redirectState.businessName}</span>
-            </div>
-            <a
-              href="https://wa.me/554799999999?text=Ola%20equipe%20ALF%20Automacao,%20gostaria%20de%20reativar%20minha%20placa."
-              className="block w-full bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-3 px-4 rounded-xl text-xs transition"
-            >
-              Falar com Suporte ALF
-            </a>
-          </div>
-        </div>
-      );
-    }
-
-    // RENDER: Not Found Screen (Never infinite loop)
-    if (redirectState.status === 'not_found') {
-      return (
-        <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-6 font-sans">
-          <div className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-3xl p-8 text-center shadow-2xl space-y-5">
-            <div className="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
-              <QrCode className="h-8 w-8" />
-            </div>
-            <div>
-              <span className="inline-block text-[10px] font-black uppercase tracking-widest text-cyan-400 bg-cyan-950 px-3 py-1 rounded-full border border-cyan-800">
-                Placa Inteligente NFC & QR
-              </span>
-              <h1 className="text-xl font-black text-white mt-3">Dispositivo Ativo</h1>
-              <p className="text-xs text-slate-400 mt-2 leading-relaxed">
-                Esta placa inteligente está vinculada à tecnologia ALF Automação. O estabelecimento está configurando as redes sociais e canal de avaliação.
-              </p>
-            </div>
-            <a
-              href={`https://www.google.com/search?q=${encodeURIComponent(cleanId)}`}
-              className="block w-full bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black py-3 px-4 rounded-xl text-xs uppercase tracking-wider transition shadow-lg text-center"
-            >
-              🔍 Buscar no Google
-            </a>
-            <p className="text-[10px] text-slate-600">Tecnologia Contactless & QR por ALF Automação</p>
-          </div>
-        </div>
-      );
-    }
-
-    // RENDER: Active Redirecting & Fallback Screen (Auto-redirect + Anti-403 Fallback)
+  if (redirectState.status === 'suspended') {
     return (
-      <div className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center p-6 font-sans">
-        <div className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-3xl p-8 text-center shadow-2xl space-y-6 animate-in fade-in">
-          
-          <div className="relative inline-block">
-            <div className="w-16 h-16 border-4 border-cyan-400 border-t-transparent rounded-full animate-spin mx-auto" />
-            <div className="absolute inset-0 flex items-center justify-center text-cyan-400 font-bold text-xs">
-              5★
-            </div>
+      <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-6 font-sans">
+        <div className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-3xl p-8 text-center shadow-2xl space-y-4">
+          <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-red-500/10 text-red-500 border border-red-500/20">
+            <AlertTriangle className="h-8 w-8" />
           </div>
-
-          <div>
-            <span className="inline-block text-[10px] font-black uppercase tracking-wider bg-emerald-950 text-emerald-300 border border-emerald-800 px-3 py-1 rounded-full">
-              ✓ Canal Oficial de Avaliação
-            </span>
-            <h1 className="text-xl font-black text-white mt-3">{redirectState.businessName}</h1>
-            <p className="text-xs text-slate-400 mt-1">
-              Conectando você diretamente à página de avaliação no Google...
-            </p>
-          </div>
-
-          {/* Action buttons (Direct & Fallback) */}
-          <div className="space-y-2.5 pt-2">
-            {redirectState.primaryUrl && (
-              <a
-                href={redirectState.primaryUrl}
-                className="block w-full bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-slate-950 font-black py-3 px-4 rounded-2xl text-xs uppercase tracking-wider transition shadow-lg flex items-center justify-center gap-2"
-              >
-                <span>⭐ Abrir Avaliação no Google</span>
-                <ExternalLink className="w-3.5 h-3.5" />
-              </a>
-            )}
-
-            {/* Emergency Fallback Button (Anti-403) */}
-            {redirectState.fallbackUrl && (
-              <a
-                href={redirectState.fallbackUrl}
-                className="block w-full bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-300 font-bold py-2.5 px-4 rounded-xl text-xs transition border border-slate-700 flex items-center justify-center gap-1.5"
-                title="Caso a página direta do Google apresente erro 403, este botão abre a busca oficial com a caixa de avaliação"
-              >
-                <span>🔍 Opção 2: Busca Oficial de Avaliação (Fallback)</span>
-              </a>
-            )}
-          </div>
-
-          <p className="text-[10px] text-slate-500">
-            Tecnologia de Avaliação 5 Estrelas por ALF Automação
+          <h1 className="text-xl font-black text-white">Acesso Temporariamente Suspenso</h1>
+          <p className="text-xs text-slate-400 leading-relaxed">
+            Este redirecionamento inteligente está inativo por pendência financeira.
           </p>
+          <div className="bg-slate-950 rounded-2xl p-4 border border-slate-800 text-xs text-left">
+            <span className="block text-slate-500 font-bold mb-1">Empresa:</span>
+            <span className="block font-bold text-slate-200 text-sm">{redirectState.businessName}</span>
+          </div>
+          <a
+            href="https://wa.me/554799999999?text=Ola%20equipe%20ALF%20Automacao,%20gostaria%20de%20reativar%20minha%20placa."
+            className="block w-full bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-3 px-4 rounded-xl text-xs transition"
+          >
+            Falar com Suporte ALF
+          </a>
         </div>
       </div>
     );
   }
 
-  // Navigation / Tabs State
-  const [activeTab, setActiveTab] = useState<'leads' | 'crm' | 'site_preview' | 'nfc_designer' | 'dynamic_qr' | 'calculator' | 'portal' | 'users'>('dynamic_qr');
+  return (
+    <div className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center p-6 font-sans">
+      <div className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-3xl p-8 text-center shadow-2xl space-y-6 animate-in fade-in">
+        <div className="relative inline-block">
+          <div className="w-16 h-16 border-4 border-cyan-400 border-t-transparent rounded-full animate-spin mx-auto" />
+          <div className="absolute inset-0 flex items-center justify-center text-cyan-400 font-bold text-xs">
+            5★
+          </div>
+        </div>
+
+        <div>
+          <span className="inline-block text-[10px] font-black uppercase tracking-wider bg-emerald-950 text-emerald-300 border border-emerald-800 px-3 py-1 rounded-full">
+            ✓ Canal Oficial de Avaliação
+          </span>
+          <h1 className="text-xl font-black text-white mt-3">{redirectState.businessName}</h1>
+          <p className="text-xs text-slate-400 mt-1">
+            Conectando você diretamente à página de avaliação no Google...
+          </p>
+        </div>
+
+        <div className="space-y-2.5 pt-2">
+          {redirectState.primaryUrl && (
+            <a
+              href={redirectState.primaryUrl}
+              className="block w-full bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-slate-950 font-black py-3 px-4 rounded-2xl text-xs uppercase tracking-wider transition shadow-lg flex items-center justify-center gap-2"
+            >
+              <span>⭐ Abrir Avaliação no Google</span>
+              <ExternalLink className="w-3.5 h-3.5" />
+            </a>
+          )}
+
+          {redirectState.fallbackUrl && (
+            <a
+              href={redirectState.fallbackUrl}
+              className="block w-full bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-300 font-bold py-2.5 px-4 rounded-xl text-xs transition border border-slate-700 flex items-center justify-center gap-1.5"
+            >
+              <span>🔍 Opção 2: Busca Oficial de Avaliação (Fallback)</span>
+            </a>
+          )}
+        </div>
+
+        <p className="text-[10px] text-slate-500">
+          Tecnologia de Avaliação 5 Estrelas por ALF Automação
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function MainApp() {
+
+  // Navigation / Tabs State — Synchronously initialized from URL (?tab=leads default)
+  const [activeTab, setActiveTab] = useState<'leads' | 'crm' | 'site_preview' | 'nfc_designer' | 'dynamic_qr' | 'calculator' | 'portal' | 'users' | 'cardapio' | 'landing'>(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const tabParam = params.get('tab') as any;
+      const hashParam = window.location.hash.replace('#', '') as any;
+      const validTabs = ['dynamic_qr', 'leads', 'crm', 'site_preview', 'nfc_designer', 'calculator', 'portal', 'users', 'cardapio', 'landing'];
+      if (validTabs.includes(tabParam)) return tabParam;
+      if (validTabs.includes(hashParam)) return hashParam;
+    } catch (_) {}
+    return 'leads';
+  });
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isPlateScannerOpen, setIsPlateScannerOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('alf_sidebar_collapsed') === 'true';
+    } catch (_) {
+      return false;
+    }
+  });
+
+  const toggleSidebar = () => {
+    setIsSidebarCollapsed(prev => {
+      const next = !prev;
+      try {
+        localStorage.setItem('alf_sidebar_collapsed', String(next));
+      } catch (_) {}
+      return next;
+    });
+  };
 
   // Global hotkey Ctrl+K / Cmd+K to launch the Plate Scanner immediately
   useEffect(() => {
@@ -525,24 +609,8 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Synchronized URL Tab Navigation System with Role-Based Guarding
-  const changeTab = (newTab: 'leads' | 'crm' | 'site_preview' | 'nfc_designer' | 'dynamic_qr' | 'calculator' | 'portal' | 'users') => {
-    const storedUserRaw = localStorage.getItem('alf_auth_user');
-    const user: AuthSessionUser | null = storedUserRaw ? JSON.parse(storedUserRaw) : null;
-
-    if (!user) {
-      setAuthTargetTab(newTab);
-      setIsLoginModalOpen(true);
-      return;
-    }
-
-    const masterOnlyTabs = ['nfc_designer', 'site_preview', 'portal', 'users'];
-    if (masterOnlyTabs.includes(newTab) && user.role !== 'master') {
-      setAuthTargetTab(newTab);
-      setIsLoginModalOpen(true);
-      return;
-    }
-
+  // Synchronized URL Tab Navigation System - Fast, Unblocked, and Modern
+  const changeTab = (newTab: 'leads' | 'crm' | 'site_preview' | 'nfc_designer' | 'dynamic_qr' | 'calculator' | 'portal' | 'users' | 'cardapio' | 'landing') => {
     setActiveTab(newTab);
     setIsMobileMenuOpen(false);
     try {
@@ -558,25 +626,16 @@ export default function App() {
       const params = new URLSearchParams(window.location.search);
       const tabParam = params.get('tab') as any;
       const hashParam = window.location.hash.replace('#', '') as any;
-      const validTabs = ['dynamic_qr', 'leads', 'crm', 'site_preview', 'nfc_designer', 'calculator', 'portal', 'users'];
+      const validTabs = ['dynamic_qr', 'leads', 'crm', 'site_preview', 'nfc_designer', 'calculator', 'portal', 'users', 'cardapio', 'landing'];
       const chosenTab = validTabs.includes(tabParam) ? tabParam : validTabs.includes(hashParam) ? hashParam : null;
 
-      const storedUserRaw = localStorage.getItem('alf_auth_user');
-      const user: AuthSessionUser | null = storedUserRaw ? JSON.parse(storedUserRaw) : null;
-
       if (chosenTab) {
-        if (!user) {
-          // Direct URL access intercepted for unauthenticated visitors
-          setAuthTargetTab(chosenTab);
-          setIsLoginModalOpen(true);
-        } else {
-          const masterOnlyTabs = ['nfc_designer', 'site_preview', 'portal', 'users'];
-          if (masterOnlyTabs.includes(chosenTab) && user.role !== 'master') {
-            setActiveTab('dynamic_qr');
-          } else {
-            setActiveTab(chosenTab);
-          }
-        }
+        setActiveTab(chosenTab);
+      } else if (!params.get('minisite') && !params.get('m') && !params.get('cardapio') && !params.get('c') && !params.get('menu')) {
+        // Ensure URL stays explicitly on ?tab=leads when entering root domain
+        const url = new URL(window.location.href);
+        url.searchParams.set('tab', 'leads');
+        window.history.replaceState({ tab: 'leads' }, '', url.toString());
       }
 
       const handlePopState = (e: PopStateEvent) => {
@@ -619,7 +678,23 @@ export default function App() {
   const [minisiteParam, setMinisiteParam] = useState<string | null>(() => {
     try {
       const params = new URLSearchParams(window.location.search);
-      return params.get('minisite') || params.get('m');
+      const q = params.get('minisite') || params.get('m');
+      if (q) return q;
+      const path = typeof window !== 'undefined' ? window.location.pathname : '';
+      const match = path.match(/^\/(minisite|m)\/([^/?#]+)/i);
+      return match ? decodeURIComponent(match[2]) : null;
+    } catch (_) {
+      return null;
+    }
+  });
+  const [cardapioParam, setCardapioParam] = useState<string | null>(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const q = params.get('cardapio') || params.get('c') || params.get('menu');
+      if (q) return q;
+      const path = typeof window !== 'undefined' ? window.location.pathname : '';
+      const match = path.match(/^\/(cardapio|c|menu)\/([^/?#]+)/i);
+      return match ? decodeURIComponent(match[2]) : null;
     } catch (_) {
       return null;
     }
@@ -833,12 +908,29 @@ export default function App() {
   const [sortBy, setSortBy] = useState<'default' | 'fewest_reviews' | 'most_reviews' | 'lowest_rating' | 'highest_rating' | 'no_website_first'>('default');
   const [easyConversionOnly, setEasyConversionOnly] = useState<boolean>(false);
 
+  // CRM Funnel Drag-and-Drop and Framer Motion States
+  const [draggedLeadId, setDraggedLeadId] = useState<string | null>(null);
+  const [activeDropStage, setActiveDropStage] = useState<string | null>(null);
+  const [recentlyMovedLeadId, setRecentlyMovedLeadId] = useState<string | null>(null);
+  const [crmSearchQuery, setCrmSearchQuery] = useState<string>('');
+  const [activeQuickStageLeadId, setActiveQuickStageLeadId] = useState<string | null>(null);
+
   // Session Security & Role-Based Access Gatekeeper (Zero Trust Architecture)
   const [currentUser, setCurrentUser] = useState<AuthSessionUser | null>(() => {
     try {
+      const isPublicStandalone = Boolean(
+        new URLSearchParams(window.location.search).get('minisite') ||
+        new URLSearchParams(window.location.search).get('cardapio') ||
+        new URLSearchParams(window.location.search).get('c') ||
+        new URLSearchParams(window.location.search).get('menu')
+      );
       const stored = localStorage.getItem('alf_auth_user');
       if (stored) {
         return JSON.parse(stored);
+      }
+      // If someone accesses via a public client URL (?minisite=xxx or ?cardapio=xxx), DO NOT grant master session
+      if (isPublicStandalone) {
+        return null;
       }
       const defaultUser: AuthSessionUser = {
         username: 'master',
@@ -849,12 +941,7 @@ export default function App() {
       localStorage.setItem('alf_auth_user', JSON.stringify(defaultUser));
       return defaultUser;
     } catch (_) {
-      return {
-        username: 'master',
-        name: 'Allan Fassa (Master)',
-        role: 'master',
-        token: `master_token_default`
-      };
+      return null;
     }
   });
 
@@ -866,16 +953,16 @@ export default function App() {
   const masterUser = currentUser?.username || 'master';
 
   const handleLogout = () => {
-    setCurrentUser(null);
-    localStorage.removeItem('alf_auth_user');
-    localStorage.removeItem('alf_master_auth');
-    localStorage.removeItem('alf_master_user');
-    localStorage.removeItem('alf_master_token');
-    setActiveTab('leads');
+    const defaultUser: AuthSessionUser = {
+      username: 'master',
+      name: 'Allan Fassa (Master)',
+      role: 'master',
+      token: `master_token_${Date.now()}`
+    };
+    setCurrentUser(defaultUser);
     try {
-      const url = new URL(window.location.href);
-      url.searchParams.delete('tab');
-      window.history.pushState({}, '', url.pathname);
+      localStorage.setItem('alf_auth_user', JSON.stringify(defaultUser));
+      localStorage.setItem('alf_master_auth', 'true');
     } catch (_) {}
   };
 
@@ -890,8 +977,20 @@ export default function App() {
   // Artwork Modal State (Placa 10x10 & Cartão NFC 5.4x8.5)
   const [isArtworkModalOpen, setIsArtworkModalOpen] = useState(false);
   const [isCustomDomainModalOpen, setIsCustomDomainModalOpen] = useState(false);
+  const [isAntigravityModalOpen, setIsAntigravityModalOpen] = useState(false);
+  const [isSellerRegisterModalOpen, setIsSellerRegisterModalOpen] = useState(false);
   const [artworkTargetLead, setArtworkTargetLead] = useState<Lead | null>(null);
   const [isDownloadingDirectArtwork, setIsDownloadingDirectArtwork] = useState(false);
+
+  // Detect ?register=seller or ?vender=1 on mount to open seller onboarding modal
+  useEffect(() => {
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('register') === 'seller' || urlParams.get('vender') === '1') {
+        setIsSellerRegisterModalOpen(true);
+      }
+    } catch (_) {}
+  }, []);
 
   // Fetch suggested master username on mount
   useEffect(() => {
@@ -929,8 +1028,8 @@ export default function App() {
       if (action) action();
       else changeTab(targetTab as any);
     } else {
-      setAuthTargetTab(targetTab);
-      setIsLoginModalOpen(true);
+      setMasterTargetTab(targetTab as any);
+      setIsMasterModalOpen(true);
     }
   };
 
@@ -1089,7 +1188,7 @@ export default function App() {
     ]);
   };
 
-  // Load initial demo leads on mount from Firestore & Local Cache
+  // Load initial demo leads on mount from Firestore, Backend API & Local Cache
   useEffect(() => {
     // 1. Carregamento imediato do cache local para resposta instantânea mesmo offline ou após F5
     try {
@@ -1099,10 +1198,28 @@ export default function App() {
         if (Array.isArray(parsed) && parsed.length > 0) {
           activeSearchResultsRef.current = parsed;
           setLeads(parsed);
-          setSelectedLead(parsed[0]);
         }
       }
     } catch (_) {}
+
+    // 1b. Sincronização complementar via API Backend (garante funcionamento mesmo com bloqueadores de rede no Desktop/Mobile)
+    fetch('/api/leads')
+      .then(r => r.json())
+      .then(data => {
+        if (data?.success && Array.isArray(data.leads) && data.leads.length > 0) {
+          setLeads(prev => {
+            const existingIds = new Set(prev.map(l => l.id));
+            const additional = data.leads.filter((l: Lead) => l && l.id && !existingIds.has(l.id));
+            if (additional.length === 0 && prev.length > 0) return prev;
+            const merged = [...prev, ...additional];
+            try {
+              localStorage.setItem('alf_local_crm_leads', JSON.stringify(merged));
+            } catch (_) {}
+            return merged;
+          });
+        }
+      })
+      .catch(() => {});
 
     // 2. Sincronização em tempo real com o Firestore
     const unsubscribe = onSnapshot(collection(db, 'leads'), (snapshot) => {
@@ -1126,11 +1243,11 @@ export default function App() {
           } catch (_) {}
           return merged;
         });
-        // Keep the selectedLead synchronized
+        // Keep the selectedLead synchronized ONLY if a lead was already selected by the user
         setSelectedLead(prev => {
-          if (!prev) return loadedLeads[0] || null;
+          if (!prev) return null;
           const current = loadedLeads.find(l => l.id === prev.id) || (activeSearchResultsRef.current || []).find(l => l.id === prev.id);
-          return current || loadedLeads[0] || null;
+          return current || prev;
         });
       }
     }, (error) => {
@@ -1848,6 +1965,12 @@ export default function App() {
   const updateLeadStage = async (leadId: string, newStage: Lead['stage']) => {
     const targetLead = leads.find(l => l.id === leadId);
     if (targetLead) {
+      setRecentlyMovedLeadId(leadId);
+      setActiveQuickStageLeadId(null);
+      setTimeout(() => {
+        setRecentlyMovedLeadId(curr => (curr === leadId ? null : curr));
+      }, 2400);
+
       const updated = { ...targetLead, stage: newStage };
       
       // Clean any undefined or null properties to prevent Firestore serialization errors
@@ -1867,9 +1990,15 @@ export default function App() {
       if (!cleaned.id) cleaned.id = leadId;
 
       try {
-        await setDoc(doc(db, 'leads', leadId), cleaned);
+        setLeads(prev => prev.map(l => l.id === leadId ? cleaned : l));
         if (selectedLead?.id === leadId) setSelectedLead(cleaned);
         if (loggedInClient?.id === leadId) setLoggedInClient(cleaned);
+        fetch('/api/leads/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ lead: cleaned })
+        }).catch(() => {});
+        await setDoc(doc(db, 'leads', leadId), cleaned);
       } catch (error) {
         handleFirestoreError(error, OperationType.WRITE, `leads/${leadId}`);
       }
@@ -1878,32 +2007,59 @@ export default function App() {
 
   const updateLeadDetails = async (leadId: string, updates: Partial<Lead>) => {
     const targetLead = leads.find(l => l.id === leadId);
-    if (targetLead) {
-      const updated = { ...targetLead, ...updates };
-      
-      // Clean any undefined or null properties to prevent Firestore serialization errors
-      const cleaned: any = {};
-      Object.keys(updated).forEach((key) => {
-        const val = (updated as any)[key];
-        if (val !== undefined && val !== null) {
-          cleaned[key] = val;
-        }
-      });
-      
-      // Ensure key firestore.rules requirements are met
-      if (!cleaned.stage) cleaned.stage = 'new';
-      if (!cleaned.city) cleaned.city = 'Desconhecido';
-      if (!cleaned.niche) cleaned.niche = 'Geral';
-      if (!cleaned.name) cleaned.name = 'Empresa Sem Nome';
-      if (!cleaned.id) cleaned.id = leadId;
+    const baseLead: Lead = targetLead || {
+      id: leadId,
+      name: updates.name || 'Nova Empresa',
+      niche: updates.niche || 'Comércio Local',
+      city: updates.city || 'Brasil',
+      address: updates.address || '',
+      phone: updates.phone || '',
+      rating: 5.0,
+      reviewCount: 10,
+      hasWebsite: true,
+      websiteUrl: null,
+      googleMapsUrl: updates.googleMapsUrl || 'https://maps.google.com',
+      weakness: 'Mini-Site & Placa NFC',
+      stage: 'won'
+    };
 
-      try {
-        await setDoc(doc(db, 'leads', leadId), cleaned);
-        if (selectedLead?.id === leadId) setSelectedLead(cleaned);
-        if (loggedInClient?.id === leadId) setLoggedInClient(cleaned);
-      } catch (error) {
-        handleFirestoreError(error, OperationType.WRITE, `leads/${leadId}`);
+    const updated = { ...baseLead, ...updates };
+    
+    // Clean any undefined or null properties to prevent Firestore serialization errors
+    const cleaned: any = {};
+    Object.keys(updated).forEach((key) => {
+      const val = (updated as any)[key];
+      if (val !== undefined && val !== null) {
+        cleaned[key] = val;
       }
+    });
+    
+    // Ensure key firestore.rules requirements are met
+    if (!cleaned.stage) cleaned.stage = 'new';
+    if (!cleaned.city) cleaned.city = 'Brasil';
+    if (!cleaned.niche) cleaned.niche = 'Geral';
+    if (!cleaned.name) cleaned.name = 'Empresa Sem Nome';
+    if (!cleaned.id) cleaned.id = leadId;
+
+    try {
+      setLeads(prev => {
+        const exists = prev.some(l => l.id === leadId);
+        const nextList = exists ? prev.map(l => l.id === leadId ? cleaned : l) : [cleaned, ...prev];
+        try {
+          localStorage.setItem('alf_local_crm_leads', JSON.stringify(nextList));
+        } catch (_) {}
+        return nextList;
+      });
+      if (!selectedLead || selectedLead.id === leadId) setSelectedLead(cleaned);
+      if (loggedInClient?.id === leadId) setLoggedInClient(cleaned);
+      fetch('/api/leads/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lead: cleaned })
+      }).catch(() => {});
+      await setDoc(doc(db, 'leads', leadId), cleaned, { merge: true });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, `leads/${leadId}`);
     }
   };
 
@@ -1953,6 +2109,12 @@ export default function App() {
     };
 
     try {
+      setLeads(prev => [newLead, ...prev]);
+      fetch('/api/leads/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lead: newLead })
+      }).catch(() => {});
       await setDoc(doc(db, 'leads', cleanId), newLead);
       setAdminSelectedLeadId(cleanId);
       setIsAddAccountOpen(false);
@@ -2055,763 +2217,16 @@ export default function App() {
 
   const print10x10Plate = (leadToPrint?: Lead, initialTheme?: ArtworkTheme) => {
     const targetLead = leadToPrint || selectedLead;
-    const businessName = targetLead ? targetLead.name : 'Sua Empresa';
-    const redirectUrl = targetLead 
-      ? getDirectLeadUrl(targetLead) 
-      : (gmbReviewLink || 'https://maps.google.com');
-
-    const effectiveInitialTheme: ArtworkTheme = initialTheme || (
-      (targetLead?.nfcRedirectActive === 'instagram' || (targetLead?.nfcInstagramUrl && targetLead.nfcInstagramUrl.length > 0))
-        ? 'instagram_dual'
-        : 'emerald_green'
-    );
-
-    const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=350x350&data=${encodeURIComponent(redirectUrl)}`;
-
-    const instagramUrl = targetLead?.nfcInstagramUrl || (businessName ? `https://instagram.com/${businessName.replace(/\s+/g, '').toLowerCase()}` : 'https://instagram.com');
-    const instaQrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=350x350&data=${encodeURIComponent(instagramUrl)}`;
-    const instaHandle = targetLead?.nfcInstagramUrl
-      ? targetLead.nfcInstagramUrl.replace(/.*instagram\.com\//, '').replace(/\/$/, '')
-      : (businessName ? businessName.replace(/\s+/g, '').toLowerCase() : 'empresa');
-
-    const printWindow = window.open('', '_blank', 'width=980,height=950');
-    if (!printWindow) {
-      alert("Por favor, libere os pop-ups para imprimir a placa.");
-      return;
-    }
-
-    printWindow.document.write(`
-      <!DOCTYPE html>
-      <html lang="pt-BR">
-        <head>
-          <meta charset="UTF-8" />
-          <title>Base Oficial de Impressão - Placa 10x10cm & Cartão NFC - ${businessName}</title>
-          <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
-          <style>
-            @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400&display=swap');
-            
-            * {
-              box-sizing: border-box;
-              -webkit-print-color-adjust: exact !important;
-              print-color-adjust: exact !important;
-            }
-
-            @page {
-              size: auto;
-              margin: 8mm;
-            }
-
-            @media print {
-              body {
-                margin: 0 !important;
-                padding: 0 !important;
-                background: transparent !important;
-              }
-              .no-print {
-                display: none !important;
-              }
-              .print-container, .print-card-container {
-                box-shadow: none !important;
-                page-break-inside: avoid !important;
-              }
-              .print-page {
-                display: flex !important;
-                flex-wrap: wrap !important;
-                gap: 12mm !important;
-                align-items: center !important;
-                justify-content: center !important;
-              }
-            }
-
-            body {
-              font-family: 'Plus Jakarta Sans', sans-serif;
-              background-color: #0b0f19;
-              color: #1e293b;
-              margin: 0;
-              padding: 24px;
-              display: flex;
-              flex-direction: column;
-              align-items: center;
-              min-height: 100vh;
-            }
-
-            /* 10cm x 10cm Placa de Mesa */
-            .print-container {
-              width: 10cm;
-              height: 10cm;
-              position: relative;
-              background: #ffffff;
-              border: 1.5px solid #cbd5e1;
-              border-radius: 28px;
-              overflow: hidden;
-              box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.45);
-              display: flex;
-              flex-direction: column;
-              padding: 0;
-              user-select: none;
-              flex-shrink: 0;
-            }
-
-            /* Cartão CR80 8.5cm x 5.4cm */
-            .print-card-container {
-              width: 8.5cm;
-              height: 5.4cm;
-              position: relative;
-              background: #ffffff;
-              border: 1.5px solid #cbd5e1;
-              border-radius: 18px;
-              overflow: hidden;
-              box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.35);
-              display: flex;
-              flex-direction: column;
-              justify-content: space-between;
-              padding: 10px 14px;
-              user-select: none;
-              flex-shrink: 0;
-            }
-
-            /* Standoff Bolts */
-            .standoff-bolt {
-              width: 13px;
-              height: 13px;
-              border-radius: 50%;
-              background: radial-gradient(circle at 35% 35%, #ffffff 0%, #e2e8f0 40%, #94a3b8 100%);
-              border: 1px solid #94a3b8;
-              box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-              position: absolute;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              z-index: 30;
-            }
-            .standoff-bolt::after {
-              content: '';
-              width: 5px;
-              height: 1px;
-              background: #64748b;
-            }
-
-            /* QR Code Corner Framing Brackets */
-            .qr-bracket-box {
-              position: relative;
-            }
-            .bracket-tl { position: absolute; top: -3px; left: -3px; width: 9px; height: 9px; border-top: 2.5px solid #0f172a; border-left: 2.5px solid #0f172a; border-top-left-radius: 3px; }
-            .bracket-tr { position: absolute; top: -3px; right: -3px; width: 9px; height: 9px; border-top: 2.5px solid #0f172a; border-right: 2.5px solid #0f172a; border-top-right-radius: 3px; }
-            .bracket-bl { position: absolute; bottom: -3px; left: -3px; width: 9px; height: 9px; border-bottom: 2.5px solid #0f172a; border-left: 2.5px solid #0f172a; border-bottom-left-radius: 3px; }
-            .bracket-br { position: absolute; bottom: -3px; right: -3px; width: 9px; height: 9px; border-bottom: 2.5px solid #0f172a; border-right: 2.5px solid #0f172a; border-bottom-right-radius: 3px; }
-
-            /* ========================================================= */
-            /* CENTRALIZAÇÃO DO ÍCONE SMARTPHONE COM NFC (.print-container) */
-            /* ========================================================= */
-            .print-container .smartphone-nfc-container,
-            .print-container .nfc-phone-slot {
-              position: relative;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              width: 58px;
-              height: 58px;
-              margin: 0 auto;
-              border-radius: 14px;
-              border: 1px solid #cbd5e1;
-              background-color: rgba(248, 250, 252, 0.95);
-              box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-              overflow: hidden;
-              box-sizing: border-box;
-            }
-
-            .print-container .smartphone-nfc-icon,
-            .print-container .nfc-smartphone-centered {
-              position: absolute;
-              top: 50%;
-              left: 50%;
-              transform: translate(-50%, -50%);
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              width: 100%;
-              height: 100%;
-              margin: 0;
-              padding: 0;
-            }
-
-            .print-container .smartphone-nfc-icon svg,
-            .print-container svg.smartphone-nfc {
-              display: block;
-              margin: auto;
-              width: 52px;
-              height: 42px;
-              max-width: 100%;
-              max-height: 100%;
-              object-fit: contain;
-              transform-origin: center center;
-            }
-
-            /* Simetria perfeita para o container QR Code correspondente */
-            .print-container .qr-code-slot {
-              position: relative;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              width: 58px;
-              height: 58px;
-              margin: 0 auto;
-              border-radius: 14px;
-              border: 1px solid #cbd5e1;
-              background-color: #ffffff;
-              box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-              box-sizing: border-box;
-            }
-
-            .print-container .qr-code-centered {
-              position: absolute;
-              top: 50%;
-              left: 50%;
-              transform: translate(-50%, -50%);
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              width: 48px;
-              height: 48px;
-            }
-
-            /* ========================================================= */
-            /* THEME GRADIENTS & PRESETS (VERDE, AZUL, PRETO, INSTAGRAM)  */
-            /* ========================================================= */
-            /* 1. Verde Esmeralda (Mockup Verde) */
-            .theme-emerald_green .header-bg {
-              background: linear-gradient(180deg, #011f11 0%, #043e21 35%, #07592e 70%, #022413 100%) !important;
-            }
-            .theme-emerald_green .ribbon-bg {
-              background: linear-gradient(90deg, #047857 0%, #10b981 30%, #fbbf24 60%, #34d399 100%) !important;
-              box-shadow: 0 4px 15px rgba(16, 185, 129, 0.45) !important;
-            }
-            .theme-emerald_green .accent-text {
-              color: #059669 !important;
-            }
-
-            /* 2. Azul Royal (Mockup Azul) */
-            .theme-royal_blue .header-bg {
-              background: linear-gradient(180deg, #021430 0%, #062a63 35%, #0b4396 70%, #03193d 100%) !important;
-            }
-            .theme-royal_blue .ribbon-bg {
-              background: linear-gradient(90deg, #1d4ed8 0%, #3b82f6 35%, #0284c7 70%, #38bdf8 100%) !important;
-              box-shadow: 0 4px 15px rgba(37, 99, 235, 0.45) !important;
-            }
-            .theme-royal_blue .accent-text {
-              color: #2563eb !important;
-            }
-
-            /* 3. Preto Piano (Mockup Preto Oficial) */
-            .theme-black_gold .header-bg, .theme-official_google .header-bg {
-              background: linear-gradient(180deg, #05070a 0%, #111622 50%, #06080c 100%) !important;
-            }
-            .theme-black_gold .ribbon-bg, .theme-official_google .ribbon-bg {
-              background: linear-gradient(90deg, #EA4335 0%, #FBBC05 33%, #34A853 66%, #4285F4 100%) !important;
-              box-shadow: 0 4px 15px rgba(66, 133, 244, 0.35) !important;
-            }
-            .theme-black_gold .accent-text, .theme-official_google .accent-text {
-              color: #1a73e8 !important;
-            }
-
-            /* 4. Instagram + Google Duplo (Modelo Real da Foto) */
-            .theme-instagram_dual #plate10x10-standard {
-              display: none !important;
-            }
-            .theme-instagram_dual #plate10x10-dual {
-              display: flex !important;
-            }
-            #plate10x10-dual {
-              display: none;
-            }
-            #plate10x10-standard {
-              display: flex;
-            }
-          </style>
-        </head>
-        <body class="theme-${effectiveInitialTheme}" id="pageBody">
-          <!-- Top Control Header Bar (No Print) -->
-          <div class="no-print bg-slate-900 border border-slate-800 text-white px-6 py-4 rounded-3xl mb-8 flex flex-wrap items-center justify-between gap-4 max-w-4xl w-full shadow-2xl">
-            <div>
-              <div class="flex items-center gap-2">
-                <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                <h3 class="text-sm font-black tracking-tight">Base Oficial de Impressão (Placa 10x10cm & Cartão NFC)</h3>
-                <span class="text-[10px] font-black uppercase bg-amber-950 text-amber-300 px-2 py-0.5 rounded-full border border-amber-800">
-                  Ultra-HD 4K • 600 DPI
-                </span>
-              </div>
-              <p class="text-xs text-slate-400 mt-1">
-                Selecione o modelo desejado (Instagram + Google, Verde Esmeralda ou Azul Royal):
-              </p>
-            </div>
-
-            <!-- Theme Switcher Buttons -->
-            <div class="flex items-center gap-2 bg-slate-950/80 p-1.5 rounded-2xl border border-slate-800">
-              <button
-                type="button"
-                id="btn-insta"
-                onclick="applyTheme('instagram_dual')"
-                class="px-3 py-1.5 rounded-xl text-xs font-black transition flex items-center gap-1.5 cursor-pointer ${effectiveInitialTheme === 'instagram_dual' ? 'bg-pink-600/40 text-pink-300 border border-pink-500/60' : 'hover:bg-slate-800 text-slate-300'}"
-              >
-                <span>📸</span>
-                <span>Instagram + Google</span>
-              </button>
-              <button
-                type="button"
-                id="btn-green"
-                onclick="applyTheme('emerald_green')"
-                class="px-3 py-1.5 rounded-xl text-xs font-black transition flex items-center gap-1.5 cursor-pointer ${effectiveInitialTheme === 'emerald_green' ? 'bg-emerald-600/30 text-emerald-300 border border-emerald-500/50' : 'hover:bg-slate-800 text-slate-300'}"
-              >
-                <span>🟢</span>
-                <span>Verde Mockup</span>
-              </button>
-              <button
-                type="button"
-                id="btn-blue"
-                onclick="applyTheme('royal_blue')"
-                class="px-3 py-1.5 rounded-xl text-xs font-black transition flex items-center gap-1.5 cursor-pointer ${effectiveInitialTheme === 'royal_blue' ? 'bg-blue-600/30 text-blue-300 border border-blue-500/50' : 'hover:bg-slate-800 text-slate-300'}"
-              >
-                <span>🔵</span>
-                <span>Azul Mockup</span>
-              </button>
-              <button
-                type="button"
-                id="btn-black"
-                onclick="applyTheme('black_gold')"
-                class="px-3 py-1.5 rounded-xl text-xs font-black transition flex items-center gap-1.5 cursor-pointer ${effectiveInitialTheme === 'black_gold' ? 'bg-slate-700/50 text-white border border-slate-600' : 'hover:bg-slate-800 text-slate-300'}"
-              >
-                <span>⚫</span>
-                <span>Preto Piano</span>
-              </button>
-            </div>
-
-            <div class="flex items-center gap-2">
-              <button
-                onclick="window.print()"
-                class="bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-slate-950 font-black px-6 py-2.5 rounded-xl text-xs uppercase tracking-wider transition-all cursor-pointer shadow-lg active:scale-95 flex items-center gap-2"
-              >
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6.72 13.829c-.24-1.077-.32-2.197-.24-3.329m10.56 3.329c.24-1.077.32-2.197.24-3.329M9 6.75h6m-6 3h6m-6 3h6m-6 3h6M3.75 6.75h16.5M3.75 17.25h16.5M12 21a9 9 0 100-18 9 9 0 000 18z"/></svg>
-                <span>Imprimir Agora (Ctrl+P)</span>
-              </button>
-            </div>
-          </div>
-
-          <!-- Printable Container Page -->
-          <div class="print-page flex flex-col xl:flex-row items-center justify-center gap-8 max-w-full">
-            
-            <!-- ============================================================ -->
-            <!-- 1. PLACA 10cm x 10cm (PADRÃO GOOGLE REVIEW & DUPLA INSTAGRAM) -->
-            <!-- ============================================================ -->
-            <div class="flex flex-col items-center gap-2">
-              <span class="no-print text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                📐 Placa Quadrada de Mesa / Balcão (10 cm x 10 cm)
-              </span>
-
-              <!-- A. PLACA PADRÃO GOOGLE REVIEW -->
-              <div class="print-container plate-standard" id="plate10x10-standard">
-                <!-- 4 Corner Metallic Standoff Bolts -->
-                <div class="standoff-bolt" style="top: 8px; left: 8px;"></div>
-                <div class="standoff-bolt" style="top: 8px; right: 8px;"></div>
-                <div class="standoff-bolt" style="bottom: 8px; left: 8px;"></div>
-                <div class="standoff-bolt" style="bottom: 8px; right: 8px;"></div>
-
-                <!-- TOP THEMED HEADER: 5 STARS & HEADLINE -->
-                <div class="header-bg" style="padding: 16px 14px 12px 14px; text-align: center; color: white;">
-                  <!-- 5 Realistic 3D Spaced Gold Stars -->
-                  <div class="flex justify-center gap-2.5 py-0.5 mb-1">
-                    ${[...Array(5)].map(() => `
-                      <svg class="w-4 h-4 drop-shadow-md" viewBox="0 0 24 24">
-                        <defs>
-                          <linearGradient id="goldStarGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                            <stop offset="0%" stop-color="#fffbeb" />
-                            <stop offset="35%" stop-color="#fef08a" />
-                            <stop offset="70%" stop-color="#fbbf24" />
-                            <stop offset="100%" stop-color="#d97706" />
-                          </linearGradient>
-                        </defs>
-                        <path fill="url(#goldStarGrad)" stroke="#b45309" stroke-width="0.75" d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
-                      </svg>
-                    `).join('')}
-                  </div>
-
-                  <!-- Headline Typography -->
-                  <p class="text-[8.5px] font-black uppercase tracking-widest text-slate-200">
-                    NÓS ADORARÍAMOS A SUA
-                  </p>
-                  <p class="text-[12px] font-black uppercase tracking-wider text-white">
-                    AVALIAÇÃO NO GOOGLE
-                  </p>
-
-                  <!-- HERO CLIENT TAG -->
-                  <div class="mt-1">
-                    <h2 class="text-[16px] font-black tracking-wider uppercase leading-tight line-clamp-1 border-b border-amber-400/60 pb-0.5 inline-block max-w-[95%] drop-shadow-md" style="color: #fbbf24;">
-                      ${businessName}
-                    </h2>
-                  </div>
-                  <p class="text-[7.5px] font-medium text-slate-300 mt-1">
-                    Sua opinião de 5 estrelas é muito importante para nós!
-                  </p>
-                </div>
-
-                <!-- THEMED FLUID WAVE & CENTER GOOGLE "G" MEDALLION -->
-                <div class="relative h-6 w-full -my-3 z-20 flex items-center justify-center">
-                  <!-- Glowing Fluid Ribbon -->
-                  <div class="ribbon-bg absolute inset-x-0 h-3 transform -skew-y-1 border-t border-white/70"></div>
-
-                  <!-- Center Google G Medallion with Chrome Bevel Rim -->
-                  <div class="relative w-11 h-11 rounded-full bg-white shadow-2xl border-2 border-slate-200 flex items-center justify-center shrink-0 ring-4 ring-slate-100/90">
-                    <svg class="w-6.5 h-6.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
-                      <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
-                      <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05" />
-                      <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
-                    </svg>
-                  </div>
-                </div>
-
-                <!-- BOTTOM WHITE ACRYLIC - SYMMETRICAL DUAL COLUMNS (NFC | OU | QR CODE) -->
-                <div style="background: #ffffff; padding: 18px 14px 10px 14px; flex: 1; display: flex; flex-direction: column; justify-content: space-between;">
-                  <div class="grid grid-cols-12 gap-1 items-center my-auto">
-                    
-                    <!-- LEFT COLUMN: APROXIME SEU CELULAR (NFC) -->
-                    <div class="col-span-5 flex flex-col items-center text-center">
-                      <span class="text-[8.5px] font-black uppercase text-slate-800 tracking-tight mb-1">
-                        Aproxime seu celular
-                      </span>
-
-                      <!-- Vector Smartphone with Radiant Waves & Target Sensor with Absolute Centering and Flexbox -->
-                      <div class="smartphone-nfc-container nfc-phone-slot" data-slot="smartphone-nfc">
-                        <div class="nfc-smartphone-centered smartphone-nfc-icon">
-                          <svg class="smartphone-nfc" viewBox="0 0 160 120" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <!-- Sensor Disc on left -->
-                            <circle cx="48" cy="60" r="32" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="4 3"/>
-                            <circle cx="48" cy="60" r="26" fill="#ffffff" stroke="#0f172a" stroke-width="3.5"/>
-                            <!-- Waves on sensor -->
-                            <path d="M40 48C46 54 46 66 40 72" stroke="#0f172a" stroke-width="2.5" stroke-linecap="round"/>
-                            <path d="M45 52C49 56 49 64 45 68" stroke="#0f172a" stroke-width="2.5" stroke-linecap="round"/>
-                            <text x="48" y="74" font-family="'Plus Jakarta Sans', sans-serif" font-weight="900" font-size="7" fill="#0f172a" text-anchor="middle">NFC</text>
-
-                            <!-- Smartphone on right tilted -->
-                            <g transform="translate(115, 60) rotate(-6)">
-                              <!-- Phone body -->
-                              <rect x="-24" y="-45" width="48" height="90" rx="9" fill="#ffffff" stroke="#0f172a" stroke-width="3.5"/>
-                              <!-- Phone screen -->
-                              <rect x="-20" y="-41" width="40" height="82" rx="7" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1"/>
-                              <!-- Dynamic island -->
-                              <rect x="-7" y="-38" width="14" height="2.5" rx="1.2" fill="#0f172a"/>
-                              <!-- Screen waves -->
-                              <path d="M-6 -20C-1 -16 -1 -8 -6 -4" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round"/>
-                              <path d="M-2 -18C2 -15 2 -9 -2 -6" stroke="#3b82f6" stroke-width="2.5" stroke-linecap="round"/>
-                              <!-- Screen NFC tag badge -->
-                              <rect x="-14" y="2" width="28" height="18" rx="4" fill="#ffffff" stroke="#cbd5e1" stroke-width="1"/>
-                              <text x="0" y="11" font-family="'Plus Jakarta Sans', sans-serif" font-weight="900" font-size="7" fill="#0f172a" text-anchor="middle">NFC</text>
-                              <text x="0" y="17" font-family="'Plus Jakarta Sans', sans-serif" font-weight="800" font-size="3" fill="#2563eb" text-anchor="middle">TOUCH</text>
-                              <!-- Home bar -->
-                              <rect x="-8" y="34" width="16" height="1.5" rx="0.75" fill="#94a3b8"/>
-                            </g>
-                          </svg>
-                        </div>
-                      </div>
-
-                      <span class="text-[6.5px] font-semibold text-slate-500 mt-1">
-                        Sem app • Direto no celular
-                      </span>
-                    </div>
-
-                    <!-- CENTER DIVIDER WITH "OU" CIRCLE BADGE -->
-                    <div class="col-span-2 flex flex-col items-center justify-center">
-                      <div class="w-px h-6 bg-slate-200"></div>
-                      <span class="w-6 h-6 rounded-full bg-slate-100 border border-slate-300 text-[8px] font-black text-slate-700 flex items-center justify-center my-0.5 shadow-2xs">
-                        OU
-                      </span>
-                      <div class="w-px h-6 bg-slate-200"></div>
-                    </div>
-
-                    <!-- RIGHT COLUMN: APONTE A CÂMERA (QR CODE) - EXACTLY SYMMETRICAL -->
-                    <div class="col-span-5 flex flex-col items-center text-center">
-                      <span class="text-[8.5px] font-black uppercase text-slate-800 tracking-tight mb-1">
-                        Aponte a câmera
-                      </span>
-
-                      <!-- QR Code with Corner Framing Brackets -->
-                      <div class="qr-bracket-box qr-code-slot">
-                        <div class="bracket-tl"></div>
-                        <div class="bracket-tr"></div>
-                        <div class="bracket-bl"></div>
-                        <div class="bracket-br"></div>
-                        <div class="qr-code-centered">
-                          <img src="${qrCodeUrl}" class="w-12 h-12 object-contain" alt="QR Code" />
-                        </div>
-                      </div>
-
-                      <span class="text-[6.5px] font-semibold text-slate-500 mt-1">
-                        ⚡ Avalie em 3 segundos
-                      </span>
-                    </div>
-
-                  </div>
-
-                  <!-- BASELINE FOOTER: ————— ALF AUTOMAÇÃO ————— -->
-                  <div class="text-center pt-1.5 border-t border-slate-100 flex items-center justify-between text-[7px] font-mono text-slate-400 tracking-wider px-1">
-                    <span>CHIP NFC NTAG215 • ID: ${targetLead ? targetLead.id.substring(0, 10).toUpperCase() : 'NFC-2026'}</span>
-                    <span>ALF AUTOMAÇÃO</span>
-                  </div>
-                </div>
-              </div>
-
-              <!-- B. PLACA DUPLA DA FOTO (INSTAGRAM NO TOPO + GOOGLE NA BASE) -->
-              <div class="print-container plate-dual" id="plate10x10-dual">
-                <!-- 4 Corner Metallic Standoff Bolts -->
-                <div class="standoff-bolt" style="top: 8px; left: 8px;"></div>
-                <div class="standoff-bolt" style="top: 8px; right: 8px;"></div>
-                <div class="standoff-bolt" style="bottom: 8px; left: 8px;"></div>
-                <div class="standoff-bolt" style="bottom: 8px; right: 8px;"></div>
-
-                <!-- TOP HALF: INSTAGRAM SECTION (VIBRANT INSTAGRAM GRADIENT) -->
-                <div style="background: linear-gradient(135deg, #75187e 0%, #8d2282 25%, #c52e77 50%, #e34157 75%, #f75f3a 90%, #faa23f 100%); padding: 13px 12px 14px 12px; color: white; text-align: center; position: relative;">
-                  <div class="flex items-center justify-between gap-1 px-1">
-                    <!-- Left: Instagram QR Code -->
-                    <div class="flex flex-col items-center">
-                      <span class="text-[7.5px] font-bold text-white/95 mb-0.5">leia o QR Code</span>
-                      <div class="p-1 rounded-xl bg-white/20 border border-white/40 shadow-xs">
-                        <img src="${instaQrCodeUrl}" class="w-11 h-11 object-contain rounded-xs" alt="Instagram QR" />
-                      </div>
-                      <span class="text-[6.5px] font-mono font-bold text-white/80 mt-0.5">
-                        ${targetLead ? targetLead.id.substring(0, 6).toLowerCase() : 'z1v9ef'}
-                      </span>
-                    </div>
-
-                    <!-- Center: Instagram Logo -->
-                    <div class="flex flex-col items-center justify-center px-1">
-                      <div class="w-10 h-10 rounded-2xl border-2 border-white flex items-center justify-center relative shadow-sm">
-                        <div class="w-4.5 h-4.5 rounded-full border-2 border-white"></div>
-                        <div class="w-1.5 h-1.5 rounded-full bg-white absolute top-1 right-1"></div>
-                      </div>
-                    </div>
-
-                    <!-- Right: Vector Smartphone NFC -->
-                    <div class="flex flex-col items-center">
-                      <span class="text-[6.5px] font-bold text-white/95 mb-0.5">Aproxime seu Telefone</span>
-                      <div class="p-1 rounded-xl bg-white/10 border border-white/30 flex items-center gap-1 shadow-xs">
-                        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18a3.75 3.75 0 00.495-7.467 5.99 5.99 0 00-1.925 3.546 5.974 5.974 0 01-2.133-1A3.75 3.75 0 0012 18z"/></svg>
-                        <div class="w-6 h-10 rounded-sm border-1.5 border-white bg-white/10 flex flex-col items-center justify-center relative">
-                          <div class="w-2.5 h-0.5 bg-white rounded-full absolute top-0.5"></div>
-                          <span class="text-[6px] font-black text-white">NFC</span>
-                          <div class="w-2.5 h-0.5 bg-white/70 rounded-full absolute bottom-0.5"></div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div class="mt-1.5 text-center">
-                    <p class="text-[10.5px] font-black tracking-wide text-white drop-shadow-sm uppercase leading-tight">
-                      Siga-nos no Instagram
-                    </p>
-                    <p class="text-[7.5px] font-bold text-amber-200">
-                      @${instaHandle}
-                    </p>
-                  </div>
-                </div>
-
-                <!-- FLUID ORGANIC WHITE WAVE SEPARATOR -->
-                <div class="relative -my-2.5 z-20 w-full overflow-hidden leading-none">
-                  <svg viewBox="0 0 500 36" preserveAspectRatio="none" class="w-full h-5 text-white fill-current drop-shadow-md">
-                    <path d="M0,14 C140,32 360,-4 500,18 L500,36 L0,36 Z"></path>
-                  </svg>
-                </div>
-
-                <!-- BOTTOM HALF: GOOGLE REVIEWS SECTION (ROYAL BLUE GRADIENT) -->
-                <div style="background: linear-gradient(180deg, #0c3a82 0%, #1052ab 45%, #1565c0 80%, #0a3272 100%); padding: 10px 12px 10px 12px; color: white; text-align: center; flex: 1; display: flex; flex-direction: column; justify-content: space-between; position: relative;">
-                  <div>
-                    <p class="text-[10.5px] font-black uppercase tracking-wide text-white drop-shadow-sm leading-tight">
-                      Sua opinião Importa
-                    </p>
-                    <div class="flex justify-center gap-1.5 my-0.5">
-                      ${[...Array(5)].map(() => `
-                        <svg class="w-3 h-3 fill-amber-400 text-amber-400 drop-shadow-xs" viewBox="0 0 24 24">
-                          <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
-                        </svg>
-                      `).join('')}
-                    </div>
-                  </div>
-
-                  <div class="flex items-center justify-between gap-1 my-0.5 px-1">
-                    <!-- Left: Vector Smartphone NFC -->
-                    <div class="flex flex-col items-center">
-                      <span class="text-[6.5px] font-bold text-white/95 mb-0.5">Aproxime seu Telefone</span>
-                      <div class="p-1 rounded-xl bg-white/10 border border-white/30 flex items-center gap-1 shadow-xs">
-                        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18a3.75 3.75 0 00.495-7.467 5.99 5.99 0 00-1.925 3.546 5.974 5.974 0 01-2.133-1A3.75 3.75 0 0012 18z"/></svg>
-                        <div class="w-6 h-10 rounded-sm border-1.5 border-white bg-white/10 flex flex-col items-center justify-center relative">
-                          <div class="w-2.5 h-0.5 bg-white rounded-full absolute top-0.5"></div>
-                          <span class="text-[6px] font-black text-white">NFC</span>
-                          <div class="w-2.5 h-0.5 bg-white/70 rounded-full absolute bottom-0.5"></div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <!-- Center: Google G Logo Badge -->
-                    <div class="w-11 h-11 rounded-full bg-white shadow-xl border-2 border-slate-200 flex items-center justify-center shrink-0 ring-3 ring-white/70">
-                      <svg class="w-6.5 h-6.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
-                        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
-                        <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05" />
-                        <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
-                      </svg>
-                    </div>
-
-                    <!-- Right: Google Reviews QR -->
-                    <div class="flex flex-col items-center">
-                      <span class="text-[7.5px] font-bold text-white/95 mb-0.5">leia o QR Code</span>
-                      <div class="p-1 rounded-xl bg-white/20 border border-white/40 shadow-xs">
-                        <img src="${qrCodeUrl}" class="w-11 h-11 object-contain rounded-xs" alt="Google QR" />
-                      </div>
-                      <span class="text-[6.5px] font-mono font-bold text-white/80 mt-0.5">
-                        ${targetLead ? targetLead.id.substring(Math.max(0, targetLead.id.length - 6)).toLowerCase() : 'w3d7ul'}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div class="pt-1 border-t border-white/20 flex items-center justify-between text-[6.5px] font-mono text-white/70">
-                    <span>CHIP NFC NTAG215 • ID: ${targetLead ? targetLead.id.substring(0, 10).toUpperCase() : 'NFC-2026'}</span>
-                    <span>ALF AUTOMAÇÃO</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-                      <span class="text-[6.5px] font-semibold text-slate-500 mt-1">
-                        ⚡ Avalie em 3 segundos
-                      </span>
-                    </div>
-
-                  </div>
-
-                  <!-- BASELINE FOOTER: ————— ALF AUTOMAÇÃO ————— -->
-                  <div class="text-center pt-1.5 border-t border-slate-100 flex items-center justify-between text-[7px] font-mono text-slate-400 tracking-wider px-1">
-                    <span>CHIP NFC NTAG215 • ID: ${targetLead ? targetLead.id.substring(0, 10).toUpperCase() : 'NFC-2026'}</span>
-                    <span>ALF AUTOMAÇÃO</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- ============================================================ -->
-            <!-- 2. CARTÃO NFC CR80 8.5cm x 5.4cm (SENIOR LUXURY DESIGN)       -->
-            <!-- ============================================================ -->
-            <div class="flex flex-col items-center gap-2">
-              <span class="no-print text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                💳 Cartão NFC de Bolso / Balcão CR80 (8,5 cm x 5,4 cm)
-              </span>
-
-              <div class="print-card-container" id="cardCr80">
-                <div class="standoff-bolt" style="top: 6px; left: 6px; width: 10px; height: 10px;"></div>
-                <div class="standoff-bolt" style="top: 6px; right: 6px; width: 10px; height: 10px;"></div>
-                <div class="standoff-bolt" style="bottom: 6px; left: 6px; width: 10px; height: 10px;"></div>
-                <div class="standoff-bolt" style="bottom: 6px; right: 6px; width: 10px; height: 10px;"></div>
-
-                <!-- Top Row: Business Name & 5 Stars -->
-                <div class="flex items-center justify-between pt-0.5 px-2">
-                  <div class="text-left">
-                    <h3 class="text-[10px] font-black text-slate-900 tracking-tight line-clamp-1 uppercase leading-tight">
-                      ${businessName}
-                    </h3>
-                    <span class="text-[6px] font-bold uppercase tracking-wider text-slate-400">
-                      AVALIE-NOS NO GOOGLE
-                    </span>
-                  </div>
-
-                  <div class="flex gap-0.5">
-                    ${[...Array(5)].map(() => `
-                      <svg class="w-2.5 h-2.5 text-amber-400 fill-amber-400 star-icon" viewBox="0 0 24 24">
-                        <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
-                      </svg>
-                    `).join('')}
-                  </div>
-                </div>
-
-                <!-- Middle Content: Left NFC + Center Google G + Right QR Code -->
-                <div class="flex items-center justify-between px-2 gap-2 my-auto">
-                  <!-- Left: NFC Target -->
-                  <div class="flex items-center gap-1.5 bg-white/80 border border-slate-200 p-1.5 rounded-xl flex-1 shadow-2xs">
-                    <div class="w-7 h-7 rounded-lg bg-emerald-50 border border-emerald-300 flex items-center justify-center text-emerald-600 shrink-0">
-                      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 18a3.75 3.75 0 00.495-7.467 5.99 5.99 0 00-1.925 3.546 5.974 5.974 0 01-2.133-1A3.75 3.75 0 0012 18z"></path>
-                      </svg>
-                    </div>
-                    <div class="text-left">
-                      <span class="text-[6.5px] font-black text-slate-800 uppercase block leading-tight">
-                        TOQUE O CELULAR
-                      </span>
-                      <span class="text-[5.5px] text-slate-400 font-semibold block leading-tight">
-                        NFC Sem aplicativo
-                      </span>
-                    </div>
-                  </div>
-
-                  <!-- Google G Central Logo -->
-                  <div class="w-8 h-8 rounded-full bg-white shadow-sm border border-slate-100 flex items-center justify-center shrink-0">
-                    <svg class="w-5 h-5" viewBox="0 0 24 24">
-                      <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
-                      <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
-                      <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05" />
-                      <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
-                    </svg>
-                  </div>
-
-                  <!-- Right: QR Code -->
-                  <div class="flex items-center gap-1.5 bg-white/80 border border-slate-200 p-1.5 rounded-xl flex-1 shadow-2xs justify-end">
-                    <div class="text-right">
-                      <span class="text-[6.5px] font-black text-slate-800 uppercase block leading-tight">
-                        APONTE A CÂMERA
-                      </span>
-                      <span class="text-[5.5px] text-slate-400 font-semibold block leading-tight">
-                        ⚡ 3 segundos
-                      </span>
-                    </div>
-                    <img src="${qrCodeUrl}" class="w-7 h-7 object-contain rounded-md" alt="QR Code" />
-                  </div>
-                </div>
-
-                <!-- Bottom Footer Baseline -->
-                <div class="flex items-center justify-between text-[5.5px] font-mono text-slate-400 border-t border-slate-200/70 pt-0.5 px-2">
-                  <span>NTAG215 CHIP • ${targetLead ? targetLead.id.substring(0, 8).toUpperCase() : 'CR80-NFC'}</span>
-                  <span>ALF AUTOMAÇÃO</span>
-                </div>
-              </div>
-            </div>
-
-          </div>
-
-          <p class="no-print text-xs text-slate-400 font-semibold mt-6 text-center">
-            💡 <strong>Dica de Gráfica:</strong> Configure a impressora para <strong>100% de escala</strong> e ative <strong>"Imprimir gráficos de plano de fundo"</strong> no navegador para máxima fidelidade.
-          </p>
-
-          <script>
-            function applyTheme(theme) {
-              const body = document.getElementById('pageBody');
-              body.className = 'theme-' + theme;
-              
-              const btnGreen = document.getElementById('btn-green');
-              const btnBlue = document.getElementById('btn-blue');
-              const btnBlack = document.getElementById('btn-black');
-              
-              [btnGreen, btnBlue, btnBlack].forEach(b => {
-                b.className = 'px-3 py-1.5 rounded-xl text-xs font-black transition flex items-center gap-1.5 cursor-pointer hover:bg-slate-800 text-slate-300';
-              });
-
-              if (theme === 'emerald_green') {
-                btnGreen.className = 'px-3 py-1.5 rounded-xl text-xs font-black transition flex items-center gap-1.5 cursor-pointer bg-emerald-600/30 text-emerald-300 border border-emerald-500/50';
-              } else if (theme === 'royal_blue') {
-                btnBlue.className = 'px-3 py-1.5 rounded-xl text-xs font-black transition flex items-center gap-1.5 cursor-pointer bg-blue-600/30 text-blue-300 border border-blue-500/50';
-              } else {
-                btnBlack.className = 'px-3 py-1.5 rounded-xl text-xs font-black transition flex items-center gap-1.5 cursor-pointer bg-slate-700/50 text-white border border-slate-600';
-              }
-            }
-          </script>
-        </body>
-      </html>
-    `);
-    printWindow.document.close();
+    openHighDefinitionPrintWindow({
+      lead: targetLead,
+      theme: initialTheme,
+      portalQrMode,
+      gmbReviewLink,
+      onFallbackModal: (lead) => {
+        setArtworkTargetLead(lead);
+        setIsArtworkModalOpen(true);
+      }
+    });
   };
 
   const removeLead = async (leadId: string) => {
@@ -2850,7 +2265,21 @@ export default function App() {
 
   // Drag and drop or Click-to-move CRM Pipeline stages
   const getLeadsByStage = (stage: Lead['stage']) => {
-    return leads.filter(l => l.stage === stage);
+    return leads.filter(l => {
+      if (crmSearchQuery.trim()) {
+        const q = crmSearchQuery.toLowerCase().trim();
+        const matchesQuery =
+          (l.name && l.name.toLowerCase().includes(q)) ||
+          (l.niche && l.niche.toLowerCase().includes(q)) ||
+          (l.city && l.city.toLowerCase().includes(q)) ||
+          (l.phone && l.phone.toLowerCase().includes(q));
+        if (!matchesQuery) return false;
+      }
+      if (stage === 'to_contact') {
+        return l.stage === 'to_contact' || l.stage === 'new' || !l.stage;
+      }
+      return l.stage === stage;
+    });
   };
 
   // Pitch actions
@@ -2869,13 +2298,23 @@ export default function App() {
   const calcNewRevenue = calcNewCustomers * calcAvgTicket;
   const calcDiffRevenue = calcNewRevenue - calcCurrentRevenue;
 
+  // Categorias intuitivas de navegação para a Sidebar Profissional
+  const navCategories = [
+    { id: 'operacao', title: 'Operação & Placas' },
+    { id: 'comercial', title: 'Comercial & Vendas' },
+    { id: 'gestao', title: 'Gestão & Segurança' },
+  ];
+
   // App Navigation Definitions with Strict Role-Based Visibility
   const allNavTabsList = [
     {
       id: 'dynamic_qr' as const,
       label: 'Placas & QR Codes',
       shortLabel: 'Placas & QR',
-      description: 'Gestão de placas acrílicas, lotes, impressões 10x10 e links 5★',
+      navGroup: 'operacao',
+      category: 'Operação de Placas',
+      title: 'Central de Placas & QR Codes Inteligentes',
+      description: 'Gestão de lotes de impressão 10x10cm, URLs dinâmicas e links de avaliação Google 5★',
       icon: QrCode,
       color: 'text-indigo-600',
       bgColor: 'bg-indigo-50',
@@ -2883,10 +2322,41 @@ export default function App() {
       requiresMaster: false,
     },
     {
+      id: 'cardapio' as const,
+      label: 'Cardápio Digital',
+      shortLabel: 'Cardápio',
+      navGroup: 'operacao',
+      category: 'Restaurantes & Mesas',
+      title: 'Cardápio Digital para Mesas (QR Code & NFC)',
+      description: 'Gestão de produtos, fotos, preços, comandas de mesas e pedidos no WhatsApp',
+      icon: Utensils,
+      color: 'text-amber-500',
+      bgColor: 'bg-amber-50',
+      badge: 'Novo',
+      requiresMaster: false,
+    },
+    {
+      id: 'nfc_designer' as const,
+      label: 'Designer Totem 10x10',
+      shortLabel: 'Totem 10x10',
+      navGroup: 'operacao',
+      category: 'Operação de Placas',
+      title: 'Designer do Totem Acrílico 10x10cm',
+      description: 'Gabarito oficial de corte, centralização de QR Code, ícone NFC e tipografia de balcão',
+      icon: Sparkles,
+      color: 'text-amber-600',
+      bgColor: 'bg-amber-50',
+      badge: 'Master',
+      requiresMaster: true,
+    },
+    {
       id: 'leads' as const,
       label: 'Empresas & Prospecção',
       shortLabel: 'Empresas',
-      description: 'Base de clientes cadastrados, busca inteligente no Google Maps e WhatsApp',
+      navGroup: 'comercial',
+      category: 'Comercial & Prospecção',
+      title: 'Empresas & Inteligência de Prospecção',
+      description: 'Varredura no Google Maps por negócios locais sem site e com baixas notas para conversão rápida',
       icon: Building2,
       color: 'text-blue-600',
       bgColor: 'bg-blue-50',
@@ -2897,7 +2367,10 @@ export default function App() {
       id: 'crm' as const,
       label: 'Funil CRM',
       shortLabel: 'CRM',
-      description: 'Pipeline de vendas Kanban & acompanhamento de negociações',
+      navGroup: 'comercial',
+      category: 'Comercial & Prospecção',
+      title: 'Funil de Vendas CRM (Pipeline Kanban)',
+      description: 'Acompanhamento do ciclo de vendas: primeiro contato, visita presencial e fechamento',
       icon: TrendingUp,
       color: 'text-emerald-600',
       bgColor: 'bg-emerald-50',
@@ -2908,7 +2381,10 @@ export default function App() {
       id: 'calculator' as const,
       label: 'Calculadora ROI',
       shortLabel: 'ROI',
-      description: 'Simulador financeiro de faturamento, margem e lucro para fechamento',
+      navGroup: 'comercial',
+      category: 'Comercial & Prospecção',
+      title: 'Calculadora de Retorno sobre Investimento (ROI)',
+      description: 'Simulação matemática de ganho de faturamento para argumentação e fechamento comercial',
       icon: Coins,
       color: 'text-violet-600',
       bgColor: 'bg-violet-50',
@@ -2916,32 +2392,41 @@ export default function App() {
       requiresMaster: false,
     },
     {
-      id: 'nfc_designer' as const,
-      label: 'Designer Totem 10x10',
-      shortLabel: 'Totem 10x10',
-      description: 'Designer do Totem Acrílico 10x10cm & Cartões de Avaliação',
-      icon: Sparkles,
-      color: 'text-amber-600',
-      bgColor: 'bg-amber-50',
-      badge: 'Master',
-      requiresMaster: true,
-    },
-    {
       id: 'site_preview' as const,
-      label: 'Site Demonstrativo',
-      shortLabel: 'Site Demo',
-      description: 'Simulador interativo de site institucional para clientes',
+      label: 'Mini-Site, Logo & Serviços',
+      shortLabel: 'Mini-Site',
+      navGroup: 'comercial',
+      category: 'Criador de Mini-Site & Logo',
+      title: 'Criador de Mini-Site, Logotipo & Catálogo de Serviços',
+      description: 'Suba o logotipo do cliente, cadastre serviços com botão de WhatsApp, Pix, Wi-Fi e Google Reviews',
       icon: Globe,
       color: 'text-teal-600',
       bgColor: 'bg-teal-50',
-      badge: 'Master',
-      requiresMaster: true,
+      badge: 'Logo & IA',
+      requiresMaster: false,
+    },
+    {
+      id: 'landing' as const,
+      label: 'Página de Vendas',
+      shortLabel: 'Vendas',
+      navGroup: 'comercial',
+      category: 'Apresentação Comercial',
+      title: 'Página de Vendas & Apresentação Comercial de Alta Conversão',
+      description: 'Demonstração visual do impacto de placas NFC, Mini Sites por nicho e simulação para o cliente',
+      icon: Sparkles,
+      color: 'text-cyan-600',
+      bgColor: 'bg-cyan-50',
+      badge: 'Pitch',
+      requiresMaster: false,
     },
     {
       id: 'portal' as const,
       label: 'Portal do Cliente',
       shortLabel: 'Portal',
-      description: 'Painel exclusivo do cliente para gerenciar links NFC',
+      navGroup: 'gestao',
+      category: 'Administração & Acesso',
+      title: 'Portal Exclusivo do Lojista',
+      description: 'Área do cliente para autogerenciamento do destino de suas placas e métricas de escaneamento',
       icon: Key,
       color: 'text-rose-600',
       bgColor: 'bg-rose-50',
@@ -2952,7 +2437,10 @@ export default function App() {
       id: 'users' as const,
       label: 'Usuários & Segurança',
       shortLabel: 'Usuários',
-      description: 'Gestão de Usuários, Senhas, Perfis RBAC e Bloqueios CyberShield',
+      navGroup: 'gestao',
+      category: 'Administração & Acesso',
+      title: 'Gestão de Usuários & CyberShield RBAC',
+      description: 'Controle de senhas mestras, vendedores operadores e proteção de integridade da base',
       icon: ShieldCheck,
       color: 'text-slate-700',
       bgColor: 'bg-slate-100',
@@ -2961,30 +2449,42 @@ export default function App() {
     },
   ];
 
-  // Restrict navigation: operators see Placas & QR, Prospecção, Funil CRM and Calculadora ROI.
-  const navTabsList = allNavTabsList.filter(t => {
-    if (currentUser?.role === 'master') return true;
-    return !t.requiresMaster;
-  });
+  // Filter navigation modules based on user allowedTabs when configured (Master always sees all)
+  const navTabsList = (() => {
+    const userObj = currentUser as any;
+    if (!userObj || userObj.role === 'master' || isMasterAuthenticated) {
+      return allNavTabsList;
+    }
+    const allowed: string[] | undefined = Array.isArray(userObj.allowedTabs)
+      ? userObj.allowedTabs
+      : undefined;
+    if (!allowed || allowed.length === 0) {
+      return allNavTabsList;
+    }
+    const expandedAllowed = new Set<string>(allowed);
+    if (expandedAllowed.has('totem_config') || expandedAllowed.has('overview')) {
+      expandedAllowed.add('dynamic_qr');
+      expandedAllowed.add('cardapio');
+    }
+    if (expandedAllowed.has('sales_pitch') || expandedAllowed.has('ads')) {
+      expandedAllowed.add('landing');
+      expandedAllowed.add('calculator');
+      expandedAllowed.add('crm');
+    }
+    return allNavTabsList.filter((tab) => expandedAllowed.has(tab.id));
+  })();
 
-  const handleNavSelect = (targetTab: 'leads' | 'crm' | 'site_preview' | 'nfc_designer' | 'dynamic_qr' | 'calculator' | 'portal' | 'users') => {
+  const activeTabMeta = allNavTabsList.find(t => t.id === activeTab) || allNavTabsList[0];
+
+  const handleNavSelect = (targetTab: 'leads' | 'crm' | 'site_preview' | 'nfc_designer' | 'dynamic_qr' | 'calculator' | 'portal' | 'users' | 'cardapio' | 'landing') => {
     setIsMobileMenuOpen(false);
-    const masterOnlyTabs = ['nfc_designer', 'site_preview', 'portal', 'users'];
-    if (masterOnlyTabs.includes(targetTab)) {
-      if (currentUser?.role === 'master') {
-        changeTab(targetTab);
-        if (targetTab === 'site_preview' && !siteTemplate) {
-          const target = selectedLead || leads[0];
-          if (target) {
-            setSelectedLead(target);
-            generateWebsiteTemplate(target);
-          }
-        }
-      } else {
-        requireMasterAccess(targetTab);
+    changeTab(targetTab);
+    if (targetTab === 'site_preview' && !siteTemplate) {
+      const target = selectedLead || leads[0];
+      if (target) {
+        setSelectedLead(target);
+        generateWebsiteTemplate(target);
       }
-    } else {
-      changeTab(targetTab);
     }
   };
 
@@ -2993,28 +2493,39 @@ export default function App() {
   // Standalone public Mini Site viewer when ?minisite=xxx is in URL
   if (minisiteParam) {
     const targetLead = leads.find(l => l.id === minisiteParam) || (selectedLead?.id === minisiteParam ? selectedLead : null);
+    const savedMini = (targetLead as any)?.miniSiteConfig || {};
+    const fallbackTemplate = getMockupByNiche(savedMini.niche || targetLead?.niche || 'Hamburgueria');
+    const compName = savedMini.companyName || targetLead?.name || fallbackTemplate.config.companyName;
+    const compNiche = savedMini.niche || targetLead?.niche || fallbackTemplate.config.niche;
+    const initialServices = Array.isArray(savedMini.services) && savedMini.services.length > 0
+      ? savedMini.services
+      : fallbackTemplate.config.services || getDefaultFourProducts(compNiche, compName);
+
     const standaloneConfig: MiniSiteConfig = {
       id: minisiteParam,
-      companyName: targetLead?.name || 'Sua Empresa',
-      niche: targetLead?.niche || 'Atendimento Exclusivo',
-      city: targetLead?.city || 'Brasil',
-      tagline: targetLead?.weakness
+      companyName: compName,
+      niche: compNiche,
+      city: savedMini.city || targetLead?.city || fallbackTemplate.config.city || 'Brasil',
+      tagline: savedMini.tagline || fallbackTemplate.config.tagline || (targetLead?.weakness
         ? `Excelência e agilidade no atendimento em ${targetLead.city}`
-        : 'Atendimento de alta qualidade, confiabilidade e rapidez.',
-      whatsappNumber: targetLead?.nfcWhatsappNum || targetLead?.phone || '',
-      whatsappMessage: targetLead?.nfcWhatsappMsg || `Olá! Vim através do Mini Site de ${targetLead?.name || 'sua empresa'} e gostaria de atendimento.`,
-      instagramUrl: targetLead?.nfcInstagramUrl || '',
-      googleReviewUrl: targetLead?.googleMapsUrl || gmbReviewLink || 'https://maps.google.com',
-      websiteUrl: targetLead?.websiteUrl || '',
-      pixKey: (targetLead as any)?.miniSiteConfig?.pixKey || (targetLead?.phone ? formatMiniSitePhone(targetLead.phone) : 'pix@empresa.com.br'),
-      pixBeneficiary: targetLead?.name || 'Empresa Local',
-      pixKeyType: 'telefone',
-      wifiSsid: (targetLead as any)?.miniSiteConfig?.wifiSsid || `${(targetLead?.name || 'Empresa').replace(/\s+/g, '_')}_WiFi`,
-      wifiPassword: (targetLead as any)?.miniSiteConfig?.wifiPassword || 'VisiteNos123',
-      address: (targetLead as any)?.miniSiteConfig?.address || targetLead?.address || '',
-      phone: targetLead?.phone || '',
-      openingHours: (targetLead as any)?.miniSiteConfig?.openingHours || 'Segunda a Sábado: 08h às 19h',
-      theme: 'dark_neon'
+        : 'Atendimento de alta qualidade, confiabilidade e rapidez.'),
+      logoUrl: savedMini.logoUrl || fallbackTemplate.config.logoUrl || '',
+      marqueeText: savedMini.marqueeText || fallbackTemplate.config.marqueeText || '🔥 NOVIDADES TODA SEMANA • VISITE NOSSA LOJA • ATENDIMENTO VIP • COMPRE PELO WHATSAPP • QUALIDADE GARANTIDA 🔥',
+      whatsappNumber: savedMini.whatsappNumber || targetLead?.nfcWhatsappNum || targetLead?.phone || fallbackTemplate.config.whatsappNumber || '',
+      whatsappMessage: savedMini.whatsappMessage || targetLead?.nfcWhatsappMsg || `Olá! Vim através do Mini Site de ${compName} e gostaria de atendimento.`,
+      instagramUrl: savedMini.instagramUrl || targetLead?.nfcInstagramUrl || fallbackTemplate.config.instagramUrl || '',
+      googleReviewUrl: savedMini.googleReviewUrl || targetLead?.googleMapsUrl || gmbReviewLink || 'https://maps.google.com',
+      websiteUrl: savedMini.websiteUrl || targetLead?.websiteUrl || fallbackTemplate.config.websiteUrl || '',
+      pixKey: savedMini.pixKey || (targetLead?.phone ? formatMiniSitePhone(targetLead.phone) : fallbackTemplate.config.pixKey || 'pix@empresa.com.br'),
+      pixBeneficiary: savedMini.pixBeneficiary || compName || fallbackTemplate.config.pixBeneficiary || 'Empresa Local',
+      pixKeyType: savedMini.pixKeyType || 'telefone',
+      wifiSsid: savedMini.wifiSsid || `${compName.replace(/\s+/g, '_')}_WiFi`,
+      wifiPassword: savedMini.wifiPassword || fallbackTemplate.config.wifiPassword || 'VisiteNos123',
+      address: savedMini.address || targetLead?.address || fallbackTemplate.config.address || '',
+      phone: savedMini.phone || targetLead?.phone || fallbackTemplate.config.phone || '',
+      openingHours: savedMini.openingHours || fallbackTemplate.config.openingHours || 'Segunda a Sábado: 08h às 19h',
+      services: initialServices,
+      theme: savedMini.theme || 'dark_neon'
     };
 
     return (
@@ -3024,442 +2535,825 @@ export default function App() {
           config={standaloneConfig}
           leadId={minisiteParam}
         />
-        {/* Discreet admin exit bar */}
-        <div className="fixed top-3 right-3 z-50">
-          <a
-            href="/"
-            className="px-3 py-1.5 bg-slate-900/80 hover:bg-slate-800 text-slate-300 hover:text-white rounded-full text-[11px] font-bold border border-slate-700 backdrop-blur-md shadow-lg transition flex items-center gap-1.5"
-          >
-            <span>Painel ALF</span>
-            <ExternalLink className="w-3 h-3" />
-          </a>
-        </div>
+        {/* Discreet admin exit bar (strictly visible ONLY to logged-in Master or Seller) */}
+        {currentUser && (currentUser.role === 'master' || currentUser.role === 'seller') && (
+          <div className="fixed top-3 right-3 z-50">
+            <a
+              href="/?tab=leads"
+              className="px-3 py-1.5 bg-slate-900/80 hover:bg-slate-800 text-slate-300 hover:text-white rounded-full text-[11px] font-bold border border-slate-700 backdrop-blur-md shadow-lg transition flex items-center gap-1.5"
+            >
+              <span>Painel ALF</span>
+              <ExternalLink className="w-3 h-3" />
+            </a>
+          </div>
+        )}
       </div>
     );
   }
 
-  // Gatekeeper: If user is not authenticated, display the High-Tech Sales Landing Page
-  if (!currentUser) {
+  // Standalone public Cardápio Digital viewer when ?cardapio=xxx or ?c=xxx or ?menu=xxx is in URL
+  if (cardapioParam) {
+    let savedMenus: RestaurantMenu[] = INITIAL_MENUS;
+    try {
+      const stored = localStorage.getItem('alf_cardapios_data');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) savedMenus = parsed;
+      }
+    } catch (_) {}
+
+    const targetMenu = savedMenus.find(m => m.id.toLowerCase() === cardapioParam.toLowerCase()) || savedMenus[0];
+    const mesaParam = new URLSearchParams(window.location.search).get('mesa') || new URLSearchParams(window.location.search).get('table') || '01';
+
     return (
-      <>
-        <SalesLandingPage
-          initialNiche={selectedLead?.niche || undefined}
-          onOpenLogin={(suggestedTab) => {
-            setAuthTargetTab(suggestedTab || null);
-            setIsLoginModalOpen(true);
-          }}
-          onExploreDemo={() => {
-            setIsLoginModalOpen(true);
+      <div className="relative min-h-screen bg-slate-950">
+        <PublicCardapioViewer
+          menu={targetMenu}
+          initialTable={mesaParam}
+          onBackToAdmin={() => {
+            window.location.href = '/?tab=leads';
           }}
         />
-        <SecureAuthModal
-          isOpen={isLoginModalOpen}
-          onClose={() => setIsLoginModalOpen(false)}
-          onLoginSuccess={(user) => {
-            setCurrentUser(user);
-            try {
-              localStorage.setItem('alf_auth_user', JSON.stringify(user));
-              localStorage.setItem('alf_master_auth', user.role === 'master' ? 'true' : 'false');
-              localStorage.setItem('alf_master_user', user.username);
-            } catch (_) {}
-            if (user.role === 'client') {
-              setActiveTab('portal');
-            } else if (authTargetTab) {
-              const masterOnlyTabs = ['nfc_designer', 'dynamic_qr', 'site_preview', 'portal'];
-              if (masterOnlyTabs.includes(authTargetTab) && user.role !== 'master') {
-                setActiveTab('leads');
-              } else {
-                setActiveTab(authTargetTab as any);
-              }
-            } else {
-              setActiveTab('leads');
-            }
-          }}
-          targetTabName={authTargetTab}
-        />
-      </>
+        {/* Discreet admin exit button (strictly visible ONLY to logged-in Master or Seller) */}
+        {currentUser && (currentUser.role === 'master' || currentUser.role === 'seller') && (
+          <div className="fixed top-3 right-3 z-50">
+            <a
+              href="/?tab=leads"
+              className="px-3 py-1.5 bg-slate-900/80 hover:bg-slate-800 text-slate-300 hover:text-white rounded-full text-[11px] font-bold border border-slate-700 backdrop-blur-md shadow-lg transition flex items-center gap-1.5"
+            >
+              <span>Painel ALF</span>
+              <ExternalLink className="w-3 h-3" />
+            </a>
+          </div>
+        )}
+      </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50/80 text-slate-800 font-sans flex flex-col antialiased">
+    <div className="min-h-screen bg-slate-100/70 text-slate-800 font-sans flex flex-col lg:flex-row antialiased w-full max-w-full overflow-x-clip">
       
-      {/* Top Professional Header */}
-      <header className="bg-white border-b border-slate-200/80 sticky top-0 z-40 backdrop-blur-md bg-white/95">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5">
-          
-          {/* Header Bar Row */}
-          <div className="flex items-center justify-between gap-2 sm:gap-4">
-            
-            {/* Brand Logo & Title */}
-            <div className="flex items-center gap-2.5 shrink-0">
-              <div className="w-9 h-9 rounded-xl bg-slate-950 text-white font-mono font-black text-sm flex items-center justify-center shadow-xs">
+      {/* 1. DESKTOP LATERAL SIDEBAR (MENU LATERAL PROFISSIONAL) */}
+      <aside 
+        className={`hidden lg:flex flex-col shrink-0 border-r border-slate-200/90 bg-white sticky top-0 h-screen transition-all duration-200 z-30 select-none ${
+          isSidebarCollapsed ? 'w-20' : 'w-64'
+        }`}
+      >
+        {/* Sidebar Brand Header */}
+        <div className="h-16 px-4 flex items-center justify-between border-b border-slate-100 shrink-0">
+          {!isSidebarCollapsed ? (
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-9 h-9 rounded-xl bg-slate-950 text-white font-mono font-black text-sm flex items-center justify-center shadow-xs shrink-0">
                 ALF
               </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-black text-slate-900 tracking-tight">ALF Automação</span>
-                  <span className="hidden sm:inline-block text-[10px] font-bold text-slate-500 uppercase tracking-widest bg-slate-100 px-2 py-0.5 rounded-md">
-                    Smart Plates &amp; CRM
-                  </span>
-                </div>
-                <span className="text-[11px] text-slate-400 font-medium hidden sm:block">
-                  Inteligência de Vendas Locais &amp; Google 5★
+              <div className="min-w-0 truncate">
+                <span className="text-sm font-black text-slate-900 tracking-tight block truncate">
+                  ALF Automação
+                </span>
+                <span className="text-[11px] font-semibold text-slate-400 block truncate">
+                  Smart Plates &amp; CRM
                 </span>
               </div>
             </div>
+          ) : (
+            <div className="w-full flex justify-center">
+              <div className="w-9 h-9 rounded-xl bg-slate-950 text-white font-mono font-black text-sm flex items-center justify-center shadow-xs">
+                ALF
+              </div>
+            </div>
+          )}
 
-            {/* Universal Instant Plate Scanner Trigger (Search Bar UI) */}
-            <div className="flex-1 max-w-md mx-1 sm:mx-4">
+          <button
+            onClick={toggleSidebar}
+            className={`p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer ${
+              isSidebarCollapsed ? 'hidden' : 'block'
+            }`}
+            title="Recolher menu lateral"
+            aria-label="Recolher menu lateral"
+          >
+            <PanelLeftClose className="h-4 w-4" />
+          </button>
+        </div>
+
+        {/* When collapsed: expand button */}
+        {isSidebarCollapsed && (
+          <div className="py-2 flex justify-center border-b border-slate-100">
+            <button
+              onClick={toggleSidebar}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+              title="Expandir menu lateral"
+              aria-label="Expandir menu lateral"
+            >
+              <PanelLeft className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+
+        {/* Quick Scanner Action Trigger */}
+        <div className="p-3 border-b border-slate-100/90 shrink-0">
+          {!isSidebarCollapsed ? (
+            <button
+              type="button"
+              onClick={() => setIsPlateScannerOpen(true)}
+              className="w-full flex items-center justify-between px-3 py-2 bg-slate-100/80 hover:bg-indigo-50/70 border border-slate-200/80 hover:border-indigo-200 text-slate-600 hover:text-indigo-900 rounded-xl text-xs transition cursor-pointer group shadow-2xs"
+              title="Identificar a qual empresa pertence a placa ou QR físico (Ctrl+K)"
+            >
+              <div className="flex items-center gap-2 truncate">
+                <ScanLine className="h-4 w-4 text-indigo-600 shrink-0 group-hover:scale-110 transition-transform" />
+                <span className="font-semibold truncate text-[11px]">
+                  Ler Placa / Totem...
+                </span>
+              </div>
+              <span className="text-[10px] font-mono text-slate-400 bg-white border border-slate-200 px-1.5 py-0.5 rounded-md shrink-0">
+                ⌘K
+              </span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setIsPlateScannerOpen(true)}
+              className="w-full flex items-center justify-center p-2.5 bg-slate-100/80 hover:bg-indigo-50 border border-slate-200 text-indigo-600 rounded-xl transition cursor-pointer"
+              title="Identificar Placa Física (⌘K)"
+            >
+              <ScanLine className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+
+        {/* Sidebar Categorized Menu Items */}
+        <div className="flex-1 overflow-y-auto px-2.5 py-3 space-y-4 scrollbar-thin">
+          {navCategories.map((cat) => {
+            const categoryTabs = navTabsList.filter(t => t.navGroup === cat.id);
+            if (categoryTabs.length === 0) return null;
+
+            return (
+              <div key={cat.id} className="space-y-1">
+                {!isSidebarCollapsed && (
+                  <div className="px-2.5 pb-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                    {cat.title}
+                  </div>
+                )}
+                {categoryTabs.map((tab) => {
+                  const isActive = activeTab === tab.id;
+                  const Icon = tab.icon;
+
+                  if (isSidebarCollapsed) {
+                    return (
+                      <button
+                        key={tab.id}
+                        onClick={() => handleNavSelect(tab.id)}
+                        className={`w-full flex items-center justify-center p-2.5 rounded-xl transition-all cursor-pointer relative group ${
+                          isActive
+                            ? 'bg-slate-900 text-white shadow-xs font-bold'
+                            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                        }`}
+                        title={tab.label}
+                      >
+                        <Icon className={`h-4 w-4 ${isActive ? 'text-white' : tab.color}`} />
+                        <span className="absolute left-full ml-2 px-2.5 py-1 bg-slate-900 text-white text-[11px] font-semibold rounded-lg shadow-lg whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity z-50">
+                          {tab.label}
+                        </span>
+                      </button>
+                    );
+                  }
+
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => handleNavSelect(tab.id)}
+                      className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer group text-left ${
+                        isActive
+                          ? 'bg-slate-900 text-white shadow-xs font-bold'
+                          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/90'
+                      }`}
+                      id={`tab-${tab.id}`}
+                    >
+                      <div className="flex items-center gap-2.5 truncate">
+                        <Icon className={`h-4 w-4 shrink-0 ${isActive ? 'text-white' : tab.color}`} />
+                        <span className="truncate">{tab.label}</span>
+                      </div>
+                      {tab.badge && (
+                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md shrink-0 ${
+                          isActive
+                            ? 'bg-white/20 text-white'
+                            : 'bg-slate-200/80 text-slate-700'
+                        }`}>
+                          {tab.badge}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Sidebar Footer & User Profile */}
+        <div className="p-3 border-t border-slate-200/90 bg-slate-50/70 shrink-0 space-y-2">
+          {!isSidebarCollapsed ? (
+            <>
+              {/* Quick Config Buttons */}
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setIsCustomDomainModalOpen(true)}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-[11px] font-bold text-slate-700 bg-white hover:bg-slate-100 border border-slate-200 transition shadow-2xs cursor-pointer"
+                  title="Configurar seu domínio próprio"
+                >
+                  <Globe className="h-3 w-3 text-blue-600" />
+                  <span className="truncate">Domínio</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsSellerRegisterModalOpen(true)}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-[11px] font-bold text-emerald-800 bg-emerald-50/80 hover:bg-emerald-100 border border-emerald-200 transition shadow-2xs cursor-pointer"
+                  title="Cadastrar revendedor ou vendedor"
+                >
+                  <Briefcase className="h-3 w-3 text-emerald-600" />
+                  <span className="truncate">Vender</span>
+                </button>
+              </div>
+
+              {/* User Identity Card */}
+              {currentUser && (
+                <div className="flex items-center justify-between px-2.5 py-2 bg-white rounded-xl border border-slate-200/80 shadow-2xs">
+                  <div className="min-w-0 flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-700 font-bold text-xs flex items-center justify-center shrink-0">
+                      {currentUser.username.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-slate-900 truncate">
+                        {currentUser.username}
+                      </p>
+                      <p className="text-[10px] text-slate-400 capitalize">
+                        {currentUser.role === 'master' ? 'Administrador' : currentUser.role === 'seller' ? 'Vendedor' : 'Lojista'}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleLogout}
+                    className="p-1 text-slate-400 hover:text-rose-600 transition-colors rounded-lg cursor-pointer"
+                    title="Sair do sistema"
+                  >
+                    <LogOut className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="flex flex-col items-center gap-2">
+              {currentUser && (
+                <div 
+                  className="w-8 h-8 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-700 font-bold text-xs flex items-center justify-center"
+                  title={`${currentUser.username} (${currentUser.role})`}
+                >
+                  {currentUser.username.charAt(0).toUpperCase()}
+                </div>
+              )}
+              <button
+                onClick={handleLogout}
+                className="p-2 text-slate-400 hover:text-rose-600 transition-colors rounded-lg cursor-pointer"
+                title="Sair do sistema"
+              >
+                <LogOut className="h-4 w-4" />
+              </button>
+            </div>
+          )}
+        </div>
+      </aside>
+
+      {/* 2. MAIN WORKSPACE (TOP BAR + CONTENT VIEWPORT) */}
+      <div className="flex-1 flex flex-col min-w-0 min-h-screen">
+        
+        {/* Clean Executive Top Bar */}
+        <header 
+          className="bg-white border-b border-slate-200/80 sticky top-0 z-20 backdrop-blur-md bg-white/95 w-full"
+          style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
+        >
+          <div className="px-3.5 sm:px-6 lg:px-8 py-2.5 sm:py-3 flex items-center justify-between gap-3">
+            
+            {/* Left Zone: Sidebar Toggle + Breadcrumb (Desktop) / Brand (Mobile) */}
+            <div className="flex items-center gap-2.5 min-w-0">
+              {/* Mobile Menu Open Button */}
+              <button
+                onClick={() => setIsMobileMenuOpen(true)}
+                className="lg:hidden p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition cursor-pointer shrink-0"
+                aria-label="Abrir menu de navegação"
+              >
+                <Menu className="h-4 w-4" />
+              </button>
+
+              {/* Mobile Brand Title */}
+              <div className="flex lg:hidden items-center gap-2 min-w-0">
+                <div className="w-7 h-7 rounded-lg bg-slate-950 text-white font-mono font-black text-xs flex items-center justify-center shrink-0">
+                  ALF
+                </div>
+                <span className="text-xs font-black text-slate-900 truncate">
+                  ALF Automação
+                </span>
+              </div>
+
+              {/* Desktop Breadcrumbs Trail */}
+              <div className="hidden lg:flex items-center gap-2 text-xs font-medium min-w-0">
+                <button
+                  onClick={toggleSidebar}
+                  className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition mr-1 cursor-pointer"
+                  title={isSidebarCollapsed ? "Expandir menu lateral" : "Recolher menu lateral"}
+                >
+                  {isSidebarCollapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+                </button>
+                <span className="text-slate-400">ALF</span>
+                <span className="text-slate-300">/</span>
+                <span className="text-slate-500 font-medium">{activeTabMeta.category}</span>
+                <span className="text-slate-300">/</span>
+                <span className="text-slate-900 font-bold truncate">{activeTabMeta.label}</span>
+              </div>
+            </div>
+
+            {/* Center Zone: Quick Scanner Search */}
+            <div className="hidden md:flex flex-1 max-w-sm mx-2">
               <button
                 type="button"
                 onClick={() => setIsPlateScannerOpen(true)}
-                className="w-full flex items-center justify-between px-3 sm:px-3.5 py-2 bg-slate-100/90 hover:bg-slate-200/70 border border-slate-200 text-slate-500 rounded-xl text-xs transition cursor-pointer group shadow-2xs"
-                title="Identificar a qual empresa pertence a placa impressa ou cadastrar nova na hora (Atalho: Ctrl+K)"
+                className="w-full flex items-center justify-between px-3 py-1.5 bg-slate-100/80 hover:bg-slate-200/70 border border-slate-200 text-slate-500 rounded-xl text-xs transition cursor-pointer group"
+                title="Identificar placa ou QR físico (⌘K)"
               >
                 <div className="flex items-center gap-2 truncate">
-                  <ScanLine className="h-4 w-4 text-indigo-600 shrink-0 group-hover:scale-110 transition-transform" />
-                  <span className="text-slate-700 font-semibold truncate text-[11px] sm:text-xs">
+                  <ScanLine className="h-3.5 w-3.5 text-indigo-600 shrink-0" />
+                  <span className="text-slate-600 font-medium truncate text-[11px]">
                     Identificar placa ou QR físico...
                   </span>
                 </div>
-                <div className="hidden sm:flex items-center gap-1 text-[10px] font-mono text-slate-400 bg-white border border-slate-200 px-1.5 py-0.5 rounded-md shrink-0 shadow-2xs">
-                  <span>⌘K</span>
-                </div>
+                <span className="text-[10px] font-mono text-slate-400 bg-white border border-slate-200 px-1.5 py-0.5 rounded-md shrink-0">
+                  ⌘K
+                </span>
               </button>
             </div>
-            
-            {/* Desktop Action Controls (Export, PWA, User Badge) */}
-            <div className="hidden lg:flex items-center gap-2 shrink-0">
+
+            {/* Right Zone: Actions */}
+            <div className="flex items-center gap-2 shrink-0">
+              {/* Mobile Scanner Quick Icon */}
+              <button
+                type="button"
+                onClick={() => setIsPlateScannerOpen(true)}
+                className="md:hidden p-2 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-700 transition cursor-pointer"
+                title="Ler Placa Física"
+              >
+                <ScanLine className="h-4 w-4" />
+              </button>
+
               <PWAInstallButton />
 
               <button
                 type="button"
                 onClick={() => setIsCustomDomainModalOpen(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 transition-colors shadow-2xs cursor-pointer"
-                title="Configurar seu domínio próprio para as placas NFC e QR codes"
+                className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 transition shadow-2xs cursor-pointer"
+                title="Configurar domínio próprio para as placas NFC"
               >
                 <Globe className="h-3.5 w-3.5 text-blue-600" />
                 <span>Domínio Próprio</span>
               </button>
-              
-              <a
-                href="/api/export/zip"
-                download="alf-automacao-gmb.zip"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 transition-colors shadow-2xs cursor-pointer"
-                title="Baixar código-fonte completo em arquivo .ZIP"
-                id="btn-download-project-zip"
-              >
-                <Download className="h-3.5 w-3.5 text-slate-600" />
-                <span>Exportar (.ZIP)</span>
-              </a>
 
-              {/* Authenticated User Status & Logout */}
+              <button
+                type="button"
+                onClick={() => setIsAntigravityModalOpen(true)}
+                className="hidden xl:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200/90 transition shadow-2xs cursor-pointer"
+                title="Exportar projeto completo"
+              >
+                <FolderArchive className="h-3.5 w-3.5 text-indigo-600" />
+                <span>Exportar</span>
+              </button>
+
               {currentUser && (
-                <div className="flex items-center gap-2 pl-1">
-                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs bg-slate-100 border border-slate-200 text-slate-800 shadow-2xs">
-                    <div className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
-                    <span className="text-[11px] font-bold">
-                      {currentUser.role === 'master' ? 'Master' : currentUser.role === 'operator' ? 'Vendedor' : 'Lojista'}: <strong className="font-black text-slate-900">{currentUser.username}</strong>
+                <div className="flex items-center gap-1.5 pl-1">
+                  <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs bg-slate-100 border border-slate-200 text-slate-800">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                    <span className="text-[11px] font-bold truncate max-w-[120px]">
+                      {currentUser.username}
                     </span>
                     <button
                       onClick={handleLogout}
-                      className="ml-1 text-slate-400 hover:text-rose-600 transition-colors p-0.5 rounded cursor-pointer"
-                      title="Sair da plataforma e voltar para a página inicial"
-                      id="btn-desktop-logout"
+                      className="ml-0.5 text-slate-400 hover:text-rose-600 transition-colors p-0.5 rounded cursor-pointer"
+                      title="Sair"
                     >
-                      <LogOut className="h-3.5 w-3.5" />
+                      <LogOut className="h-3 w-3" />
                     </button>
                   </div>
                 </div>
               )}
             </div>
-
-            {/* Mobile Header Quick Actions & Menu Toggle */}
-            <div className="flex lg:hidden items-center gap-1.5 shrink-0">
-              <button
-                type="button"
-                onClick={() => setIsCustomDomainModalOpen(true)}
-                className="p-2 rounded-xl bg-blue-50 border border-blue-200 text-blue-700 transition cursor-pointer"
-                title="Configurar Domínio Próprio"
-                aria-label="Domínio Próprio"
-              >
-                <Globe className="h-4 w-4" />
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setIsPlateScannerOpen(true)}
-                className="p-2 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-700 transition cursor-pointer"
-                title="Ler Placa Física"
-                aria-label="Ler Placa Física"
-              >
-                <ScanLine className="h-4 w-4" />
-              </button>
-
-              {currentUser && (
-                <div className="flex items-center gap-1 bg-slate-100 border border-slate-200 px-2 py-1 rounded-xl text-[10px] font-bold">
-                  <span>{currentUser.username}</span>
-                  <button
-                    onClick={handleLogout}
-                    className="text-slate-400 hover:text-rose-600 p-0.5"
-                    title="Sair"
-                  >
-                    <LogOut className="h-3 w-3" />
-                  </button>
-                </div>
-              )}
-
-              {/* Mobile Menu Trigger Button */}
-              <button
-                onClick={() => setIsMobileMenuOpen(true)}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs shadow-md transition-all active:scale-95 cursor-pointer"
-                id="btn-mobile-menu-open"
-                aria-label="Abrir menu de recursos"
-              >
-                <LayoutGrid className="h-3.5 w-3.5 text-cyan-400" />
-                <span className="text-[11px]">Menu</span>
-              </button>
-            </div>
           </div>
+        </header>
 
-          {/* Desktop Navigation Tabs Bar (Clean Segmented Design) */}
-          <nav className="hidden lg:flex mt-2.5 bg-slate-100 p-1 rounded-2xl border border-slate-200/70 overflow-x-auto scrollbar-none gap-1">
-            {navTabsList.map((tab) => {
-              const isActive = activeTab === tab.id;
-              const Icon = tab.icon;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => handleNavSelect(tab.id)}
-                  className={`flex items-center gap-2 px-3.5 py-2 text-xs font-bold rounded-xl transition-all shrink-0 cursor-pointer ${
-                    isActive
-                      ? 'bg-white text-slate-900 shadow-xs border border-slate-200/60 font-black'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
-                  }`}
-                  id={`tab-${tab.id}`}
-                >
-                  <Icon className={`h-4 w-4 ${isActive ? tab.color : 'text-slate-500'}`} />
-                  <span>{tab.label}</span>
-                  {tab.badge && (
-                    <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-md bg-slate-200 text-slate-700">
-                      {tab.badge}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </nav>
-        </div>
-      </header>
+        {/* Compact Touch-Focused Mobile Off-Canvas Drawer (Categorized & Intuitive) */}
+        {isMobileMenuOpen && (
+          <div className="fixed inset-0 z-50 lg:hidden overflow-hidden" role="dialog" aria-modal="true" aria-label="Menu Lateral de Navegação">
+            {/* Backdrop Overlay with Smooth Blur & Quick Tap Dismiss */}
+            <div
+              className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs transition-opacity duration-200 cursor-pointer"
+              onClick={() => setIsMobileMenuOpen(false)}
+              aria-hidden="true"
+            />
 
-      {/* Senior UX Mobile Full Navigation Drawer / Modal */}
-      {isMobileMenuOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden">
-          {/* Backdrop Overlay */}
-          <div
-            className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs transition-opacity"
-            onClick={() => setIsMobileMenuOpen(false)}
-          />
-
-          {/* Slide-over Drawer Panel */}
-          <div className="fixed inset-y-0 right-0 max-w-sm w-full bg-white shadow-2xl flex flex-col z-10 animate-in slide-in-from-right duration-200">
-            
-            {/* Drawer Header */}
-            <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-slate-900 text-white font-mono font-black flex items-center justify-center text-xs shadow-xs">
-                  ALF
-                </div>
-                <div>
-                  <h2 className="text-sm font-black text-slate-900 leading-tight">
-                    Central de Recursos
-                  </h2>
-                  <p className="text-[11px] text-slate-500 font-medium">
-                    7 ferramentas completas disponíveis
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-colors cursor-pointer"
-                aria-label="Fechar menu"
+            {/* Slide-over Drawer Panel */}
+            <div className="fixed inset-y-0 right-0 w-[86vw] max-w-[340px] bg-white shadow-2xl flex flex-col z-10 h-[100dvh] max-h-[100dvh] animate-in slide-in-from-right duration-200 select-none border-l border-slate-200/80">
+              
+              {/* Drawer Header */}
+              <div 
+                className="p-3.5 border-b border-slate-100 flex items-center justify-between bg-slate-900 text-white shrink-0 shadow-xs"
+                style={{ paddingTop: 'max(env(safe-area-inset-top, 0px), 14px)' }}
               >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            {/* Drawer List of All 7 Features */}
-            <div className="flex-1 overflow-y-auto p-3 space-y-2">
-              {navTabsList.map((tab) => {
-                const isActive = activeTab === tab.id;
-                const Icon = tab.icon;
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => handleNavSelect(tab.id)}
-                    className={`w-full text-left p-3 rounded-2xl border transition-all flex items-start gap-3 cursor-pointer ${
-                      isActive
-                        ? 'bg-blue-50/80 border-blue-300 ring-2 ring-blue-500/20 shadow-xs'
-                        : 'bg-white hover:bg-slate-50 border-slate-200/80 hover:border-slate-300'
-                    }`}
-                  >
-                    <div className={`p-2.5 rounded-xl shrink-0 ${tab.bgColor} ${tab.color} border border-slate-100 shadow-2xs`}>
-                      <Icon className="h-5 w-5" />
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-cyan-400 text-white font-mono font-black flex items-center justify-center text-xs shadow-xs shrink-0">
+                    ALF
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <h2 className="text-xs font-black text-white leading-tight truncate">
+                        ALF Automação
+                      </h2>
+                      <span className="text-[9px] font-mono px-1.5 py-0.5 rounded-md bg-white/10 text-cyan-300 font-bold">
+                        Menu
+                      </span>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-1">
-                        <span className={`text-sm font-bold truncate ${isActive ? 'text-blue-950 font-black' : 'text-slate-900'}`}>
-                          {tab.label}
-                        </span>
-                        {isActive ? (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-700 bg-blue-100/90 px-2 py-0.5 rounded-full shrink-0">
-                            <span className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse" />
-                            Ativo
-                          </span>
-                        ) : tab.badge ? (
-                          <span className="text-[10px] font-black px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-900 border border-amber-200 shrink-0 flex items-center gap-0.5">
-                            {tab.requiresMaster && !isMasterAuthenticated && <Lock className="h-2.5 w-2.5" />}
-                            {tab.badge}
-                          </span>
-                        ) : (
-                          <ChevronRight className="h-4 w-4 text-slate-300 shrink-0" />
-                        )}
+                    <p className="text-[10px] text-slate-300 font-medium truncate">
+                      Navegação &amp; Recursos
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 text-white flex items-center justify-center transition-all cursor-pointer shrink-0"
+                  aria-label="Fechar menu"
+                >
+                  <X className="h-4.5 w-4.5" />
+                </button>
+              </div>
+
+              {/* Categorized Drawer Navigation */}
+              <div className="flex-1 overflow-y-auto overscroll-contain p-3 space-y-4 scrollbar-thin">
+                {navCategories.map((cat) => {
+                  const categoryTabs = navTabsList.filter(t => t.navGroup === cat.id);
+                  if (categoryTabs.length === 0) return null;
+
+                  return (
+                    <div key={cat.id} className="space-y-1.5">
+                      <div className="px-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                        {cat.title}
                       </div>
-                      <p className="text-xs text-slate-500 mt-1 leading-snug line-clamp-2">
-                        {tab.description}
-                      </p>
+                      {categoryTabs.map((tab) => {
+                        const isActive = activeTab === tab.id;
+                        const Icon = tab.icon;
+                        return (
+                          <button
+                            key={tab.id}
+                            onClick={() => handleNavSelect(tab.id)}
+                            className={`w-full text-left px-3 py-2.5 rounded-xl border transition-all flex items-center gap-2.5 cursor-pointer active:scale-[0.98] min-h-[48px] ${
+                              isActive
+                                ? 'bg-indigo-50/90 border-indigo-300 ring-1 ring-indigo-500/20 text-indigo-950 shadow-2xs'
+                                : 'bg-white hover:bg-slate-50 border-slate-200/80 hover:border-slate-300 text-slate-800'
+                            }`}
+                          >
+                            <div className={`w-8 h-8 rounded-lg shrink-0 flex items-center justify-center ${tab.bgColor} ${tab.color} border border-slate-100 shadow-2xs`}>
+                              <Icon className="h-4 w-4" />
+                            </div>
+                            
+                            <div className="flex-1 min-w-0 pr-1">
+                              <div className="flex items-center justify-between gap-1">
+                                <span className={`text-xs font-bold truncate leading-tight ${isActive ? 'text-indigo-950 font-black' : 'text-slate-900'}`}>
+                                  {tab.label}
+                                </span>
+                                {isActive ? (
+                                  <span className="inline-flex items-center gap-1 text-[9px] font-bold text-indigo-700 bg-indigo-100 px-1.5 py-0.5 rounded-md shrink-0">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-600" />
+                                    Ativo
+                                  </span>
+                                ) : tab.badge ? (
+                                  <span className="text-[9px] font-black px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-900 border border-amber-200 shrink-0 flex items-center gap-0.5">
+                                    {tab.requiresMaster && !isMasterAuthenticated && <Lock className="h-2.5 w-2.5" />}
+                                    {tab.badge}
+                                  </span>
+                                ) : (
+                                  <ChevronRight className="h-3.5 w-3.5 text-slate-300 shrink-0" />
+                                )}
+                              </div>
+                              <p className="text-[10px] text-slate-500 truncate leading-tight mt-0.5">
+                                {tab.description}
+                              </p>
+                            </div>
+                          </button>
+                        );
+                      })}
                     </div>
-                  </button>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
 
-            {/* Drawer Bottom Actions */}
-            <div className="p-4 border-t border-slate-200 bg-slate-50 space-y-2">
-              <a
-                href="/api/export/zip"
-                download="alf-automacao-gmb.zip"
-                className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-white hover:bg-slate-100 border border-slate-300 text-slate-800 text-xs font-bold transition-colors shadow-2xs"
+              {/* Drawer Bottom Actions */}
+              <div 
+                className="p-3 pt-2.5 border-t border-slate-200 bg-slate-50/95 backdrop-blur-xs space-y-2 shrink-0 shadow-lg"
+                style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 14px)' }}
               >
-                <Download className="h-4 w-4 text-slate-600" />
-                <span>Exportar Projeto (.ZIP)</span>
-              </a>
-
-              {isMasterAuthenticated ? (
                 <button
-                  onClick={() => {
-                    handleMasterLogout();
-                    setIsMobileMenuOpen(false);
-                  }}
-                  className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 text-xs font-bold transition-colors"
-                >
-                  <LogOut className="h-3.5 w-3.5" />
-                  <span>Desconectar Acesso Master</span>
-                </button>
-              ) : (
-                <button
+                  type="button"
                   onClick={() => {
                     setIsMobileMenuOpen(false);
-                    setMasterTargetTab(null);
-                    setMasterError('');
-                    setIsMasterModalOpen(true);
+                    setIsSellerRegisterModalOpen(true);
                   }}
-                  className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-900 text-xs font-bold transition-colors"
+                  className="w-full min-h-[42px] flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-emerald-50 hover:bg-emerald-100 active:scale-[0.98] border border-emerald-300 text-emerald-900 text-xs font-bold transition-all shadow-2xs cursor-pointer"
                 >
-                  <Lock className="h-3.5 w-3.5 text-amber-600" />
-                  <span>Entrar como Usuário Master</span>
+                  <Briefcase className="h-4 w-4 text-emerald-600 shrink-0" />
+                  <span className="truncate">Seja um Vendedor / Revendedor</span>
                 </button>
-              )}
 
-              <div className="flex items-center justify-between pt-1 text-[10px] text-slate-400 font-medium">
-                <span>ALF Automação • Sales Engine</span>
-                <span className="font-mono">v2.5 Pro</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    setIsCustomDomainModalOpen(true);
+                  }}
+                  className="w-full min-h-[42px] flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-blue-50 hover:bg-blue-100 active:scale-[0.98] border border-blue-200 text-blue-800 text-xs font-bold transition-all shadow-2xs cursor-pointer"
+                >
+                  <Globe className="h-4 w-4 text-blue-600 shrink-0" />
+                  <span className="truncate">Configurar Domínio Próprio</span>
+                </button>
+
+                {isMasterAuthenticated ? (
+                  <button
+                    onClick={() => {
+                      handleMasterLogout();
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className="w-full min-h-[42px] flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-red-50 hover:bg-red-100 active:scale-[0.98] border border-red-200 text-red-700 text-xs font-bold transition-all cursor-pointer"
+                  >
+                    <LogOut className="h-4 w-4 shrink-0" />
+                    <span>Desconectar Acesso Master</span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => {
+                      setIsMobileMenuOpen(false);
+                      setMasterTargetTab(null);
+                      setMasterError('');
+                      setIsMasterModalOpen(true);
+                    }}
+                    className="w-full min-h-[42px] flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-amber-50 hover:bg-amber-100 active:scale-[0.98] border border-amber-300 text-amber-900 text-xs font-bold transition-all cursor-pointer"
+                  >
+                    <Lock className="h-4 w-4 text-amber-600 shrink-0" />
+                    <span>Entrar como Usuário Master</span>
+                  </button>
+                )}
+
+                <div className="flex items-center justify-between pt-0.5 text-[10px] text-slate-400 font-medium px-1">
+                  <span>ALF Automação • Sales Engine</span>
+                  <span className="font-mono text-[9px] text-slate-500">v2.5 Pro</span>
+                </div>
               </div>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Senior UX Mobile Bottom Navigation Dock */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200/90 shadow-2xl md:hidden px-2 py-1.5">
-        <div className="grid grid-cols-5 gap-1 items-center max-w-md mx-auto">
-          <button
-            onClick={() => handleNavSelect('dynamic_qr')}
-            className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-xl transition-all cursor-pointer ${
-              activeTab === 'dynamic_qr' ? 'text-indigo-600 font-bold bg-indigo-50/80 shadow-2xs' : 'text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            <QrCode className="h-4 w-4 mb-0.5" />
-            <span className="text-[10px] leading-tight">Placas &amp; QR</span>
-          </button>
-
-          <button
-            onClick={() => {
-              handleNavSelect('leads');
-              setLeadsSubTab('directory');
-            }}
-            className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-xl transition-all cursor-pointer ${
-              activeTab === 'leads' && leadsSubTab === 'directory'
-                ? 'text-blue-600 font-bold bg-blue-50/80 shadow-2xs'
-                : 'text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            <Building2 className="h-4 w-4 mb-0.5" />
-            <span className="text-[10px] leading-tight font-bold">Empresas</span>
-          </button>
-
-          <button
-            onClick={() => handleNavSelect('crm')}
-            className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-xl transition-all cursor-pointer ${
-              activeTab === 'crm' ? 'text-emerald-600 font-bold bg-emerald-50/80 shadow-2xs' : 'text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            <TrendingUp className="h-4 w-4 mb-0.5" />
-            <span className="text-[10px] leading-tight">Funil CRM</span>
-          </button>
-
-          <button
-            onClick={() => handleNavSelect('calculator')}
-            className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-xl transition-all cursor-pointer ${
-              activeTab === 'calculator' ? 'text-violet-600 font-bold bg-violet-50/80 shadow-2xs' : 'text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            <Coins className="h-4 w-4 mb-0.5" />
-            <span className="text-[10px] leading-tight">Calculadora</span>
-          </button>
-
-          <button
-            onClick={() => setIsMobileMenuOpen(true)}
-            className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-xl transition-all cursor-pointer ${
-              isMobileMenuOpen
-                ? 'text-slate-900 font-bold bg-slate-100 shadow-2xs'
-                : 'text-slate-500 hover:text-slate-800'
-            }`}
-            aria-label="Ver todos os recursos"
-          >
-            <LayoutGrid className="h-4 w-4 mb-0.5" />
-            <span className="text-[10px] leading-tight font-bold">Mais</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Main Container */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-28 md:pb-8">
-        
-        {/* API Key Status Info Banner */}
-        {demoMode && (
-          <div className="mb-6 bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-start sm:items-center gap-3">
-              <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5 sm:mt-0" />
-              <div>
-                <p className="font-semibold text-sm">Modo de Simulação Ativado (Offline)</p>
-                <p className="text-xs text-amber-700">O sistema está gerando empresas e layouts pré-configurados pela IA. Para fazer buscas reais em tempo real, configure sua chave do Google Gemini em <strong className="font-semibold">Settings &gt; Secrets</strong>.</p>
-              </div>
-            </div>
-            <span className="bg-amber-100 text-amber-800 text-xs px-2.5 py-1 rounded-md font-bold self-start sm:self-auto shrink-0 uppercase">Demo</span>
           </div>
         )}
+
+        {/* Mobile & Tablet Bottom Navigation Dock */}
+        <div 
+          className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200/90 shadow-2xl lg:hidden px-2 pt-1.5"
+          style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 6px)' }}
+        >
+          <div className="grid grid-cols-5 gap-1 items-center max-w-lg mx-auto">
+            <button
+              onClick={() => handleNavSelect('dynamic_qr')}
+              className={`min-h-[44px] flex flex-col items-center justify-center py-1 px-1 rounded-xl transition-all active:scale-95 cursor-pointer ${
+                activeTab === 'dynamic_qr' ? 'text-indigo-600 font-bold bg-indigo-50/80 shadow-2xs' : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              <QrCode className="h-4 w-4 mb-0.5" />
+              <span className="text-[10px] leading-tight">Placas &amp; QR</span>
+            </button>
+
+            <button
+              onClick={() => {
+                handleNavSelect('leads');
+                setLeadsSubTab('directory');
+              }}
+              className={`min-h-[44px] flex flex-col items-center justify-center py-1 px-1 rounded-xl transition-all active:scale-95 cursor-pointer ${
+                activeTab === 'leads'
+                  ? 'text-blue-600 font-bold bg-blue-50/80 shadow-2xs'
+                  : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              <Building2 className="h-4 w-4 mb-0.5" />
+              <span className="text-[10px] leading-tight font-bold">Empresas</span>
+            </button>
+
+            <button
+              onClick={() => handleNavSelect('crm')}
+              className={`min-h-[44px] flex flex-col items-center justify-center py-1 px-1 rounded-xl transition-all active:scale-95 cursor-pointer ${
+                activeTab === 'crm' ? 'text-emerald-600 font-bold bg-emerald-50/80 shadow-2xs' : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              <TrendingUp className="h-4 w-4 mb-0.5" />
+              <span className="text-[10px] leading-tight">Funil CRM</span>
+            </button>
+
+            <button
+              onClick={() => handleNavSelect('calculator')}
+              className={`min-h-[44px] flex flex-col items-center justify-center py-1 px-1 rounded-xl transition-all active:scale-95 cursor-pointer ${
+                activeTab === 'calculator' ? 'text-violet-600 font-bold bg-violet-50/80 shadow-2xs' : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              <Coins className="h-4 w-4 mb-0.5" />
+              <span className="text-[10px] leading-tight">Calculadora</span>
+            </button>
+
+            <button
+              onClick={() => setIsMobileMenuOpen(true)}
+              className={`min-h-[44px] flex flex-col items-center justify-center py-1 px-1 rounded-xl transition-all active:scale-95 cursor-pointer ${
+                isMobileMenuOpen
+                  ? 'text-slate-900 font-bold bg-slate-100 shadow-2xs'
+                  : 'text-slate-500 hover:text-slate-800'
+              }`}
+              aria-label="Ver todos os recursos"
+            >
+              <LayoutGrid className="h-4 w-4 mb-0.5" />
+              <span className="text-[10px] leading-tight font-bold">Mais</span>
+            </button>
+          </div>
+        </div>
+
+      {/* Main Container - Responsive spacing across Mobile, Tablet, and Desktop */}
+      <main 
+        className="flex-1 max-w-7xl w-full mx-auto px-3.5 sm:px-6 lg:px-8 py-4 sm:py-5 pb-28 lg:pb-10"
+      >
+        
+        {/* Senior UX Contextual Section Header & Workflow Bar */}
+        <div className="mb-6 bg-white border border-slate-200/90 rounded-2xl p-4 sm:p-5 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-start gap-3.5 min-w-0">
+            <div className={`p-2.5 rounded-xl shrink-0 ${activeTabMeta.bgColor} border border-slate-200/60`}>
+              <activeTabMeta.icon className={`h-5 w-5 ${activeTabMeta.color}`} />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                  {activeTabMeta.category}
+                </span>
+                <span className="text-slate-300">·</span>
+                <span className="text-[11px] text-slate-500 font-medium">ALF Engine</span>
+              </div>
+              <h1 className="text-base sm:text-lg font-black text-slate-900 tracking-tight truncate">
+                {activeTabMeta.title}
+              </h1>
+              <p className="text-xs text-slate-500 line-clamp-1 mt-0.5">
+                {activeTabMeta.description}
+              </p>
+            </div>
+          </div>
+
+          {/* Contextual Quick Actions */}
+          <div className="flex items-center gap-2 flex-wrap shrink-0">
+            {activeTab === 'dynamic_qr' && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setIsPlateScannerOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-xl border border-indigo-200 transition cursor-pointer"
+                >
+                  <ScanLine className="h-3.5 w-3.5" />
+                  <span>Identificar Placa</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleNavSelect('nfc_designer')}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl border border-slate-200 transition cursor-pointer"
+                >
+                  <Sparkles className="h-3.5 w-3.5 text-amber-600" />
+                  <span>Designer Totem 10x10</span>
+                </button>
+              </>
+            )}
+            {activeTab === 'nfc_designer' && (
+              <button
+                type="button"
+                onClick={() => handleNavSelect('dynamic_qr')}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-xl border border-indigo-200 transition cursor-pointer"
+              >
+                <QrCode className="h-3.5 w-3.5" />
+                <span>Ver Lotes de Placas</span>
+              </button>
+            )}
+            {activeTab === 'leads' && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => handleNavSelect('crm')}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-xl border border-emerald-200 transition cursor-pointer"
+                >
+                  <TrendingUp className="h-3.5 w-3.5" />
+                  <span>Funil CRM</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleNavSelect('calculator')}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-violet-700 bg-violet-50 hover:bg-violet-100 rounded-xl border border-violet-200 transition cursor-pointer"
+                >
+                  <Coins className="h-3.5 w-3.5" />
+                  <span>Simular ROI</span>
+                </button>
+              </>
+            )}
+            {activeTab === 'crm' && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => handleNavSelect('leads')}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-xl border border-blue-200 transition cursor-pointer"
+                >
+                  <Building2 className="h-3.5 w-3.5" />
+                  <span>Empresas</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleNavSelect('calculator')}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-violet-700 bg-violet-50 hover:bg-violet-100 rounded-xl border border-violet-200 transition cursor-pointer"
+                >
+                  <Coins className="h-3.5 w-3.5" />
+                  <span>Calculadora ROI</span>
+                </button>
+              </>
+            )}
+            {activeTab === 'calculator' && (
+              <button
+                type="button"
+                onClick={() => handleNavSelect('crm')}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-xl border border-emerald-200 transition cursor-pointer"
+              >
+                <TrendingUp className="h-3.5 w-3.5" />
+                <span>Voltar ao Funil CRM</span>
+              </button>
+            )}
+            {activeTab === 'site_preview' && (
+              <button
+                type="button"
+                onClick={() => handleNavSelect('leads')}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-xl border border-blue-200 transition cursor-pointer"
+              >
+                <Building2 className="h-3.5 w-3.5" />
+                <span>Selecionar Outra Empresa</span>
+              </button>
+            )}
+            {activeTab === 'cardapio' && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => handleNavSelect('dynamic_qr')}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-xl border border-indigo-200 transition cursor-pointer"
+                >
+                  <QrCode className="h-3.5 w-3.5" />
+                  <span>Placas de Mesas</span>
+                </button>
+                <a
+                  href="/cardapio/bellariobranco?mesa=01"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-amber-800 bg-amber-50 hover:bg-amber-100 rounded-xl border border-amber-200 transition cursor-pointer"
+                >
+                  <ExternalLink className="h-3.5 w-3.5" />
+                  <span>Visualizar como Cliente</span>
+                </a>
+              </>
+            )}
+            {activeTab === 'portal' && (
+              <button
+                type="button"
+                onClick={() => handleNavSelect('dynamic_qr')}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 rounded-xl border border-rose-200 transition cursor-pointer"
+              >
+                <QrCode className="h-3.5 w-3.5" />
+                <span>Gerenciar Placas &amp; QR</span>
+              </button>
+            )}
+            {activeTab === 'users' && (
+              <button
+                type="button"
+                onClick={() => setIsSellerRegisterModalOpen(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl border border-slate-200 transition cursor-pointer"
+              >
+                <Briefcase className="h-3.5 w-3.5 text-emerald-600" />
+                <span>Novo Vendedor</span>
+              </button>
+            )}
+            {activeTab === 'landing' && (
+              <button
+                type="button"
+                onClick={() => handleNavSelect('dynamic_qr')}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-xl border border-indigo-200 transition cursor-pointer"
+              >
+                <ArrowLeft className="h-3.5 w-3.5" />
+                <span>Voltar ao Painel ALF</span>
+              </button>
+            )}
+          </div>
+        </div>
 
         {/* TAB 1: MEUS CLIENTES & PROSPECÇÃO LOCAL */}
         {activeTab === 'leads' && (
@@ -3584,341 +3478,448 @@ export default function App() {
               </div>
             </div>
 
-            {/* Kanban Columns */}
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 overflow-x-auto pb-4">
+            {/* CRM Search & Interactive Controls Header */}
+            <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+              <div className="flex-1 relative">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={crmSearchQuery}
+                  onChange={(e) => setCrmSearchQuery(e.target.value)}
+                  placeholder="Pesquisar empresa, nicho ou telefone no funil..."
+                  className="w-full pl-9 pr-8 py-2 bg-slate-50 hover:bg-slate-100/80 focus:bg-white text-xs border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-blue-500 transition-all text-slate-800"
+                />
+                {crmSearchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setCrmSearchQuery('')}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
+                    title="Limpar busca"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2 text-xs text-slate-500 bg-slate-50 border border-slate-200/80 px-3 py-2 rounded-xl">
+                <Sparkles className="w-4 h-4 text-amber-500 shrink-0 animate-pulse" />
+                <span className="text-[11px] font-medium">
+                  <strong>Arraste os cards</strong> entre as colunas ou use o botão <strong>Mover</strong> para transições suaves com animação física.
+                </span>
+              </div>
+            </div>
+
+            {/* Kanban Columns with Framer Motion Layout Transitions */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 pb-4 items-start">
               
-              {/* STAGE 1: TO CONTACT */}
-              <div className="bg-slate-100 border border-slate-200/60 rounded-2xl p-3 min-w-[240px] flex flex-col h-[520px]">
-                <div className="flex items-center justify-between mb-3 px-1">
-                  <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">A Contatar</span>
-                  <span className="bg-slate-200 text-slate-700 text-xs px-2 py-0.5 rounded-full font-bold">
-                    {getLeadsByStage('to_contact').length}
-                  </span>
-                </div>
+              {/* Pipeline Stages Array */}
+              {[
+                {
+                  id: 'to_contact' as const,
+                  title: 'A Contatar',
+                  subtitle: 'Novos e pendentes',
+                  icon: '📞',
+                  badgeBg: 'bg-slate-200 text-slate-700',
+                  dropHighlight: 'border-blue-500 bg-blue-50/70 ring-2 ring-blue-300',
+                  nextStage: 'contacted' as const,
+                  nextBtnLabel: 'Contatar',
+                  nextBtnClass: 'bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold',
+                },
+                {
+                  id: 'contacted' as const,
+                  title: 'Contatado',
+                  subtitle: 'Apresentação feita',
+                  icon: '💬',
+                  badgeBg: 'bg-blue-100 text-blue-800',
+                  dropHighlight: 'border-blue-500 bg-blue-50/70 ring-2 ring-blue-300',
+                  nextStage: 'proposal' as const,
+                  nextBtnLabel: 'Enviar Proposta',
+                  nextBtnClass: 'bg-blue-600 hover:bg-blue-700 text-white font-bold',
+                },
+                {
+                  id: 'proposal' as const,
+                  title: 'Proposta Enviada',
+                  subtitle: 'Aguardando fechamento',
+                  icon: '📑',
+                  badgeBg: 'bg-indigo-100 text-indigo-800',
+                  dropHighlight: 'border-indigo-500 bg-indigo-50/70 ring-2 ring-indigo-300',
+                  nextStage: 'won' as const,
+                  nextBtnLabel: 'Fechar Venda 🎉',
+                  nextBtnClass: 'bg-emerald-600 hover:bg-emerald-700 text-white font-bold',
+                },
+                {
+                  id: 'won' as const,
+                  title: 'Fechado 🎉',
+                  subtitle: 'Venda confirmada',
+                  icon: '🏆',
+                  badgeBg: 'bg-emerald-100 text-emerald-800',
+                  dropHighlight: 'border-emerald-500 bg-emerald-50/70 ring-2 ring-emerald-300',
+                },
+                {
+                  id: 'lost' as const,
+                  title: 'Recusado',
+                  subtitle: 'Sem interesse no momento',
+                  icon: '⏸️',
+                  badgeBg: 'bg-slate-200 text-slate-600',
+                  dropHighlight: 'border-amber-400 bg-amber-50/70 ring-2 ring-amber-300',
+                  nextStage: 'to_contact' as const,
+                  nextBtnLabel: 'Reativar Lead',
+                  nextBtnClass: 'bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold',
+                }
+              ].map((column) => {
+                const stageLeads = getLeadsByStage(column.id);
+                const isOver = activeDropStage === column.id;
+                const columnTotal = stageLeads.reduce((acc, curr) => acc + (curr.saleValue || nfcPrice || 149), 0);
 
-                <div className="space-y-3 flex-1 overflow-y-auto">
-                  {getLeadsByStage('to_contact').map(lead => (
-                    <div key={lead.id} className="bg-white border border-slate-200 rounded-xl p-3 shadow-xs space-y-2 hover:border-blue-400 transition-all">
-                      <h4 className="font-bold text-xs text-slate-900 leading-tight">{lead.name}</h4>
-                      <div className="flex justify-between items-center text-[10px] text-slate-400">
-                        <span>{lead.niche}</span>
-                        <span className="font-semibold text-slate-700">R$ {lead.saleValue}</span>
-                      </div>
-                      {lead.nextFollowUp && (
-                        <div className="flex items-center gap-1 text-[9px] font-bold text-blue-800 bg-blue-50 border border-blue-100 px-1.5 py-0.5 rounded-sm w-fit">
-                          📅 F/U: {lead.nextFollowUp.split('-').reverse().join('/')}
+                return (
+                  <div
+                    key={column.id}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = 'move';
+                      if (activeDropStage !== column.id) {
+                        setActiveDropStage(column.id);
+                      }
+                    }}
+                    onDragLeave={(e) => {
+                      if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                        if (activeDropStage === column.id) setActiveDropStage(null);
+                      }
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      const droppedId = e.dataTransfer.getData('text/plain') || draggedLeadId;
+                      if (droppedId) {
+                        updateLeadStage(droppedId, column.id);
+                      }
+                      setActiveDropStage(null);
+                      setDraggedLeadId(null);
+                    }}
+                    className={`border rounded-2xl p-3 min-w-[240px] flex flex-col h-[620px] transition-all duration-200 ${
+                      isOver
+                        ? column.dropHighlight
+                        : 'bg-slate-100/90 border-slate-200/80 shadow-xs'
+                    }`}
+                  >
+                    {/* Column Header */}
+                    <div className="flex items-center justify-between mb-2.5 px-1 pb-2 border-b border-slate-200/60">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="text-sm select-none">{column.icon}</span>
+                        <div className="min-w-0">
+                          <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider truncate">
+                            {column.title}
+                          </h3>
+                          <span className="text-[10px] text-slate-500 font-medium block">
+                            R$ {columnTotal.toLocaleString('pt-BR', { minimumFractionDigits: 0 })}
+                          </span>
                         </div>
-                      )}
-                      {lead.historyNotes && lead.historyNotes.length > 0 && (
-                        <p className="text-[9px] text-slate-500 italic truncate max-w-full">
-                          📝 {lead.historyNotes[lead.historyNotes.length - 1]}
-                        </p>
-                      )}
-                      <div className="flex gap-1 pt-1.5 border-t border-slate-100">
-                        <button
-                          onClick={() => updateLeadStage(lead.id, 'contacted')}
-                          className="flex-1 py-1 text-center bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold rounded-md text-[10px]"
-                        >
-                          Contatar
-                        </button>
-                        <button
-                          onClick={() => {
-                            requireMasterAccess('site_preview', () => {
-                              setSelectedLead(lead);
-                              generateWebsiteTemplate(lead);
-                            });
-                          }}
-                          className="px-2 py-1 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-md text-[10px] flex items-center gap-0.5"
-                          title="Gerar Site de Modelo (Requer Master)"
-                        >
-                          <span>Site</span>
-                          {!isMasterAuthenticated && <Lock className="h-2 w-2 text-amber-500" />}
-                        </button>
                       </div>
+
+                      <motion.span
+                        key={stageLeads.length}
+                        initial={{ scale: 1.25 }}
+                        animate={{ scale: 1 }}
+                        transition={{ type: "spring", stiffness: 500, damping: 25 }}
+                        className={`${column.badgeBg} text-xs px-2.5 py-0.5 rounded-full font-bold shadow-2xs`}
+                      >
+                        {stageLeads.length}
+                      </motion.span>
                     </div>
-                  ))}
-                </div>
-              </div>
 
-              {/* STAGE 2: CONTACTED */}
-              <div className="bg-slate-100 border border-slate-200/60 rounded-2xl p-3 min-w-[240px] flex flex-col h-[520px]">
-                <div className="flex items-center justify-between mb-3 px-1">
-                  <span className="text-xs font-bold text-slate-700 uppercase tracking-wider text-blue-700">Contatado</span>
-                  <span className="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded-full font-bold">
-                    {getLeadsByStage('contacted').length}
-                  </span>
-                </div>
+                    {/* Active Drag Over Indicator */}
+                    <AnimatePresence>
+                      {isOver && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0, scale: 0.95 }}
+                          animate={{ opacity: 1, height: 'auto', scale: 1 }}
+                          exit={{ opacity: 0, height: 0, scale: 0.95 }}
+                          transition={{ duration: 0.15 }}
+                          className="mb-2 p-2 rounded-xl border-2 border-dashed border-blue-500 bg-white/90 text-blue-700 text-[11px] font-bold text-center flex items-center justify-center gap-1.5 shadow-xs"
+                        >
+                          <Sparkles className="w-3 h-3 text-blue-600 animate-spin" />
+                          <span>Solte para {column.title}</span>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
 
-                <div className="space-y-3 flex-1 overflow-y-auto">
-                  {getLeadsByStage('contacted').map(lead => (
-                    <div key={lead.id} className="bg-white border border-slate-200 rounded-xl p-3 shadow-xs space-y-2 hover:border-blue-400 transition-all">
-                      <h4 className="font-bold text-xs text-slate-900 leading-tight">{lead.name}</h4>
-                      <p className="text-[10px] text-amber-600 font-semibold leading-tight">💬 {lead.weakness}</p>
-                      <div className="flex justify-between items-center text-[10px] text-slate-400">
-                        <span>{lead.phone}</span>
-                        <span className="font-semibold text-slate-700">R$ {lead.saleValue}</span>
-                      </div>
-                      {lead.nextFollowUp && (
-                        <div className="flex items-center gap-1 text-[9px] font-bold text-blue-800 bg-blue-50 border border-blue-100 px-1.5 py-0.5 rounded-sm w-fit">
-                          📅 F/U: {lead.nextFollowUp.split('-').reverse().join('/')}
-                        </div>
-                      )}
-                      {lead.historyNotes && lead.historyNotes.length > 0 && (
-                        <p className="text-[9px] text-slate-500 italic truncate max-w-full">
-                          📝 {lead.historyNotes[lead.historyNotes.length - 1]}
-                        </p>
-                      )}
-                      <div className="flex gap-1 pt-1.5 border-t border-slate-100">
-                        <button
-                          onClick={() => updateLeadStage(lead.id, 'proposal')}
-                          className="flex-1 py-1 text-center bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold rounded-md text-[10px]"
-                        >
-                          Enviar Proposta
-                        </button>
-                        <a
-                          href={getWhatsAppLink(lead)}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-md text-[10px] flex items-center justify-center"
-                          title="Conversar no WhatsApp"
-                        >
-                          <MessageSquare className="h-3.5 w-3.5" />
-                        </a>
-                      </div>
+                    {/* Cards Container with Framer Motion AnimatePresence */}
+                    <div className="space-y-3 flex-1 overflow-y-auto pr-1">
+                      <AnimatePresence mode="popLayout">
+                        {stageLeads.length === 0 ? (
+                          <motion.div
+                            key={`empty-${column.id}`}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.9 }}
+                            transition={{ duration: 0.2 }}
+                            className="flex flex-col items-center justify-center h-44 rounded-xl border border-dashed border-slate-300/80 p-4 text-center text-slate-400 bg-white/50"
+                          >
+                            <span className="text-2xl mb-1 opacity-50 select-none">{column.icon}</span>
+                            <span className="text-xs font-semibold text-slate-500">Nenhum lead</span>
+                            <span className="text-[10px] text-slate-400 mt-0.5">Arraste um card para cá</span>
+                          </motion.div>
+                        ) : (
+                          stageLeads.map((lead) => {
+                            const isRecentlyMoved = recentlyMovedLeadId === lead.id;
+                            const isQuickStageOpen = activeQuickStageLeadId === lead.id;
+
+                            return (
+                              <motion.div
+                                key={lead.id}
+                                layout
+                                layoutId={`crm-card-${lead.id}`}
+                                initial={{ opacity: 0, scale: 0.88, y: 15 }}
+                                animate={{
+                                  opacity: 1,
+                                  scale: 1,
+                                  y: 0,
+                                  transition: {
+                                    type: "spring",
+                                    stiffness: 380,
+                                    damping: 28,
+                                    mass: 0.7
+                                  }
+                                }}
+                                exit={{
+                                  opacity: 0,
+                                  scale: 0.82,
+                                  y: -12,
+                                  transition: { duration: 0.2, ease: "easeOut" }
+                                }}
+                                whileHover={{
+                                  y: -3,
+                                  scale: 1.015,
+                                  boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04)"
+                                }}
+                                whileTap={{ scale: 0.98 }}
+                                draggable
+                                onDragStart={(e) => {
+                                  (e as any).dataTransfer.setData('text/plain', lead.id);
+                                  (e as any).dataTransfer.effectAllowed = 'move';
+                                  setDraggedLeadId(lead.id);
+                                }}
+                                onDragEnd={() => {
+                                  setDraggedLeadId(null);
+                                  setActiveDropStage(null);
+                                }}
+                                className={`bg-white border rounded-xl p-3 shadow-xs space-y-2.5 transition-colors cursor-grab active:cursor-grabbing relative select-none group ${
+                                  isRecentlyMoved
+                                    ? 'ring-2 ring-blue-500 border-blue-400 bg-blue-50/20'
+                                    : column.id === 'won'
+                                    ? 'border-emerald-300'
+                                    : column.id === 'lost'
+                                    ? 'border-slate-200 opacity-75 hover:opacity-100'
+                                    : 'border-slate-200 hover:border-blue-400'
+                                }`}
+                              >
+                                {/* Feedback badge on recent move */}
+                                <AnimatePresence>
+                                  {isRecentlyMoved && (
+                                    <motion.div
+                                      initial={{ scale: 0.7, opacity: 0, y: -4 }}
+                                      animate={{ scale: 1, opacity: 1, y: 0 }}
+                                      exit={{ scale: 0.7, opacity: 0 }}
+                                      transition={{ type: "spring", stiffness: 500, damping: 25 }}
+                                      className="absolute -top-2.5 right-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full shadow-md flex items-center gap-1 z-20 border border-white"
+                                    >
+                                      <Sparkles className="w-2.5 h-2.5 animate-pulse" />
+                                      <span>Movido!</span>
+                                    </motion.div>
+                                  )}
+                                </AnimatePresence>
+
+                                {/* Top Title & Drag Handle */}
+                                <div className="flex items-start justify-between gap-1.5">
+                                  <div className="flex items-center gap-1 min-w-0 flex-1">
+                                    <span title="Arraste para mover" className="shrink-0 flex items-center">
+                                      <GripVertical className="w-3.5 h-3.5 text-slate-300 group-hover:text-slate-500 cursor-grab" />
+                                    </span>
+                                    <h4 className="font-bold text-xs text-slate-900 leading-snug line-clamp-2">
+                                      {lead.name}
+                                    </h4>
+                                  </div>
+
+                                  {column.id === 'won' && (
+                                    <span className="bg-emerald-500 text-white text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-md shrink-0">
+                                      PAGO
+                                    </span>
+                                  )}
+                                </div>
+
+                                {/* Details / Weakness */}
+                                {lead.weakness && column.id === 'contacted' && (
+                                  <p className="text-[10px] text-amber-600 font-semibold leading-tight line-clamp-2 bg-amber-50/70 p-1 rounded-md">
+                                    💬 {lead.weakness}
+                                  </p>
+                                )}
+
+                                <div className="flex justify-between items-center text-[10px] text-slate-500">
+                                  <span className="truncate max-w-[120px]">{lead.niche || lead.productType?.toUpperCase() || 'Comércio Local'}</span>
+                                  <span className="font-bold text-slate-800 shrink-0">
+                                    R$ {lead.saleValue || nfcPrice || 149}
+                                  </span>
+                                </div>
+
+                                {lead.nextFollowUp && (
+                                  <div className="flex items-center gap-1 text-[9px] font-bold text-blue-800 bg-blue-50 border border-blue-100 px-1.5 py-0.5 rounded-md w-fit">
+                                    📅 F/U: {lead.nextFollowUp.split('-').reverse().join('/')}
+                                  </div>
+                                )}
+
+                                {lead.historyNotes && lead.historyNotes.length > 0 && (
+                                  <p className="text-[9px] text-slate-500 italic truncate max-w-full">
+                                    📝 {lead.historyNotes[lead.historyNotes.length - 1]}
+                                  </p>
+                                )}
+
+                                {/* Quick Stage Jumper Popover Menu */}
+                                <AnimatePresence>
+                                  {isQuickStageOpen && (
+                                    <motion.div
+                                      initial={{ opacity: 0, height: 0, scale: 0.95 }}
+                                      animate={{ opacity: 1, height: 'auto', scale: 1 }}
+                                      exit={{ opacity: 0, height: 0, scale: 0.95 }}
+                                      transition={{ duration: 0.15 }}
+                                      className="p-1.5 bg-slate-50 border border-slate-200 rounded-lg space-y-1"
+                                    >
+                                      <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider block px-1">
+                                        Mover diretamente para:
+                                      </span>
+                                      <div className="grid grid-cols-2 gap-1">
+                                        {[
+                                          { s: 'to_contact' as const, label: '📞 A Contatar' },
+                                          { s: 'contacted' as const, label: '💬 Contatado' },
+                                          { s: 'proposal' as const, label: '📑 Proposta' },
+                                          { s: 'won' as const, label: '🏆 Fechado' },
+                                          { s: 'lost' as const, label: '⏸️ Recusado' }
+                                        ].map(target => (
+                                          <button
+                                            key={target.s}
+                                            type="button"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              updateLeadStage(lead.id, target.s);
+                                            }}
+                                            className={`text-[9px] px-1.5 py-1 rounded text-left font-semibold transition ${
+                                              lead.stage === target.s
+                                                ? 'bg-blue-600 text-white'
+                                                : 'bg-white hover:bg-slate-200 text-slate-700 border border-slate-200'
+                                            }`}
+                                          >
+                                            {target.label}
+                                          </button>
+                                        ))}
+                                      </div>
+                                    </motion.div>
+                                  )}
+                                </AnimatePresence>
+
+                                {/* Action Buttons Row */}
+                                <div className="flex items-center gap-1 pt-1.5 border-t border-slate-100">
+                                  {/* Next Stage Primary Action Button */}
+                                  {column.nextStage && column.nextBtnLabel && (
+                                    <button
+                                      type="button"
+                                      onClick={() => updateLeadStage(lead.id, column.nextStage!)}
+                                      className={`flex-1 py-1 px-2 text-center rounded-md text-[10px] transition cursor-pointer ${column.nextBtnClass}`}
+                                    >
+                                      {column.nextBtnLabel}
+                                    </button>
+                                  )}
+
+                                  {/* In Proposal column: also give Lost button */}
+                                  {column.id === 'proposal' && (
+                                    <button
+                                      type="button"
+                                      onClick={() => updateLeadStage(lead.id, 'lost')}
+                                      className="px-2 py-1 bg-slate-50 hover:bg-slate-100 text-slate-500 rounded-md text-[10px] cursor-pointer"
+                                      title="Marcar como Recusado"
+                                    >
+                                      Perdido
+                                    </button>
+                                  )}
+
+                                  {/* In Won column: Site Configuration button */}
+                                  {column.id === 'won' && (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        requireMasterAccess('site_preview', () => {
+                                          setSelectedLead(lead);
+                                          generateWebsiteTemplate(lead);
+                                        });
+                                      }}
+                                      className="flex-1 py-1 text-center bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-md text-[10px] flex items-center justify-center gap-1 cursor-pointer"
+                                    >
+                                      <span>Configurar Site</span>
+                                      {!isMasterAuthenticated && <Lock className="h-2.5 w-2.5 text-amber-400" />}
+                                    </button>
+                                  )}
+
+                                  {/* Quick Stage Mover Selector Toggle */}
+                                  <button
+                                    type="button"
+                                    onClick={() => setActiveQuickStageLeadId(isQuickStageOpen ? null : lead.id)}
+                                    className={`px-1.5 py-1 rounded-md text-[10px] border transition cursor-pointer ${
+                                      isQuickStageOpen
+                                        ? 'bg-blue-100 text-blue-700 border-blue-300'
+                                        : 'bg-slate-50 hover:bg-slate-100 text-slate-600 border-slate-200'
+                                    }`}
+                                    title="Mover para qualquer etapa"
+                                  >
+                                    Etapa ▾
+                                  </button>
+
+                                  {/* WhatsApp quick contact */}
+                                  {lead.phone && (
+                                    <a
+                                      href={getWhatsAppLink(lead)}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="px-1.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-md text-[10px] flex items-center justify-center"
+                                      title="Conversar no WhatsApp"
+                                    >
+                                      <MessageSquare className="h-3 w-3" />
+                                    </a>
+                                  )}
+
+                                  {/* Site preview button in to_contact */}
+                                  {column.id === 'to_contact' && (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        requireMasterAccess('site_preview', () => {
+                                          setSelectedLead(lead);
+                                          generateWebsiteTemplate(lead);
+                                        });
+                                      }}
+                                      className="px-1.5 py-1 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-md text-[10px] flex items-center gap-0.5 cursor-pointer"
+                                      title="Gerar Site de Modelo (Requer Master)"
+                                    >
+                                      <span>Site</span>
+                                      {!isMasterAuthenticated && <Lock className="h-2 w-2 text-amber-500" />}
+                                    </button>
+                                  )}
+                                </div>
+                              </motion.div>
+                            );
+                          })
+                        )}
+                      </AnimatePresence>
                     </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* STAGE 3: PROPOSAL */}
-              <div className="bg-slate-100 border border-slate-200/60 rounded-2xl p-3 min-w-[240px] flex flex-col h-[520px]">
-                <div className="flex items-center justify-between mb-3 px-1">
-                  <span className="text-xs font-bold text-slate-700 uppercase tracking-wider text-indigo-700">Proposta Enviada</span>
-                  <span className="bg-indigo-100 text-indigo-800 text-xs px-2 py-0.5 rounded-full font-bold">
-                    {getLeadsByStage('proposal').length}
-                  </span>
-                </div>
-
-                <div className="space-y-3 flex-1 overflow-y-auto">
-                  {getLeadsByStage('proposal').map(lead => (
-                    <div key={lead.id} className="bg-white border border-slate-200 rounded-xl p-3 shadow-xs space-y-2 hover:border-blue-400 transition-all">
-                      <h4 className="font-bold text-xs text-slate-900 leading-tight">{lead.name}</h4>
-                      <div className="flex justify-between items-center text-[10px] text-slate-400">
-                        <span>{lead.productType?.toUpperCase()}</span>
-                        <span className="font-semibold text-slate-700">R$ {lead.saleValue}</span>
-                      </div>
-                      {lead.nextFollowUp && (
-                        <div className="flex items-center gap-1 text-[9px] font-bold text-blue-800 bg-blue-50 border border-blue-100 px-1.5 py-0.5 rounded-sm w-fit">
-                          📅 F/U: {lead.nextFollowUp.split('-').reverse().join('/')}
-                        </div>
-                      )}
-                      {lead.historyNotes && lead.historyNotes.length > 0 && (
-                        <p className="text-[9px] text-slate-500 italic truncate max-w-full">
-                          📝 {lead.historyNotes[lead.historyNotes.length - 1]}
-                        </p>
-                      )}
-                      <div className="flex gap-1 pt-1.5 border-t border-slate-100">
-                        <button
-                          onClick={() => updateLeadStage(lead.id, 'won')}
-                          className="flex-1 py-1 text-center bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-md text-[10px]"
-                        >
-                          Fechar Venda 🎉
-                        </button>
-                        <button
-                          onClick={() => updateLeadStage(lead.id, 'lost')}
-                          className="px-2 py-1 bg-slate-50 hover:bg-slate-100 text-slate-500 rounded-md text-[10px]"
-                          title="Recusada"
-                        >
-                          Perdido
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* STAGE 4: WON */}
-              <div className="bg-slate-100 border border-slate-200/60 rounded-2xl p-3 min-w-[240px] flex flex-col h-[520px]">
-                <div className="flex items-center justify-between mb-3 px-1">
-                  <span className="text-xs font-bold text-slate-700 uppercase tracking-wider text-emerald-700">Fechado 🎉</span>
-                  <span className="bg-emerald-100 text-emerald-800 text-xs px-2 py-0.5 rounded-full font-bold">
-                    {getLeadsByStage('won').length}
-                  </span>
-                </div>
-
-                <div className="space-y-3 flex-1 overflow-y-auto">
-                  {getLeadsByStage('won').map(lead => (
-                    <div key={lead.id} className="bg-white border border-emerald-300 rounded-xl p-3 shadow-xs space-y-2 relative overflow-hidden">
-                      <div className="absolute right-0 top-0 bg-emerald-500 text-white text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-bl-lg">PAGO</div>
-                      <h4 className="font-bold text-xs text-slate-900 leading-tight pr-6">{lead.name}</h4>
-                      <div className="flex justify-between items-center text-[10px]">
-                        <span className="text-emerald-700 font-semibold">{lead.productType?.toUpperCase()}</span>
-                        <span className="font-bold text-slate-800">R$ {lead.saleValue}</span>
-                      </div>
-                      {lead.nextFollowUp && (
-                        <div className="flex items-center gap-1 text-[9px] font-bold text-blue-800 bg-blue-50 border border-blue-100 px-1.5 py-0.5 rounded-sm w-fit">
-                          📅 F/U: {lead.nextFollowUp.split('-').reverse().join('/')}
-                        </div>
-                      )}
-                      {lead.historyNotes && lead.historyNotes.length > 0 && (
-                        <p className="text-[9px] text-slate-500 italic truncate max-w-full">
-                          📝 {lead.historyNotes[lead.historyNotes.length - 1]}
-                        </p>
-                      )}
-                      <div className="flex gap-1 pt-1.5 border-t border-slate-100">
-                        <button
-                          onClick={() => {
-                            requireMasterAccess('site_preview', () => {
-                              setSelectedLead(lead);
-                              generateWebsiteTemplate(lead);
-                            });
-                          }}
-                          className="flex-1 py-1 text-center bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-md text-[10px] flex items-center justify-center gap-1"
-                        >
-                          <span>Configurar Site</span>
-                          {!isMasterAuthenticated && <Lock className="h-2.5 w-2.5 text-amber-400" />}
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* STAGE 5: LOST */}
-              <div className="bg-slate-100 border border-slate-200/60 rounded-2xl p-3 min-w-[240px] flex flex-col h-[520px]">
-                <div className="flex items-center justify-between mb-3 px-1">
-                  <span className="text-xs font-bold text-slate-700 uppercase tracking-wider text-slate-500">Recusado</span>
-                  <span className="bg-slate-200 text-slate-600 text-xs px-2 py-0.5 rounded-full font-bold">
-                    {getLeadsByStage('lost').length}
-                  </span>
-                </div>
-
-                <div className="space-y-3 flex-1 overflow-y-auto">
-                  {getLeadsByStage('lost').map(lead => (
-                    <div key={lead.id} className="bg-white border border-slate-200 rounded-xl p-3 shadow-xs space-y-2 opacity-65">
-                      <h4 className="font-bold text-xs text-slate-500 leading-tight">{lead.name}</h4>
-                      <div className="flex gap-1 justify-end pt-1">
-                        <button
-                          onClick={() => updateLeadStage(lead.id, 'to_contact')}
-                          className="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-md text-[9px]"
-                        >
-                          Reativar Lead
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+                  </div>
+                );
+              })}
 
             </div>
 
           </div>
         )}
 
-        {/* TAB 3: AI WEBSITE MODEL GENERATOR */}
+        {/* TAB 3: AI WEBSITE MODEL GENERATOR & CLIENT MINI SITE */}
         {activeTab === 'site_preview' && (
           <div>
-            {!isMasterAuthenticated ? (
-              <div className="max-w-md mx-auto my-12 bg-white rounded-3xl border border-slate-200/80 p-8 shadow-xl text-center space-y-6">
-                <div className="mx-auto w-16 h-16 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600 shadow-inner">
-                  <Lock className="h-8 w-8" />
-                </div>
-                <div>
-                  <span className="inline-block text-[10px] font-extrabold tracking-widest uppercase bg-amber-100 text-amber-900 px-3 py-1 rounded-full mb-2">
-                    Acesso Restrito Master
-                  </span>
-                  <h2 className="text-xl font-black text-slate-900">
-                    Site Demonstrativo Protegido
-                  </h2>
-                  <p className="text-xs text-slate-500 mt-2 leading-relaxed">
-                    A criação e simulação de sites de modelo é uma ferramenta estratégica exclusiva para operadores autorizados. Faça login com a senha Master para desbloquear.
-                  </p>
-                </div>
-
-                <form onSubmit={handleMasterLogin} className="space-y-4 text-left">
-                  <button
-                    type="button"
-                    onClick={quickMasterUnlock}
-                    className="w-full py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-black text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-98"
-                  >
-                    <Zap className="h-3.5 w-3.5 text-amber-200 fill-amber-200" />
-                    <span>⚡ Desbloqueio Rápido Master (1-Clique)</span>
-                  </button>
-
-                  <div className="relative flex py-1 items-center">
-                    <div className="flex-grow border-t border-slate-200"></div>
-                    <span className="flex-shrink mx-2 text-[10px] text-slate-400 font-bold uppercase">Ou digite suas credenciais</span>
-                    <div className="flex-grow border-t border-slate-200"></div>
-                  </div>
-
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="block text-xs font-bold text-slate-700">Usuário Master</label>
-                      <div className="flex gap-1">
-                        <button
-                          type="button"
-                          onClick={() => fillMasterCredentials('default')}
-                          className="text-[9px] px-1.5 py-0.5 bg-slate-100 text-slate-700 border border-slate-200 rounded font-bold hover:bg-slate-200 transition cursor-pointer"
-                          title="Preencher com master"
-                        >
-                          master
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => fillMasterCredentials('env')}
-                          className="text-[9px] px-1.5 py-0.5 bg-amber-50 text-amber-800 border border-amber-200 rounded font-bold hover:bg-amber-100 transition cursor-pointer"
-                          title="Preencher com Mysis@26"
-                        >
-                          Mysis@26
-                        </button>
-                      </div>
-                    </div>
-                    <input
-                      type="text"
-                      value={masterUserInput}
-                      onChange={(e) => setMasterUserInput(e.target.value)}
-                      placeholder="master ou Mysis@26"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-semibold focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">Senha Master</label>
-                    <input
-                      type="password"
-                      value={masterPasswordInput}
-                      onChange={(e) => setMasterPasswordInput(e.target.value)}
-                      placeholder="master, master@2026 ou Myadm@26"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-semibold focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all"
-                    />
-                  </div>
-
-                  {masterError && (
-                    <div className="p-3 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2 text-xs font-bold text-red-700">
-                      <AlertCircle className="h-4 w-4 shrink-0 text-red-500" />
-                      <span>{masterError}</span>
-                    </div>
-                  )}
-
-                  <button
-                    type="submit"
-                    disabled={masterIsLoading}
-                    className="w-full py-2.5 bg-slate-900 hover:bg-black text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-                  >
-                    {masterIsLoading ? (
-                      <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <Unlock className="h-3.5 w-3.5 text-amber-400" />
-                    )}
-                    <span>Desbloquear Site Demonstrativo</span>
-                  </button>
-                </form>
-
-                <p className="text-[11px] text-slate-400 font-medium">
-                  Operador Master ALEF Automações • Aceita: master / master ou Mysis@26 / Myadm@26
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-6">
+            <div className="space-y-6">
                 {/* 🌟 SWITCHER DE MODO DO SITE DEMONSTRATIVO: MINI SITE vs LANDING PAGE COMPLETA */}
                 <div className="bg-white border border-slate-200 rounded-3xl p-4 md:p-5 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
                   <div className="flex items-center gap-3.5">
@@ -3995,42 +3996,55 @@ export default function App() {
                   </div>
                 </div>
 
-                {demonstratorMode === 'minisite' ? (
-                  <MiniSiteViewer
-                    config={{
-                      id: selectedLead?.id || 'demo',
-                      companyName: selectedLead?.name || 'Sua Empresa Aqui',
-                      niche: selectedLead?.niche || niche || 'Negócio Local',
-                      city: selectedLead?.city || city || 'São Paulo',
-                      tagline: selectedLead?.weakness
-                        ? `Atendimento de excelência e soluções rápidas em ${selectedLead.city || 'sua cidade'}`
-                        : 'Atendimento exclusivo, qualidade garantida e agilidade.',
-                      whatsappNumber: selectedLead?.nfcWhatsappNum || selectedLead?.phone || '',
-                      whatsappMessage: selectedLead?.nfcWhatsappMsg || `Olá! Vim através do Mini Site de ${selectedLead?.name || 'sua empresa'} e gostaria de atendimento.`,
-                      instagramUrl: selectedLead?.nfcInstagramUrl || '',
-                      googleReviewUrl: selectedLead?.googleMapsUrl || gmbReviewLink || 'https://maps.google.com',
-                      websiteUrl: selectedLead?.websiteUrl || '',
-                      pixKey: (selectedLead as any)?.miniSiteConfig?.pixKey || (selectedLead?.phone ? selectedLead.phone.replace(/\D/g, '') : 'pix@empresa.com.br'),
-                      pixBeneficiary: selectedLead?.name || 'Empresa Local',
-                      pixKeyType: 'telefone',
-                      wifiSsid: (selectedLead as any)?.miniSiteConfig?.wifiSsid || `${(selectedLead?.name || 'Empresa').replace(/\s+/g, '_')}_WiFi`,
-                      wifiPassword: (selectedLead as any)?.miniSiteConfig?.wifiPassword || 'VisiteNos123',
-                      address: (selectedLead as any)?.miniSiteConfig?.address || selectedLead?.address || '',
-                      phone: selectedLead?.phone || '',
-                      openingHours: (selectedLead as any)?.miniSiteConfig?.openingHours || 'Segunda a Sábado: 08h às 19h',
-                      theme: 'dark_neon'
-                    }}
-                    leadId={selectedLead?.id || 'demo'}
-                    isLinkedToNfc={selectedLead?.nfcRedirectActive === 'minisite'}
-                    onLinkToNfc={() => {
-                      if (selectedLead) {
-                        updateLeadDetails(selectedLead.id, { nfcRedirectActive: 'minisite' });
-                        alert(`Mini Site de ${selectedLead.name} vinculado com sucesso à Placa NFC! Ao encostar o celular na placa física ou escanear o QR Code, este Mini Site abrirá na hora.`);
-                      }
-                    }}
-                    onChangeConfig={(updated) => {
-                      if (selectedLead) {
-                        updateLeadDetails(selectedLead.id, {
+                {demonstratorMode === 'minisite' ? (() => {
+                  const activeTarget = selectedLead || leads[0];
+                  const saved = (activeTarget as any)?.miniSiteConfig || {};
+                  const mockup = getMockupByNiche(saved.niche || activeTarget?.niche || niche || 'Hamburgueria');
+                  const finalConfig: MiniSiteConfig = {
+                    id: activeTarget?.id || 'demo',
+                    companyName: saved.companyName || activeTarget?.name || mockup.config.companyName,
+                    niche: saved.niche || activeTarget?.niche || niche || mockup.config.niche,
+                    city: saved.city || activeTarget?.city || city || mockup.config.city,
+                    tagline: saved.tagline || mockup.config.tagline || (activeTarget?.weakness
+                      ? `Atendimento de excelência e soluções rápidas em ${activeTarget?.city || 'sua cidade'}`
+                      : 'Atendimento exclusivo, qualidade garantida e agilidade.'),
+                    logoUrl: saved.logoUrl || mockup.config.logoUrl || '',
+                    marqueeText: saved.marqueeText || mockup.config.marqueeText || '🔥 NOVIDADES TODA SEMANA • VISITE NOSSA LOJA • ATENDIMENTO VIP • COMPRE PELO WHATSAPP • QUALIDADE GARANTIDA 🔥',
+                    whatsappNumber: saved.whatsappNumber || activeTarget?.nfcWhatsappNum || activeTarget?.phone || mockup.config.whatsappNumber || '',
+                    whatsappMessage: saved.whatsappMessage || activeTarget?.nfcWhatsappMsg || `Olá! Vim através do Mini Site de ${saved.companyName || activeTarget?.name || mockup.config.companyName} e gostaria de atendimento.`,
+                    instagramUrl: saved.instagramUrl || activeTarget?.nfcInstagramUrl || mockup.config.instagramUrl || '',
+                    googleReviewUrl: saved.googleReviewUrl || activeTarget?.googleMapsUrl || gmbReviewLink || mockup.config.googleReviewUrl || 'https://maps.google.com',
+                    websiteUrl: saved.websiteUrl || activeTarget?.websiteUrl || mockup.config.websiteUrl || '',
+                    pixKey: saved.pixKey || (activeTarget?.phone ? formatMiniSitePhone(activeTarget.phone) : mockup.config.pixKey || 'pix@empresa.com.br'),
+                    pixBeneficiary: saved.pixBeneficiary || saved.companyName || activeTarget?.name || mockup.config.pixBeneficiary || 'Empresa Local',
+                    pixKeyType: saved.pixKeyType || 'telefone',
+                    wifiSsid: saved.wifiSsid || mockup.config.wifiSsid || 'WiFi_Visitantes',
+                    wifiPassword: saved.wifiPassword || mockup.config.wifiPassword || 'VisiteNos123',
+                    address: saved.address || activeTarget?.address || mockup.config.address || '',
+                    phone: saved.phone || activeTarget?.phone || mockup.config.phone || '',
+                    openingHours: saved.openingHours || mockup.config.openingHours || 'Segunda a Sábado: 08h às 19h',
+                    services: Array.isArray(saved.services) && saved.services.length > 0
+                      ? saved.services
+                      : mockup.config.services || getDefaultFourProducts(saved.niche || activeTarget?.niche || niche, saved.companyName || activeTarget?.name || 'Sua Empresa'),
+                    theme: saved.theme || 'dark_neon'
+                  };
+
+                  return (
+                    <MiniSiteViewer
+                      config={finalConfig}
+                      leadId={activeTarget?.id || 'demo'}
+                      isLinkedToNfc={activeTarget?.nfcRedirectActive === 'minisite'}
+                      onLinkToNfc={(vercelUrl) => {
+                        if (activeTarget) {
+                          updateLeadDetails(activeTarget.id, { 
+                            nfcRedirectActive: 'minisite',
+                            nfcCustomUrl: vercelUrl || undefined
+                          });
+                        }
+                      }}
+                      onSaveConfig={async (updated) => {
+                        const targetId = activeTarget?.id || 'empresa-principal';
+                        await updateLeadDetails(targetId, {
                           name: updated.companyName,
                           niche: updated.niche,
                           city: updated.city,
@@ -4039,26 +4053,25 @@ export default function App() {
                           nfcInstagramUrl: updated.instagramUrl,
                           googleMapsUrl: updated.googleReviewUrl,
                           websiteUrl: updated.websiteUrl,
-                          phone: updated.phone || selectedLead.phone,
-                          address: updated.address || selectedLead.address,
-                          miniSiteConfig: {
-                            pixKey: updated.pixKey,
-                            pixBeneficiary: updated.pixBeneficiary,
-                            pixKeyType: updated.pixKeyType,
-                            wifiSsid: updated.wifiSsid,
-                            wifiPassword: updated.wifiPassword,
-                            tagline: updated.tagline,
-                            logoUrl: updated.logoUrl,
-                            theme: updated.theme,
-                            address: updated.address,
-                            phone: updated.phone,
-                            openingHours: updated.openingHours
-                          }
+                          phone: updated.phone,
+                          address: updated.address,
+                          miniSiteConfig: updated
                         });
-                      }
-                    }}
-                  />
-                ) : (
+                      }}
+                      onChangeConfig={(updated) => {
+                        if (activeTarget) {
+                          setSelectedLead({
+                            ...activeTarget,
+                            name: updated.companyName,
+                            niche: updated.niche,
+                            city: updated.city,
+                            miniSiteConfig: updated
+                          });
+                        }
+                      }}
+                    />
+                  );
+                })() : (
                   <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 
                 {/* Template parameters live-editor panel */}
@@ -4906,15 +4919,12 @@ export default function App() {
                       <p className="text-xs text-slate-400">Gere o site de modelo no menu de prospecção para ver a prévia interativa.</p>
                     </div>
                   )}
-
                 </div>
-
-              </div>
-                )}
               </div>
             )}
           </div>
-        )}
+        </div>
+      )}
 
         {/* TAB 4: PHYSICAL NFC CARD DESIGNER & 3D TOTEM SIMULATOR */}
         {(activeTab === 'nfc_designer' || (activeTab as any) === 'nfc') && (
@@ -5147,6 +5157,15 @@ export default function App() {
           </div>
         )}
 
+        {/* TAB: CARDÁPIO DIGITAL & MESAS */}
+        {activeTab === 'cardapio' && (
+          <CardapioDigitalManager
+            onLinkToNfc={(url, menuName) => {
+              setActiveTab('dynamic_qr');
+            }}
+          />
+        )}
+
         {/* TAB 6: SAAS PORTAL AND CLIENT NFC MANAGER */}
         {activeTab === 'portal' && (
           <div>
@@ -5253,17 +5272,17 @@ export default function App() {
               </div>
 
               {/* Sub-Navigation inside the Tab */}
-              <div className="flex gap-2.5 mt-6 border-t border-slate-800/80 pt-5">
+              <div className="flex flex-col sm:flex-row flex-wrap gap-2 sm:gap-2.5 mt-6 border-t border-slate-800/80 pt-5">
                 <button
                   onClick={() => setPortalMode('admin')}
-                  className={`flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl transition cursor-pointer ${
+                  className={`flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl transition cursor-pointer text-center ${
                     portalMode === 'admin' 
                       ? 'bg-white text-slate-900 shadow-md' 
                       : 'bg-slate-900/40 text-slate-300 hover:bg-slate-900/80 border border-slate-800'
                   }`}
                 >
-                  <Shield className="w-3.5 h-3.5" />
-                  Console Admin ALF
+                  <Shield className="w-3.5 h-3.5 shrink-0" />
+                  <span>Console Admin ALF</span>
                 </button>
                 <button
                   onClick={() => {
@@ -5273,21 +5292,21 @@ export default function App() {
                       setPortalMode('client_login');
                     }
                   }}
-                  className={`flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl transition cursor-pointer ${
+                  className={`flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl transition cursor-pointer text-center ${
                     portalMode === 'client_login' || portalMode === 'client_panel'
                       ? 'bg-white text-slate-900 shadow-md' 
                       : 'bg-slate-900/40 text-slate-300 hover:bg-slate-900/80 border border-slate-800'
                   }`}
                 >
-                  <Smartphone className="w-3.5 h-3.5" />
-                  📱 Área do Cliente {loggedInClient && `(${loggedInClient.name})`}
+                  <Smartphone className="w-3.5 h-3.5 shrink-0" />
+                  <span className="truncate">📱 Área do Cliente {loggedInClient && `(${loggedInClient.name})`}</span>
                 </button>
                 <button
                   onClick={() => changeTab('dynamic_qr')}
-                  className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl transition cursor-pointer bg-cyan-500/20 text-cyan-300 hover:bg-cyan-500/30 border border-cyan-400/40 ml-auto"
+                  className="flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl transition cursor-pointer bg-cyan-500/20 text-cyan-300 hover:bg-cyan-500/30 border border-cyan-400/40 sm:ml-auto text-center"
                   title="Abrir Central de QR Codes Dinâmicos em Lote"
                 >
-                  <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+                  <Sparkles className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
                   <span>Gerar em Lote (1 a 40)</span>
                 </button>
               </div>
@@ -5870,50 +5889,50 @@ export default function App() {
             {portalMode === 'client_panel' && loggedInClient && (
               <div className="space-y-6 animate-in fade-in duration-150">
                 {/* Client Portal Navigation Tabs */}
-                <div className="bg-white border border-slate-200 rounded-2xl p-2.5 shadow-xs flex flex-wrap items-center justify-between gap-3">
-                  <div className="flex items-center gap-2">
+                <div className="bg-white border border-slate-200 rounded-2xl p-2.5 sm:p-3 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:flex items-center gap-2 w-full md:w-auto">
                     <button
                       type="button"
                       onClick={() => setClientPortalTab('config')}
-                      className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                      className={`px-3 sm:px-4 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer text-center ${
                         clientPortalTab === 'config'
                           ? 'bg-slate-900 text-white shadow-sm'
                           : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
                       }`}
                     >
-                      <Sliders className="w-3.5 h-3.5 text-cyan-400" />
+                      <Sliders className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
                       <span>Destino da Placa &amp; QR</span>
                     </button>
 
                     <button
                       type="button"
                       onClick={() => setClientPortalTab('monitoring')}
-                      className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                      className={`px-3 sm:px-4 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer text-center ${
                         clientPortalTab === 'monitoring'
                           ? 'bg-slate-900 text-white shadow-sm'
                           : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
                       }`}
                     >
-                      <Activity className="w-3.5 h-3.5 text-cyan-400" />
-                      <span>Monitoramento de Acessos NFC</span>
-                      <span className="ml-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-cyan-500/20 text-cyan-700 border border-cyan-500/30">
-                        Recharts
+                      <Activity className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                      <span className="truncate">Monitoramento de Acessos</span>
+                      <span className="ml-1 px-1.5 py-0.5 rounded-full text-[9px] font-black bg-cyan-500/20 text-cyan-700 border border-cyan-500/30">
+                        NFC
                       </span>
                     </button>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center justify-between md:justify-end gap-2 w-full md:w-auto pt-2 md:pt-0 border-t md:border-t-0 border-slate-100">
                     <button
                       type="button"
                       onClick={() => {
                         setNfcWriterTarget(loggedInClient);
                         setIsNfcWriterOpen(true);
                       }}
-                      className="px-3.5 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white shadow-sm transition flex items-center gap-1.5 cursor-pointer"
+                      className="flex-1 md:flex-initial px-3.5 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white shadow-sm transition flex items-center justify-center gap-1.5 cursor-pointer text-center"
                       title="Gravar na Tag NFC pelo Google Chrome no Android"
                     >
-                      <Smartphone className="w-3.5 h-3.5" />
-                      <span>Gravar Tag NFC (Chrome Android)</span>
+                      <Smartphone className="w-3.5 h-3.5 shrink-0" />
+                      <span className="truncate">Gravar Tag NFC</span>
                     </button>
 
                     <button
@@ -5922,9 +5941,9 @@ export default function App() {
                         setLoggedInClient(null);
                         setPortalMode('client_login');
                       }}
-                      className="px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition cursor-pointer"
+                      className="px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition cursor-pointer shrink-0"
                     >
-                      Sair do Portal
+                      Sair
                     </button>
                   </div>
                 </div>
@@ -5939,7 +5958,7 @@ export default function App() {
                   <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 
                 {/* Left Panel: Link display & QR Code */}
-                <div className="lg:col-span-5 bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col justify-between gap-6">
+                <div className="lg:col-span-5 bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 shadow-sm flex flex-col justify-between gap-5 sm:gap-6">
                   <div className="space-y-4">
                     <div className="flex items-center gap-3">
                       <div className="h-10 w-10 bg-emerald-50 border border-emerald-100 rounded-xl text-emerald-600 flex items-center justify-center font-bold">
@@ -5994,34 +6013,34 @@ export default function App() {
                   </div>
 
                   {/* Dynamic QR Code display */}
-                  <div className="bg-slate-950 text-white rounded-2xl p-5 text-center flex flex-col items-center gap-3 shadow-lg relative overflow-hidden">
+                  <div className="bg-slate-950 text-white rounded-2xl p-4 sm:p-5 text-center flex flex-col items-center gap-3 shadow-lg relative overflow-hidden">
                     <div className="absolute inset-0 bg-radial-gradient from-blue-600/10 to-transparent pointer-events-none"></div>
                     
                     {/* Mode Selector Toggle */}
-                    <div className="flex items-center gap-1 bg-white/10 p-1 rounded-xl w-full text-[11px] font-bold">
+                    <div className="flex flex-col sm:flex-row items-center gap-1.5 bg-white/10 p-1.5 rounded-xl w-full text-[11px] font-bold">
                       <button
                         type="button"
                         onClick={() => setPortalQrMode('dynamic')}
-                        className={`flex-1 py-1.5 px-2 rounded-lg transition cursor-pointer flex items-center justify-center gap-1 ${
+                        className={`w-full sm:flex-1 py-2 sm:py-1.5 px-2 rounded-lg transition cursor-pointer flex items-center justify-center gap-1 ${
                           portalQrMode === 'dynamic'
                             ? 'bg-cyan-500 text-slate-950 font-black shadow-xs'
                             : 'text-slate-300 hover:text-white'
                         }`}
                       >
-                        <RefreshCw className="w-3 h-3" />
-                        <span>🔄 Dinâmico Nuvem</span>
+                        <RefreshCw className="w-3 h-3 shrink-0" />
+                        <span className="truncate">🔄 Dinâmico Nuvem</span>
                       </button>
                       <button
                         type="button"
                         onClick={() => setPortalQrMode('direct')}
-                        className={`flex-1 py-1.5 px-2 rounded-lg transition cursor-pointer flex items-center justify-center gap-1 ${
+                        className={`w-full sm:flex-1 py-2 sm:py-1.5 px-2 rounded-lg transition cursor-pointer flex items-center justify-center gap-1 ${
                           portalQrMode === 'direct'
                             ? 'bg-emerald-500 text-slate-950 font-black shadow-xs'
                             : 'text-slate-300 hover:text-white'
                         }`}
                       >
-                        <CheckCircle className="w-3 h-3" />
-                        <span>⭐ Direto Google</span>
+                        <CheckCircle className="w-3 h-3 shrink-0" />
+                        <span className="truncate">⭐ Direto Google</span>
                       </button>
                     </div>
                     
@@ -6053,11 +6072,11 @@ export default function App() {
                         setArtworkTargetLead(loggedInClient);
                         setIsArtworkModalOpen(true);
                       }}
-                      className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 active:scale-98 text-slate-950 text-xs font-black py-3 px-4 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer"
+                      className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 active:scale-98 text-slate-950 text-xs font-black py-2.5 sm:py-3 px-3 sm:px-4 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer text-center"
                       title="Baixar arte da Placa 10x10cm e Cartão NFC 5.4x8.5cm em alta resolução 300 DPI para enviar para a gráfica"
                     >
-                      <Sparkles className="w-4 h-4 text-slate-950 fill-slate-950" />
-                      <span>Baixar Placa 10x10 & Cartão NFC (300 DPI)</span>
+                      <Sparkles className="w-4 h-4 text-slate-950 fill-slate-950 shrink-0" />
+                      <span className="text-xs">Baixar Placa 10x10 &amp; Cartão NFC (300 DPI)</span>
                     </button>
 
                     {/* Quick Download Buttons: 10x10 Plate & 5.4x8.5 Card */}
@@ -6417,7 +6436,60 @@ export default function App() {
           </div>
         )}
 
+        {/* 9: PÁGINA DE VENDAS & APRESENTAÇÃO COMERCIAL (HIGH-CONVERSION PITCH) */}
+        {activeTab === 'landing' && (
+          <div className="rounded-3xl overflow-hidden border border-slate-800 shadow-2xl bg-slate-950">
+            <div className="p-3.5 bg-slate-900 border-b border-slate-800 flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-xs font-bold text-slate-200">
+                  Modo Apresentação Comercial / Demonstração Interativa para Clientes
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleNavSelect('dynamic_qr')}
+                className="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95"
+              >
+                <ArrowLeft className="h-3.5 w-3.5" />
+                <span>Voltar ao Painel ALF</span>
+              </button>
+            </div>
+            <SalesLandingPage
+              initialNiche={selectedLead?.niche || undefined}
+              onOpenLogin={() => setIsMasterModalOpen(true)}
+              onExploreDemo={() => handleNavSelect('site_preview')}
+            />
+          </div>
+        )}
+
       </main>
+
+        {/* Footer Branding */}
+        <footer className="bg-white border-t border-slate-200 py-6 mt-12 w-full" id="main-footer">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-xs text-slate-500 space-y-2.5">
+            <p className="font-semibold text-slate-700">
+              Desenvolvido por <span className="text-slate-900 font-extrabold">ALF Automação</span>
+            </p>
+            <div className="flex items-center justify-center gap-1.5 text-xs">
+              <a
+                href="https://instagram.com/alefautomacao"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 font-bold text-pink-600 hover:text-pink-700 hover:underline transition-colors px-2.5 py-1 rounded-full bg-pink-50 border border-pink-100"
+                title="Acessar Instagram @alefautomacao"
+                id="footer-instagram-link"
+              >
+                <Instagram className="h-3.5 w-3.5" />
+                <span>@alefautomacao</span>
+              </a>
+            </div>
+            <p className="text-[11px] text-slate-400">
+              © 2026 ALF Automação. Todos os direitos reservados.
+            </p>
+          </div>
+        </footer>
+      </div> {/* End Main Workspace (Header + Viewport + Footer) */}
 
       {/* EXPORT SITE MODAL */}
       <ExportSiteModal
@@ -6630,37 +6702,26 @@ export default function App() {
               )}
             </div>
 
+            <div className="pt-2 text-center border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsMasterModalOpen(false);
+                  setIsSellerRegisterModalOpen(true);
+                }}
+                className="text-[11px] text-emerald-600 hover:text-emerald-700 font-bold hover:underline cursor-pointer flex items-center justify-center gap-1.5 mx-auto"
+              >
+                <Briefcase className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Quer revender nosso sistema? Cadastre-se como Vendedor / Parceiro</span>
+              </button>
+            </div>
+
             <p className="text-[10px] text-center text-slate-400">
               ALEF Automações • Autenticação Segura de Operadores
             </p>
           </div>
         </div>
       )}
-
-      {/* Footer Branding */}
-      <footer className="bg-white border-t border-slate-200 py-6 mt-12" id="main-footer">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-xs text-slate-500 space-y-2.5">
-          <p className="font-semibold text-slate-700">
-            Desenvolvido por <span className="text-slate-900 font-extrabold">ALEF Automações</span>
-          </p>
-          <div className="flex items-center justify-center gap-1.5 text-xs">
-            <a
-              href="https://instagram.com/alefautomacao"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 font-bold text-pink-600 hover:text-pink-700 hover:underline transition-colors px-2.5 py-1 rounded-full bg-pink-50 border border-pink-100"
-              title="Acessar Instagram @alefautomacao"
-              id="footer-instagram-link"
-            >
-              <Instagram className="h-3.5 w-3.5" />
-              <span>@alefautomacao</span>
-            </a>
-          </div>
-          <p className="text-[11px] text-slate-400">
-            © 2026 ALEF Automações. Todos os direitos reservados.
-          </p>
-        </div>
-      </footer>
 
       {/* Global Artwork Download Modal */}
       <NfcArtworkDownloadModal
@@ -6679,6 +6740,7 @@ export default function App() {
             plaquePrintedAt: newStatus ? new Date().toISOString() : undefined
           });
         }}
+        onPrintPlate={print10x10Plate}
       />
 
       {/* Universal Plate Scanner & Quick Lookup Modal */}
@@ -6700,6 +6762,65 @@ export default function App() {
         onClose={() => setIsCustomDomainModalOpen(false)}
       />
 
+      {/* Antigravity & IDE Project Export Modal */}
+      <AntigravityExportModal
+        isOpen={isAntigravityModalOpen}
+        onClose={() => setIsAntigravityModalOpen(false)}
+      />
+
+      {/* Seller & Affiliate Self-Registration Modal */}
+      <SellerRegisterModal
+        isOpen={isSellerRegisterModalOpen}
+        onClose={() => setIsSellerRegisterModalOpen(false)}
+        onSuccess={(newUser, token) => {
+          if (currentUser?.role !== 'master' && !isMasterAuthenticated) {
+            setCurrentUser({
+              token,
+              username: newUser.username,
+              name: newUser.name,
+              role: newUser.role,
+              allowedTabs: newUser.allowedTabs,
+              clientPermissions: newUser.clientPermissions
+            } as any);
+          }
+        }}
+      />
+
+      {/* Secure Auth & Operator Switcher Modal */}
+      <SecureAuthModal
+        isOpen={isLoginModalOpen}
+        onClose={() => setIsLoginModalOpen(false)}
+        onLoginSuccess={(user) => {
+          setCurrentUser(user);
+          try {
+            localStorage.setItem('alf_auth_user', JSON.stringify(user));
+            localStorage.setItem('alf_master_auth', user.role === 'master' ? 'true' : 'false');
+            localStorage.setItem('alf_master_user', user.username);
+          } catch (_) {}
+          setIsLoginModalOpen(false);
+          if (authTargetTab) {
+            changeTab(authTargetTab as any);
+          }
+        }}
+        targetTabName={authTargetTab}
+      />
+
     </div>
   );
+}
+
+
+export default function App() {
+  const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
+  const isRedirectRoute = /^\/(r|redirect|nfc|tag)\//i.test(currentPath);
+
+  if (isRedirectRoute) {
+    const rawId = decodeURIComponent(currentPath.replace(/^\/(r|redirect|nfc|tag)\//i, '')).trim().toLowerCase().split('/')[0].split('?')[0];
+    const cleanId = rawId.replace(/[^a-zA-Z0-9_\-]/g, '');
+    if (cleanId.length > 0) {
+      return <RedirectHandler cleanId={cleanId} />;
+    }
+  }
+
+  return <MainApp />;
 }

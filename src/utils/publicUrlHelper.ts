@@ -6,18 +6,42 @@
  * which causes customers to see Google AI Studio login / development interface.
  */
 
+export const DEFAULT_RENDER_DOMAIN = 'https://automacaonfc.onrender.com';
+
 export function getPublicAppOrigin(): string {
-  if (typeof window === 'undefined') return '';
+  if (typeof window === 'undefined') return DEFAULT_RENDER_DOMAIN;
   
   try {
     const custom = localStorage.getItem('alf_custom_public_domain');
     if (custom && custom.trim().startsWith('http')) {
-      return custom.trim().replace(/\/+$/, '');
+      const cleanCustom = custom.trim().replace(/\/+$/, '');
+      const isTempOrLocal =
+        cleanCustom.includes('localhost') ||
+        cleanCustom.includes('127.0.0.1') ||
+        cleanCustom.includes('.run.app') ||
+        cleanCustom.includes('scf.usercontent.goog');
+      if (!isTempOrLocal) {
+        return cleanCustom;
+      }
     }
   } catch (_) {}
 
   const origin = window.location.origin || '';
-  return origin;
+
+  // CRITICAL: NEVER use ais-dev-... or .run.app for public links, QR codes, or plate artwork!
+  // Always route directly to https://automacaonfc.onrender.com unless on a custom production domain:
+  if (
+    !origin ||
+    origin.includes('ais-dev-') ||
+    origin.includes('ais-pre-') ||
+    origin.includes('.run.app') ||
+    origin.includes('localhost') ||
+    origin.includes('127.0.0.1')
+  ) {
+    return DEFAULT_RENDER_DOMAIN;
+  }
+
+  return origin.replace(/\/+$/, '');
 }
 
 export function setCustomPublicDomain(domain: string): void {
@@ -53,19 +77,54 @@ export function hasCustomPublicDomain(): boolean {
 
 export function getTestRedirectUrl(leadId: string): string {
   const cleanId = (leadId || '').replace(/[^a-zA-Z0-9_\-]/g, '');
-  if (typeof window !== 'undefined' && window.location.origin) {
-    return `${window.location.origin}/r/${cleanId}`;
-  }
-  return `/r/${cleanId}`;
+  const base = getPublicAppOrigin();
+  return `${base}/r/${cleanId}`;
 }
 
-export function getDynamicQrUrl(leadId: string): string {
+export function getDynamicQrUrl(leadId: string, channel?: string): string {
   const cleanId = (leadId || '').replace(/[^a-zA-Z0-9_\-]/g, '');
   const custom = getCustomPublicDomain();
-  if (custom && custom.trim().startsWith('http')) {
-    return `${custom.trim().replace(/\/+$/, '')}/r/${cleanId}`;
+  const base = (custom && custom.trim().startsWith('http'))
+    ? `${custom.trim().replace(/\/+$/, '')}/r/${cleanId}`
+    : `${getPublicAppOrigin()}/r/${cleanId}`;
+  
+  if (channel && channel.trim()) {
+    const cleanChannel = channel.trim().toLowerCase();
+    return `${base}?to=${encodeURIComponent(cleanChannel)}`;
   }
-  return `${getPublicAppOrigin()}/r/${cleanId}`;
+  return base;
+}
+
+export function getDynamicInstagramUrl(leadId: string): string {
+  return getDynamicQrUrl(leadId, 'instagram');
+}
+
+export function getDynamicGoogleUrl(leadId: string): string {
+  return getDynamicQrUrl(leadId, 'google');
+}
+
+export function getDynamicTiktokUrl(leadId: string): string {
+  return getDynamicQrUrl(leadId, 'tiktok');
+}
+
+export function getDirectInstagramUrl(lead: any, fallbackName: string = ''): string {
+  const raw = (lead?.nfcInstagramUrl || lead?.instagramUrl || '').trim();
+  if (raw) {
+    if (raw.startsWith('http')) return raw;
+    return `https://instagram.com/${raw.replace(/^@/, '')}`;
+  }
+  const name = (lead?.name || fallbackName || '').replace(/\s+/g, '').toLowerCase();
+  return name ? `https://instagram.com/${name}` : 'https://instagram.com';
+}
+
+export function getDirectTiktokUrl(lead: any, fallbackName: string = ''): string {
+  const raw = (lead?.nfcTiktokUrl || lead?.tiktokUrl || '').trim();
+  if (raw) {
+    if (raw.startsWith('http')) return raw;
+    return `https://tiktok.com/@${raw.replace(/^@/, '')}`;
+  }
+  const name = (lead?.name || fallbackName || '').replace(/\s+/g, '').toLowerCase();
+  return name ? `https://tiktok.com/@${name}` : 'https://tiktok.com';
 }
 
 export function getOfficialSearchReviewFallback(businessName: string, city: string = ''): string {
@@ -109,7 +168,8 @@ export function validateGoogleReviewUrl(
   reason?: string;
 } {
   const fallbackUrl = getOfficialSearchReviewFallback(businessName, city);
-  const trimmed = (rawUrl || '').trim();
+  const embeddedUrlMatch = (rawUrl || '').match(/https?:\/\/[^\s]+/i);
+  const trimmed = (embeddedUrlMatch ? embeddedUrlMatch[0] : (rawUrl || '')).trim();
 
   if (!trimmed || trimmed === 'https://maps.google.com' || trimmed === 'http://maps.google.com') {
     return {

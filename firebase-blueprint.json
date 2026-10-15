@@ -211,6 +211,58 @@
         }
       },
       "required": ["id", "attempts", "lastAttemptAt"]
+    },
+    "Seller": {
+      "title": "Seller",
+      "description": "Vendedor ou parceiro comercial cadastrado com CPF, telefone, email e controle de acesso Master.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Nome de usuário normalizado (chave primária)"
+        },
+        "username": {
+          "type": "string",
+          "description": "Login de acesso"
+        },
+        "name": {
+          "type": "string",
+          "description": "Nome completo do vendedor ou parceiro"
+        },
+        "cpf": {
+          "type": "string",
+          "description": "CPF do vendedor (apenas números ou formatado)"
+        },
+        "email": {
+          "type": "string",
+          "description": "E-mail de contato"
+        },
+        "phone": {
+          "type": "string",
+          "description": "Telefone ou WhatsApp de contato"
+        },
+        "role": {
+          "type": "string",
+          "description": "Papel comercial (seller, reseller, affiliate)"
+        },
+        "vendorCode": {
+          "type": "string",
+          "description": "Código identificador exclusivo do vendedor"
+        },
+        "active": {
+          "type": "boolean",
+          "description": "Status de liberação ou bloqueio pelo Master"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Data ISO de cadastro"
+        },
+        "lastLoginAt": {
+          "type": "string",
+          "description": "Data ISO do último login"
+        }
+      },
+      "required": ["id", "username", "name", "cpf", "email", "phone", "role", "active"]
     }
   },
   "firestore": {
@@ -235,6 +287,10 @@
     "login_attempts": {
       "schema": "LoginAttempt",
       "description": "Controle e bloqueio contra ataques de força bruta."
+    },
+    "sellers": {
+      "schema": "Seller",
+      "description": "Tabela de vendedores e parceiros comerciais com controle confidencial exclusivo do usuário Master."
     }
   }
 }

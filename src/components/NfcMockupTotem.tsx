@@ -36,10 +36,11 @@ import {
   downloadCompleteArtworkKitZip,
   ArtworkTheme
 } from '../utils/nfcPlateGenerator';
-import { getPublicAppOrigin, getDynamicQrUrl } from '../utils/publicUrlHelper';
+import { getPublicAppOrigin, getDynamicQrUrl, getDynamicInstagramUrl, getDynamicGoogleUrl } from '../utils/publicUrlHelper';
 import { getPlateIdentification } from '../utils/plateNumberHelper';
 
 export type TotemTheme =
+  | 'instagram_official'
   | 'instagram_dual'
   | 'emerald_green'
   | 'royal_blue'
@@ -171,6 +172,7 @@ export const NfcMockupTotem: React.FC<NfcMockupTotemProps> = ({
 
   // Map TotemTheme to ArtworkTheme
   const mapTotemToArtworkTheme = (t: TotemTheme): ArtworkTheme => {
+    if (t === 'instagram_official') return 'instagram_official';
     if (t === 'instagram_dual') return 'instagram_dual';
     if (t === 'emerald_green') return 'emerald_green';
     if (t === 'royal_blue') return 'royal_blue';
@@ -321,6 +323,24 @@ export const NfcMockupTotem: React.FC<NfcMockupTotemProps> = ({
 
   // Theme styling definitions
   const themeStyles = {
+    instagram_official: {
+      plateBg: 'bg-white',
+      border: 'border-pink-500/50 shadow-pink-500/25',
+      accentColor: 'text-pink-500',
+      accentBg: 'bg-gradient-to-r from-[#ffd600] via-[#ff0069] to-[#7638fa]',
+      accentBorder: 'border-pink-500/50',
+      goldText: 'text-amber-300 font-extrabold',
+      bolt: 'bg-gradient-to-tr from-slate-300 via-slate-100 to-white border-slate-400 shadow-md',
+      tag: 'bg-pink-950/60 text-pink-300 border-pink-400/40',
+      textColor: 'text-white',
+      subTextColor: 'text-pink-200/80',
+      waveColor: 'border-white',
+      baseGlow: 'shadow-[0_25px_50px_-12px_rgba(225,48,108,0.4)]',
+      headerBg: 'bg-gradient-to-r from-[#405de6] via-[#833ab4] via-[#e1306c] to-[#f77737]',
+      ribbonBg: 'bg-gradient-to-r from-[#ffd600] via-[#ff0069] to-[#7638fa]',
+      ribbonGlow: 'shadow-pink-500/40',
+      name: '📸 Instagram Oficial (100% Instagram)'
+    },
     instagram_dual: {
       plateBg: 'bg-gradient-to-b from-[#75187e] via-[#c52e77] to-[#0c3a82]',
       border: 'border-pink-500/50 shadow-pink-500/25',
@@ -1150,7 +1170,7 @@ export const NfcMockupTotem: React.FC<NfcMockupTotemProps> = ({
                 transform: `perspective(1000px) rotateX(${standAngle === 'slanted' ? tiltStyle.rotateX + 6 : tiltStyle.rotateX}deg) rotateY(${tiltStyle.rotateY}deg)`,
                 transition: isTappingPhone ? 'all 0.5s ease-out' : 'transform 0.1s ease-out',
               }}
-              className={`relative w-[310px] sm:w-[330px] rounded-3xl p-6 transition-all select-none border-2 ${currentTheme.plateBg} ${currentTheme.border} ${currentTheme.baseGlow}`}
+              className={`relative w-[310px] sm:w-[330px] rounded-3xl p-6 transition-all select-none border-2 ${currentTheme.plateBg} ${currentTheme.border} ${currentTheme.baseGlow} print-container`}
             >
               
               {/* Glossy Acrylic Bevel & Reflection Streak */}
@@ -1161,7 +1181,105 @@ export const NfcMockupTotem: React.FC<NfcMockupTotemProps> = ({
                 }}
               />
 
-              {theme === 'instagram_dual' ? (
+              {theme === 'instagram_official' ? (
+                /* MODELO 100% EXCLUSIVO INSTAGRAM OFICIAL */
+                <div className="flex flex-col h-full rounded-2xl overflow-hidden relative bg-white">
+                  {/* METALLIC STANDOFF BOLTS */}
+                  <div className="absolute top-1.5 left-1.5 w-3 h-3 rounded-full bg-gradient-to-tr from-slate-400 via-white to-slate-300 border border-slate-400 shadow-xs z-30 flex items-center justify-center">
+                    <div className="w-1.5 h-0.5 bg-slate-500"></div>
+                  </div>
+                  <div className="absolute top-1.5 right-1.5 w-3 h-3 rounded-full bg-gradient-to-tr from-slate-400 via-white to-slate-300 border border-slate-400 shadow-xs z-30 flex items-center justify-center">
+                    <div className="w-1.5 h-0.5 bg-slate-500"></div>
+                  </div>
+                  <div className="absolute bottom-1.5 left-1.5 w-3 h-3 rounded-full bg-gradient-to-tr from-slate-400 via-white to-slate-300 border border-slate-400 shadow-xs z-30 flex items-center justify-center">
+                    <div className="w-1.5 h-0.5 bg-slate-500"></div>
+                  </div>
+                  <div className="absolute bottom-1.5 right-1.5 w-3 h-3 rounded-full bg-gradient-to-tr from-slate-400 via-white to-slate-300 border border-slate-400 shadow-xs z-30 flex items-center justify-center">
+                    <div className="w-1.5 h-0.5 bg-slate-500"></div>
+                  </div>
+
+                  {/* TOP HALF: VIBRANT INSTAGRAM SUNSET GRADIENT */}
+                  <div className="bg-gradient-to-tr from-[#405de6] via-[#833ab4] via-[#e1306c] to-[#f77737] p-3 pt-3.5 pb-4 text-white text-center relative z-10 shadow-inner">
+                    {/* Official Instagram Badge */}
+                    <div className="flex justify-center mb-1">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#ffd600] via-[#ff0069] to-[#7638fa] p-0.5 shadow-lg border border-white/60 flex items-center justify-center">
+                        <div className="w-8 h-8 rounded-lg border-2 border-white flex items-center justify-center relative">
+                          <div className="w-3.5 h-3.5 rounded-full border-1.5 border-white"></div>
+                          <div className="w-1 h-1 rounded-full bg-white absolute top-1 right-1"></div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <p className="text-[11px] font-black tracking-wide text-white drop-shadow-md uppercase leading-tight">
+                      Siga-nos no Instagram
+                    </p>
+                    <p className="text-[8px] font-extrabold text-white/90 uppercase tracking-widest mt-0.5 truncate">
+                      {businessName || 'SUA EMPRESA'}
+                    </p>
+
+                    {/* Pill Handle Badge */}
+                    <div className="mt-1.5 inline-flex items-center gap-1 bg-black/40 border border-amber-300/80 px-2.5 py-0.5 rounded-full shadow-sm max-w-[90%]">
+                      <span className="text-[7.5px] font-bold text-amber-300 truncate">
+                        @{((customInstaUrl || instagramUrl || businessName || 'perfil').replace(/.*instagram\.com\//, '').replace(/^@/, '').replace(/\/$/, ''))}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* WAVY SEPARATOR RIBBON */}
+                  <div className="relative -my-1.5 z-20 w-full overflow-hidden leading-none">
+                    <div className="h-2 bg-gradient-to-r from-[#ffd600] via-[#ff0069] to-[#7638fa] shadow-xs"></div>
+                  </div>
+
+                  {/* BOTTOM WHITE ACRYLIC SECTION (NFC + OU + QR CODE) */}
+                  <div className="bg-white p-3 pt-3 text-slate-800 text-center flex-1 flex flex-col justify-between relative">
+                    <div className="grid grid-cols-12 gap-1 items-center my-auto">
+                      {/* NFC Phone */}
+                      <div className="col-span-5 flex flex-col items-center">
+                        <span className="text-[7px] font-black uppercase text-slate-800 tracking-tight mb-1">
+                          Aproxime seu celular
+                        </span>
+                        <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center shadow-2xs">
+                          <Radio className="w-5 h-5 text-pink-600 animate-pulse" />
+                        </div>
+                        <span className="text-[6px] font-semibold text-slate-500 mt-1">
+                          Sem aplicativo
+                        </span>
+                      </div>
+
+                      {/* Center OU */}
+                      <div className="col-span-2 flex flex-col items-center justify-center">
+                        <span className="w-5 h-5 rounded-full bg-slate-100 border border-slate-300 text-[7px] font-black text-slate-600 flex items-center justify-center shadow-2xs">
+                          OU
+                        </span>
+                      </div>
+
+                      {/* Instagram QR Code */}
+                      <div className="col-span-5 flex flex-col items-center">
+                        <span className="text-[7px] font-black uppercase text-slate-800 tracking-tight mb-1">
+                          Aponte a câmera
+                        </span>
+                        <div className="p-1 rounded-xl bg-slate-50 border border-slate-200 shadow-2xs">
+                          <img
+                            src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(
+                              customInstaUrl || instagramUrl || `https://instagram.com/${businessName.replace(/\s+/g, '').toLowerCase()}`
+                            )}`}
+                            alt="Instagram QR"
+                            className="w-10 h-10 object-contain rounded-xs"
+                          />
+                        </div>
+                        <span className="text-[6px] font-semibold text-slate-500 mt-1">
+                          ⚡ Em 3 segundos
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="pt-1 border-t border-slate-100 flex items-center justify-between text-[6.5px] font-mono text-slate-400">
+                      <span>CHIP NFC • ID: {leadId ? leadId.substring(0, 6).toUpperCase() : 'INSTA01'}</span>
+                      <span>ALF AUTOMAÇÃO</span>
+                    </div>
+                  </div>
+                </div>
+              ) : theme === 'instagram_dual' ? (
                 /* MODELO REAL DA FOTO: INSTAGRAM (TOPO) + ONDA ORGÂNICA + GOOGLE (BASE) */
                 <div className="flex flex-col h-full rounded-2xl overflow-hidden relative">
                   {/* METALLIC STANDOFF BOLTS */}
@@ -1187,7 +1305,9 @@ export const NfcMockupTotem: React.FC<NfcMockupTotemProps> = ({
                         <div className="p-1 rounded-lg bg-white/20 border border-white/40 shadow-xs">
                           <img
                             src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(
-                              customInstaUrl || instagramUrl || `https://instagram.com/${businessName.replace(/\s+/g, '').toLowerCase()}`
+                              qrTargetMode === 'dynamic_cloud' && leadId
+                                ? getDynamicInstagramUrl(leadId)
+                                : (customInstaUrl || instagramUrl || `https://instagram.com/${businessName.replace(/\s+/g, '').toLowerCase()}`)
                             )}`}
                             alt="Instagram QR"
                             className="w-10 h-10 object-contain rounded-xs"
@@ -1281,7 +1401,11 @@ export const NfcMockupTotem: React.FC<NfcMockupTotemProps> = ({
                         <span className="text-[7.5px] font-bold text-white/95 mb-0.5">leia o QR Code</span>
                         <div className="p-1 rounded-lg bg-white/20 border border-white/40 shadow-xs">
                           <img
-                            src={effectiveQrUrl}
+                            src={
+                              qrTargetMode === 'dynamic_cloud' && leadId
+                                ? `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(getDynamicGoogleUrl(leadId))}`
+                                : effectiveQrUrl
+                            }
                             alt="Google QR"
                             className="w-10 h-10 object-contain rounded-xs"
                           />
@@ -1309,7 +1433,7 @@ export const NfcMockupTotem: React.FC<NfcMockupTotemProps> = ({
                   {/* TOP THEMED SECTION */}
                   <div className={`${(currentTheme as any).headerBg || 'bg-black'} text-white pt-4 pb-6 px-4 rounded-t-3xl text-center relative z-10 transition-colors duration-300`}>
                     {/* 5 Golden Spaced Realistic Stars */}
-                    <div className="flex justify-center gap-2.5 mb-2">
+                    <div className="flex justify-center gap-2.5 mb-2.5 stars-row" data-element="stars">
                       {[...Array(5)].map((_, i) => (
                         <Star
                           key={i}
@@ -1320,20 +1444,20 @@ export const NfcMockupTotem: React.FC<NfcMockupTotemProps> = ({
                     </div>
 
                     {/* Headline Typography */}
-                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-300">
+                    <p className="text-[9px] font-black uppercase tracking-[-0.02em] text-slate-300 leading-snug">
                       NÓS ADORARÍAMOS A SUA
                     </p>
-                    <p className="text-[11px] font-black uppercase tracking-wider text-white">
+                    <p className="text-[11px] font-black uppercase tracking-[-0.02em] text-white leading-snug mb-1">
                       AVALIAÇÃO NO GOOGLE
                     </p>
 
-                    {/* HERO CLIENT TAG (BEM MAIOR E ALINHADO COM A PLACA) */}
-                    <div className="mt-1">
-                      <span className="text-sm sm:text-base font-black text-amber-400 uppercase tracking-wide drop-shadow-sm line-clamp-1 border-b border-amber-400/50 pb-0.5 inline-block max-w-[95%]">
+                    {/* HERO CLIENT TAG (BEM MAIOR E ALINHADO COM A PLACA - SEM COLISÃO) */}
+                    <div className="my-1.5 company-name" data-element="company-name">
+                      <span className="text-sm sm:text-base font-black text-amber-400 uppercase tracking-[-0.025em] leading-normal drop-shadow-sm line-clamp-1 border-b border-amber-400/50 pb-0.5 inline-block max-w-[95%]">
                         {businessName ? businessName : 'DANI PONTELLO'}
                       </span>
                     </div>
-                    <p className="text-[8px] font-medium text-slate-300/80 mt-1">
+                    <p className="text-[8px] font-medium text-slate-300/80 mt-1 subtitle tracking-[-0.015em] leading-normal">
                       Sua opinião de 5 estrelas é muito importante para nós!
                     </p>
                   </div>

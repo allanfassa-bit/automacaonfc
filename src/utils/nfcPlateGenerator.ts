@@ -12,7 +12,8 @@ export type ArtworkTheme =
   | 'cyber_neon'
   | 'rose_luxury'
   | 'gourmet_red'
-  | 'instagram_dual';
+  | 'instagram_dual'
+  | 'instagram_official';
 
 export interface ArtworkOptions {
   businessName?: string;
@@ -23,8 +24,12 @@ export interface ArtworkOptions {
   reviewCount?: number;
   weakness?: string;
   permanentUrl: string;
+  googleUrl?: string;
   instagramUrl?: string;
   instagramHandle?: string;
+  tiktokUrl?: string;
+  socialNetworkType?: 'instagram' | 'tiktok';
+  qrTargetMode?: 'dynamic' | 'direct';
   theme?: ArtworkTheme;
   format?: 'plate_10x10' | 'card_54x85_horizontal' | 'card_54x85_vertical';
   resolution?: '4k' | '2.4k';
@@ -126,6 +131,125 @@ export function drawInstagramCameraLogo(
   // Flash dot (top-right)
   ctx.beginPath();
   ctx.arc(half * 0.56, -half * 0.56, size * 0.065, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.restore();
+}
+
+/**
+ * Official Full-Color Instagram Gradient Badge with Glass Specular Highlights
+ * Vector-sharp at any resolution (4K / 600 DPI) with official Meta brand gradient.
+ */
+export function drawInstagramOfficialBadge(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  size: number,
+  options?: {
+    shadow?: boolean;
+    gloss?: boolean;
+  }
+) {
+  const { shadow = true, gloss = true } = options || {};
+  ctx.save();
+  ctx.translate(cx, cy);
+
+  const half = size / 2;
+  const radius = size * 0.23;
+
+  if (shadow) {
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.35)';
+    ctx.shadowBlur = size * 0.12;
+    ctx.shadowOffsetY = size * 0.05;
+  }
+
+  // Authentic Instagram multi-color gradient
+  // Linear 45-degree angle gradient base
+  const grad = ctx.createLinearGradient(-half, half, half, -half);
+  grad.addColorStop(0.0, '#ffd600'); // Yellow bottom-left
+  grad.addColorStop(0.12, '#ff7a00'); // Orange
+  grad.addColorStop(0.35, '#ff0069'); // Magenta/Pink
+  grad.addColorStop(0.65, '#d300c5'); // Purple
+  grad.addColorStop(1.0, '#7638fa'); // Royal violet-blue top-right
+
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  if (typeof ctx.roundRect === 'function') {
+    ctx.roundRect(-half, -half, size, size, radius);
+  } else {
+    ctx.rect(-half, -half, size, size);
+  }
+  ctx.fill();
+
+  // Radial overlay at bottom-left corner for true authentic Instagram look
+  ctx.shadowColor = 'transparent';
+  const radialGlow = ctx.createRadialGradient(-half * 0.85, half * 0.85, 0, -half * 0.85, half * 0.85, size * 0.9);
+  radialGlow.addColorStop(0.0, 'rgba(255, 220, 90, 0.85)');
+  radialGlow.addColorStop(0.4, 'rgba(255, 90, 40, 0.45)');
+  radialGlow.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
+  ctx.fillStyle = radialGlow;
+  ctx.beginPath();
+  if (typeof ctx.roundRect === 'function') {
+    ctx.roundRect(-half, -half, size, size, radius);
+  } else {
+    ctx.rect(-half, -half, size, size);
+  }
+  ctx.fill();
+
+  // Glass Specular gloss reflection across top rim
+  if (gloss) {
+    const glossGrad = ctx.createLinearGradient(0, -half, 0, 0);
+    glossGrad.addColorStop(0, 'rgba(255, 255, 255, 0.38)');
+    glossGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+    ctx.fillStyle = glossGrad;
+    ctx.beginPath();
+    if (typeof ctx.roundRect === 'function') {
+      ctx.roundRect(-half, -half, size, half * 0.7, [radius, radius, 0, 0]);
+    } else {
+      ctx.rect(-half, -half, size, half * 0.7);
+    }
+    ctx.fill();
+  }
+
+  // Outer border rim
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+  ctx.lineWidth = Math.max(1.5, size * 0.015);
+  ctx.beginPath();
+  if (typeof ctx.roundRect === 'function') {
+    ctx.roundRect(-half, -half, size, size, radius);
+  } else {
+    ctx.rect(-half, -half, size, size);
+  }
+  ctx.stroke();
+
+  // Inner Official White Camera Glyph
+  const cameraSize = size * 0.62;
+  const camHalf = cameraSize / 2;
+  const camRadius = cameraSize * 0.28;
+
+  ctx.strokeStyle = '#ffffff';
+  ctx.fillStyle = '#ffffff';
+  ctx.lineWidth = cameraSize * 0.105;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  // Outer squircle
+  ctx.beginPath();
+  if (typeof ctx.roundRect === 'function') {
+    ctx.roundRect(-camHalf, -camHalf, cameraSize, cameraSize, camRadius);
+  } else {
+    ctx.rect(-camHalf, -camHalf, cameraSize, cameraSize);
+  }
+  ctx.stroke();
+
+  // Center lens
+  ctx.beginPath();
+  ctx.arc(0, 0, cameraSize * 0.255, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // Flash dot
+  ctx.beginPath();
+  ctx.arc(camHalf * 0.58, -camHalf * 0.58, cameraSize * 0.07, 0, Math.PI * 2);
   ctx.fill();
 
   ctx.restore();
@@ -1096,8 +1220,12 @@ async function drawInstagramDualPlate(
     businessName = '',
     leadId = 'TAG01',
     permanentUrl,
+    googleUrl,
     instagramUrl,
-    instagramHandle
+    instagramHandle,
+    tiktokUrl,
+    socialNetworkType = 'instagram',
+    qrTargetMode = 'dynamic'
   } = options;
 
   // Split Position: Split horizontally around Y = 1140
@@ -1133,16 +1261,54 @@ async function drawInstagramDualPlate(
   // 3. ORGANIC WHITE WAVE SEPARATOR
   drawInstagramGoogleWave(ctx, width, splitY, margin);
 
-  // Load QR Codes for Instagram and Google concurrently
-  const effectiveInstaUrl = instagramUrl && instagramUrl.trim().length > 0
-    ? instagramUrl
-    : instagramHandle && instagramHandle.trim().length > 0
-    ? `https://instagram.com/${instagramHandle.replace('@', '')}`
-    : permanentUrl;
+  // Differentiate Dynamic / Direct URLs for Top Social (Instagram/TikTok) and Bottom Google
+  const isDynamic = qrTargetMode === 'dynamic' || permanentUrl.includes('/r/') || permanentUrl.includes('/redirect/') || permanentUrl.includes('/qr/');
+  const isTikTok = socialNetworkType === 'tiktok';
+
+  // 1. Bottom QR: Google Reviews URL
+  let effectiveGoogleUrl = '';
+  if (googleUrl && googleUrl.trim().length > 0) {
+    effectiveGoogleUrl = googleUrl;
+  } else if (isDynamic) {
+    const baseClean = permanentUrl.split('?')[0];
+    effectiveGoogleUrl = `${baseClean}?to=google`;
+  } else {
+    effectiveGoogleUrl = permanentUrl;
+  }
+
+  // 2. Top QR: Social URL (Instagram or TikTok)
+  let effectiveSocialUrl = '';
+  if (isTikTok) {
+    if (!isDynamic && tiktokUrl && tiktokUrl.trim().length > 0) {
+      effectiveSocialUrl = tiktokUrl.startsWith('http') ? tiktokUrl : `https://tiktok.com/@${tiktokUrl.replace(/^@/, '')}`;
+    } else if (isDynamic) {
+      const baseClean = permanentUrl.split('?')[0];
+      effectiveSocialUrl = `${baseClean}?to=tiktok`;
+    } else {
+      effectiveSocialUrl = tiktokUrl || `https://tiktok.com`;
+    }
+  } else {
+    const rawInsta = (instagramUrl || '').trim();
+    const handleClean = (instagramHandle || '').replace(/^@/, '').trim();
+    if (!isDynamic && (rawInsta || handleClean)) {
+      if (rawInsta.startsWith('http')) {
+        effectiveSocialUrl = rawInsta;
+      } else if (rawInsta) {
+        effectiveSocialUrl = `https://instagram.com/${rawInsta.replace(/^@/, '')}`;
+      } else {
+        effectiveSocialUrl = `https://instagram.com/${handleClean}`;
+      }
+    } else if (isDynamic) {
+      const baseClean = permanentUrl.split('?')[0];
+      effectiveSocialUrl = `${baseClean}?to=instagram`;
+    } else {
+      effectiveSocialUrl = rawInsta || `https://instagram.com`;
+    }
+  }
 
   const [googleQrDataUrl, instaQrDataUrl] = await Promise.all([
-    generateQrDataUrl(permanentUrl, { width: 1000, margin: 1 }),
-    generateQrDataUrl(effectiveInstaUrl, { width: 1000, margin: 1 })
+    generateQrDataUrl(effectiveGoogleUrl, { width: 1000, margin: 1 }),
+    generateQrDataUrl(effectiveSocialUrl, { width: 1000, margin: 1 })
   ]);
 
   const [googleQrImg, instaQrImg] = await Promise.all([
@@ -1183,11 +1349,11 @@ async function drawInstagramDualPlate(
   // Draw Instagram QR
   ctx.drawImage(instaQrImg, topQrCX - topQrSize / 2, topQrCY - topQrSize / 2, topQrSize, topQrSize);
 
-  // Subtitle / ID below QR code: e.g. "z1v9ef"
+  // Subtitle / ID below QR code: e.g. "z1v9ef • INSTAGRAM"
   const topCode = leadId ? leadId.substring(0, 6).toLowerCase() : 'z1v9ef';
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-  ctx.font = '800 32px "JetBrains Mono", monospace';
-  ctx.fillText(topCode, topQrCX, topQrCY + topQrSize / 2 + 45);
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+  ctx.font = '800 26px "JetBrains Mono", monospace';
+  ctx.fillText(`${topCode} • ${isTikTok ? 'TIKTOK' : 'INSTAGRAM'}`, topQrCX, topQrCY + topQrSize / 2 + 45);
   ctx.restore();
 
   // Top Center: Instagram Camera Glyph + "Siga-nos no Instagram"
@@ -1312,11 +1478,11 @@ async function drawInstagramDualPlate(
   // Draw Google QR
   ctx.drawImage(googleQrImg, botQrCX - botQrSize / 2, botQrCY - botQrSize / 2, botQrSize, botQrSize);
 
-  // Subtitle / ID below QR code: e.g. "w3d7ul"
+  // Subtitle / ID below QR code: e.g. "w3d7ul • GOOGLE 5★"
   const botCode = leadId ? leadId.substring(Math.max(0, leadId.length - 6)).toLowerCase() : 'w3d7ul';
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-  ctx.font = '800 32px "JetBrains Mono", monospace';
-  ctx.fillText(botCode, botQrCX, botQrCY + botQrSize / 2 + 45);
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+  ctx.font = '800 26px "JetBrains Mono", monospace';
+  ctx.fillText(`${botCode} • GOOGLE 5★`, botQrCX, botQrCY + botQrSize / 2 + 45);
   ctx.restore();
 
   // Discreet plate identification on lower-left (Roman numeral / serial tag)
@@ -1342,9 +1508,298 @@ async function drawInstagramDualPlate(
 
 /**
  * ============================================================================
+ * PLACA 10cm x 10cm - MODELO EXCLUSIVO 100% INSTAGRAM OFICIAL (ULTRA HD 600 DPI)
+ * Design profissional de balcão / totem em acrílico com Logo Oficial em Alta Resolução,
+ * QR Code de altíssima precisão direcionando para o perfil, NFC Contactless,
+ * arroba em destaque e acabamento chanfrado.
+ * ============================================================================
+ */
+async function drawInstagramOfficialPlate(
+  ctx: CanvasRenderingContext2D,
+  options: ArtworkOptions,
+  width: number,
+  height: number,
+  margin: number,
+  plateW: number,
+  plateH: number,
+  plateRadius: number
+): Promise<void> {
+  const {
+    businessName = '',
+    leadId = 'TAG01',
+    permanentUrl,
+    instagramUrl,
+    instagramHandle
+  } = options;
+
+  // Split Position: Header takes ~45% (1080 px)
+  const splitY = 1080;
+
+  // 1. BOTTOM BASE: Pure Clean White Acrylic (#ffffff)
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, width, height);
+
+  // 2. TOP HERO: Iconic Instagram Sunset Gradient
+  const instaGrad = ctx.createLinearGradient(margin, margin, width - margin, splitY);
+  instaGrad.addColorStop(0.0, '#405de6'); // Royal violet-blue
+  instaGrad.addColorStop(0.18, '#5851db'); // Deep purple
+  instaGrad.addColorStop(0.38, '#833ab4'); // Purple
+  instaGrad.addColorStop(0.58, '#c13584'); // Magenta
+  instaGrad.addColorStop(0.76, '#e1306c'); // Coral pink
+  instaGrad.addColorStop(0.90, '#fd1d1d'); // Red orange
+  instaGrad.addColorStop(1.0, '#f77737'); // Sunset amber
+  ctx.fillStyle = instaGrad;
+  ctx.fillRect(0, 0, width, splitY);
+
+  // Radiant warm corner glow on top-right and violet glow on top-left
+  const warmGlow = ctx.createRadialGradient(width * 0.85, 300, 30, width * 0.85, 300, 850);
+  warmGlow.addColorStop(0.0, 'rgba(255, 214, 0, 0.45)');
+  warmGlow.addColorStop(0.5, 'rgba(255, 122, 0, 0.25)');
+  warmGlow.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
+  ctx.fillStyle = warmGlow;
+  ctx.fillRect(0, 0, width, splitY);
+
+  const purpleGlow = ctx.createRadialGradient(margin + 200, 350, 40, margin + 200, 350, 900);
+  purpleGlow.addColorStop(0.0, 'rgba(118, 56, 250, 0.35)');
+  purpleGlow.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
+  ctx.fillStyle = purpleGlow;
+  ctx.fillRect(0, 0, width, splitY);
+
+  // Instagram Wavy Separator Ribbon
+  const ribbonH = 46;
+  ctx.save();
+  const ribbonGrad = ctx.createLinearGradient(margin, splitY, width - margin, splitY);
+  ribbonGrad.addColorStop(0.0, '#ffd600');
+  ribbonGrad.addColorStop(0.3, '#ff0069');
+  ribbonGrad.addColorStop(0.7, '#d300c5');
+  ribbonGrad.addColorStop(1.0, '#7638fa');
+  ctx.fillStyle = ribbonGrad;
+  ctx.shadowColor = 'rgba(225, 48, 108, 0.45)';
+  ctx.shadowBlur = 30;
+  ctx.shadowOffsetY = 6;
+  ctx.beginPath();
+  ctx.moveTo(margin, splitY - 14);
+  ctx.bezierCurveTo(width * 0.35, splitY + 22, width * 0.65, splitY - 32, width - margin, splitY + 12);
+  ctx.lineTo(width - margin, splitY + ribbonH);
+  ctx.bezierCurveTo(width * 0.65, splitY - 32 + ribbonH, width * 0.35, splitY + 22 + ribbonH, margin, splitY - 14 + ribbonH);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+
+  // Thin pristine white highlight on ribbon top
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+  ctx.lineWidth = 3.5;
+  ctx.beginPath();
+  ctx.moveTo(margin, splitY - 14);
+  ctx.bezierCurveTo(width * 0.35, splitY + 22, width * 0.65, splitY - 32, width - margin, splitY + 12);
+  ctx.stroke();
+  ctx.restore();
+
+  // Determine Instagram Handle & Destination
+  const cleanHandle = (instagramHandle || instagramUrl || '')
+    .replace(/.*instagram\.com\//, '')
+    .replace(/^@/, '')
+    .replace(/\/.*$/, '')
+    .trim();
+  const displayHandle = cleanHandle || (businessName ? businessName.replace(/\s+/g, '').toLowerCase() : 'seuperfil');
+  const effectiveInstaUrl = instagramUrl && instagramUrl.trim().length > 0
+    ? (instagramUrl.startsWith('http') ? instagramUrl : `https://instagram.com/${instagramUrl.replace(/^@/, '')}`)
+    : cleanHandle
+    ? `https://instagram.com/${cleanHandle}`
+    : permanentUrl;
+
+  // Load High-Precision QR Code pointing to Instagram
+  const qrDataUrl = await generateQrDataUrl(effectiveInstaUrl, {
+    width: 1200,
+    margin: 1,
+    darkColor: '#000000',
+    lightColor: '#ffffff'
+  });
+  const qrImg = await loadImage(qrDataUrl);
+
+  // TOP SECTION CONTENT (HERO)
+  // 1. Official Instagram Logo Badge (Prominent High-Resolution)
+  const logoCY = 310;
+  const logoSize = 250;
+  drawInstagramOfficialBadge(ctx, width / 2, logoCY, logoSize, { shadow: true, gloss: true });
+
+  // 2. Call to Action: "Siga-nos no Instagram"
+  ctx.save();
+  ctx.fillStyle = '#ffffff';
+  ctx.textAlign = 'center';
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.45)';
+  ctx.shadowBlur = 18;
+  ctx.shadowOffsetY = 4;
+  ctx.font = '900 68px "Plus Jakarta Sans", "Inter", sans-serif';
+  ctx.letterSpacing = '1.5px';
+  ctx.fillText('Siga-nos no Instagram', width / 2, 530);
+
+  // 3. Subtitle / Business Name
+  const clientName = (businessName && businessName.trim().length > 0) ? businessName.trim().toUpperCase() : 'SUA EMPRESA';
+  ctx.font = '800 38px "Plus Jakarta Sans", "Inter", sans-serif';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+  ctx.letterSpacing = '2px';
+  ctx.fillText(clientName, width / 2, 600);
+  ctx.restore();
+
+  // 4. Highlighted Instagram Handle Badge (@perfil)
+  const handlePillY = 665;
+  const handlePillH = 92;
+  const handleText = `@${displayHandle}`;
+  ctx.save();
+  ctx.font = '900 48px "Plus Jakarta Sans", "Inter", sans-serif';
+  const handleW = ctx.measureText(handleText).width + 120;
+  const pillX = width / 2 - handleW / 2;
+
+  // Dark translucent background with golden border for the handle
+  ctx.fillStyle = 'rgba(15, 23, 42, 0.55)';
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
+  ctx.shadowBlur = 24;
+  ctx.shadowOffsetY = 6;
+  ctx.beginPath();
+  if (typeof ctx.roundRect === 'function') {
+    ctx.roundRect(pillX, handlePillY, handleW, handlePillH, handlePillH / 2);
+  } else {
+    ctx.rect(pillX, handlePillY, handleW, handlePillH);
+  }
+  ctx.fill();
+
+  ctx.shadowColor = 'transparent';
+  ctx.strokeStyle = '#fef08a';
+  ctx.lineWidth = 3.5;
+  ctx.stroke();
+
+  // Small camera icon inside pill on left
+  drawInstagramCameraLogo(ctx, pillX + 54, handlePillY + handlePillH / 2, 40, '#fef08a');
+
+  // Text inside pill
+  ctx.fillStyle = '#ffffff';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.letterSpacing = '1px';
+  ctx.fillText(handleText, width / 2 + 22, handlePillY + handlePillH / 2);
+  ctx.restore();
+
+  // Subtitle note
+  ctx.save();
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
+  ctx.textAlign = 'center';
+  ctx.font = '700 32px "Plus Jakarta Sans", "Inter", sans-serif';
+  ctx.fillText('Acompanhe nossas novidades, fotos e promoções!', width / 2, 805);
+  ctx.restore();
+
+  // BOTTOM WHITE ACRYLIC: SYMMETRICAL INTERACTION COLUMNS (NFC | OU | QR CODE)
+  const bottomCenterY = splitY + (height - splitY) / 2 + 10;
+  const leftColCX = width * 0.28;
+  const rightColCX = width * 0.72;
+
+  // Center "OU" Medallion
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(width / 2, bottomCenterY, 48, 0, Math.PI * 2);
+  ctx.fillStyle = '#f8fafc';
+  ctx.fill();
+  ctx.lineWidth = 2.5;
+  ctx.strokeStyle = '#cbd5e1';
+  ctx.stroke();
+
+  ctx.fillStyle = '#0f172a';
+  ctx.font = '900 40px "Plus Jakarta Sans", "Inter", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('OU', width / 2, bottomCenterY);
+  ctx.restore();
+
+  // LEFT COLUMN: OFFICIAL SMARTPHONE NFC
+  ctx.save();
+  ctx.fillStyle = '#0f172a';
+  ctx.font = '900 56px "Plus Jakarta Sans", "Inter", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.letterSpacing = '1px';
+  ctx.fillText('Aproxime seu celular', leftColCX, bottomCenterY - 370);
+  ctx.restore();
+
+  // Smartphone vector with Instagram gradient wave accents
+  drawOfficialSmartphoneNfc(ctx, leftColCX, bottomCenterY - 10, 1.48, 'instagram_official');
+
+  ctx.save();
+  ctx.fillStyle = '#64748b';
+  ctx.font = '700 32px "Plus Jakarta Sans", "Inter", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('Sem aplicativo • Direto no perfil', leftColCX, bottomCenterY + 380);
+  ctx.restore();
+
+  // RIGHT COLUMN: DYNAMIC INSTAGRAM QR CODE
+  ctx.save();
+  ctx.fillStyle = '#0f172a';
+  ctx.font = '900 56px "Plus Jakarta Sans", "Inter", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.letterSpacing = '1px';
+  ctx.fillText('Aponte a câmera', rightColCX, bottomCenterY - 370);
+  ctx.restore();
+
+  const qrSize = 640;
+  const qrX = rightColCX - qrSize / 2;
+  const qrY = bottomCenterY - qrSize / 2 - 10;
+  drawQrWithBrackets(ctx, qrImg, qrX, qrY, qrSize);
+
+  ctx.save();
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#64748b';
+  ctx.font = '700 32px "Plus Jakarta Sans", "Inter", sans-serif';
+  ctx.fillText('⚡ Abra o Instagram em 3s', rightColCX, bottomCenterY + 380);
+  ctx.restore();
+
+  // FOOTER BASELINE
+  const footerY = height - margin - 45;
+  const footerText = 'ALF AUTOMAÇÃO • PLACA INSTAGRAM NFC & QR';
+  ctx.save();
+  ctx.font = '800 24px "Plus Jakarta Sans", "Inter", sans-serif';
+  ctx.letterSpacing = '4px';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  const textW = ctx.measureText(footerText).width;
+
+  ctx.beginPath();
+  ctx.moveTo(width / 2 - textW / 2 - 120, footerY);
+  ctx.lineTo(width / 2 - textW / 2 - 30, footerY);
+  ctx.moveTo(width / 2 + textW / 2 + 30, footerY);
+  ctx.lineTo(width / 2 + textW / 2 + 120, footerY);
+  ctx.lineWidth = 2.5;
+  ctx.strokeStyle = '#cbd5e1';
+  ctx.stroke();
+
+  ctx.fillStyle = '#64748b';
+  ctx.fillText(footerText, width / 2, footerY);
+  ctx.restore();
+
+  // Plate Identification Tag
+  const plateInfo = getPlateIdentification(leadId, businessName);
+  const plateTag = plateInfo.leftEdgeTag || (plateInfo.roman ? `Nº ${plateInfo.roman}` : (plateInfo.numStr ? `Nº ${plateInfo.numStr}` : ''));
+  if (plateTag) {
+    ctx.save();
+    ctx.font = '800 24px "Plus Jakarta Sans", "JetBrains Mono", sans-serif';
+    ctx.fillStyle = '#94a3b8';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.letterSpacing = '1px';
+    ctx.fillText(plateTag, margin + 45, footerY);
+    ctx.restore();
+  }
+
+  // 4 Metallic Corner Standoff Bolts
+  drawStandoffBolt(ctx, margin + 58, margin + 58, 32);
+  drawStandoffBolt(ctx, width - margin - 58, margin + 58, 32);
+  drawStandoffBolt(ctx, margin + 58, height - margin - 58, 32);
+  drawStandoffBolt(ctx, width - margin - 58, height - margin - 58, 32);
+}
+
+/**
+ * ============================================================================
  * PLACA 10cm x 10cm - MODELO OFICIAL GOOGLE REVIEW NFC (ULTRA HD 600 DPI)
  * Proporções perfeitamente alinhadas e idênticas aos modelos de referência
- * verde esmeralda / azul royal / preto piano / instagram duplo:
+ * verde esmeralda / azul royal / preto piano / instagram duplo / instagram 100%:
  * ============================================================================
  */
 export async function generatePlate10x10DataUrl(
@@ -1392,6 +1847,28 @@ export async function generatePlate10x10DataUrl(
     ctx.rect(margin, margin, plateW, plateH);
   }
   ctx.clip();
+
+  // If theme is 100% Instagram Official
+  if (theme === 'instagram_official') {
+    await drawInstagramOfficialPlate(ctx, options, width, height, margin, plateW, plateH, plateRadius);
+
+    // Restore clipping path and draw acrylic outer bevel
+    ctx.restore();
+
+    ctx.save();
+    ctx.beginPath();
+    if (typeof ctx.roundRect === 'function') {
+      ctx.roundRect(margin, margin, plateW, plateH, plateRadius);
+    } else {
+      ctx.rect(margin, margin, plateW, plateH);
+    }
+    ctx.lineWidth = 10;
+    ctx.strokeStyle = '#e2e8f0';
+    ctx.stroke();
+    ctx.restore();
+
+    return setPngDpi(canvas.toDataURL('image/png'), 600);
+  }
 
   // If theme is Instagram Dual, execute the dual layout matching the uploaded photo
   if (theme === 'instagram_dual') {
@@ -1775,13 +2252,21 @@ export async function generateCardNfcDataUrl(
 
   if (isHorizontal) {
     const splitY = 560;
+    const isInsta = theme === 'instagram_official' || theme === 'instagram_dual';
 
     // Bottom White
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, width, height);
 
     // Top Themed Background
-    if (theme === 'emerald_green') {
+    if (isInsta) {
+      const g = ctx.createLinearGradient(0, 0, width, splitY);
+      g.addColorStop(0, '#405de6');
+      g.addColorStop(0.3, '#833ab4');
+      g.addColorStop(0.65, '#c13584');
+      g.addColorStop(1, '#f77737');
+      ctx.fillStyle = g;
+    } else if (theme === 'emerald_green') {
       const g = ctx.createLinearGradient(0, 0, width, splitY);
       g.addColorStop(0, '#02180d');
       g.addColorStop(0.5, '#05331b');
@@ -1814,14 +2299,25 @@ export async function generateCardNfcDataUrl(
     ctx.fillStyle = '#ffffff';
     ctx.textAlign = 'center';
     ctx.font = '900 42px "Plus Jakarta Sans", "Inter", sans-serif';
-    ctx.fillText('NÓS ADORARÍAMOS A SUA AVALIAÇÃO', width / 2, starY + 80);
+    if (isInsta) {
+      ctx.fillText('SIGA-NOS NO INSTAGRAM', width / 2, starY + 80);
+      const cleanH = (options.instagramHandle || options.instagramUrl || businessName || 'empresa')
+        .replace(/.*instagram\.com\//, '')
+        .replace(/^@/, '')
+        .replace(/\/.*$/, '')
+        .trim();
+      ctx.fillStyle = '#fef08a';
+      ctx.font = '900 58px "Plus Jakarta Sans", "Inter", sans-serif';
+      ctx.fillText(`@${cleanH}`, width / 2, starY + 150);
+    } else {
+      ctx.fillText('NÓS ADORARÍAMOS A SUA AVALIAÇÃO', width / 2, starY + 80);
+      const clientTag = (businessName ? businessName.trim() : 'SUA EMPRESA').toUpperCase();
+      ctx.fillStyle = '#fbbf24';
+      ctx.font = '900 58px "Plus Jakarta Sans", "Inter", sans-serif';
+      ctx.fillText(clientTag, width / 2, starY + 150);
+    }
 
-    const clientTag = (businessName ? businessName.trim() : 'SUA EMPRESA').toUpperCase();
-    ctx.fillStyle = '#fbbf24';
-    ctx.font = '900 58px "Plus Jakarta Sans", "Inter", sans-serif';
-    ctx.fillText(clientTag, width / 2, starY + 150);
-
-    // Center Google G Badge
+    // Center Badge (Instagram or Google)
     const badgeR = 95;
     const badgeCY = splitY + ribbonH / 2;
     ctx.beginPath();
@@ -1831,7 +2327,12 @@ export async function generateCardNfcDataUrl(
     ctx.shadowBlur = 25;
     ctx.fill();
     ctx.shadowColor = 'transparent';
-    drawGoogleGLogo(ctx, width / 2, badgeCY, 68);
+
+    if (isInsta) {
+      drawInstagramOfficialBadge(ctx, width / 2, badgeCY, 130);
+    } else {
+      drawGoogleGLogo(ctx, width / 2, badgeCY, 68);
+    }
 
     // Bottom Content
     const leftCX = width * 0.28;
@@ -1865,7 +2366,12 @@ export async function generateCardNfcDataUrl(
 
     // QR Right Graphic
     const qrSize = 400;
-    const qrDataUrl = await generateQrDataUrl(permanentUrl, { width: 800, margin: 1 });
+    const effectiveTarget = isInsta && (options.instagramUrl || options.instagramHandle)
+      ? (options.instagramUrl && options.instagramUrl.startsWith('http')
+          ? options.instagramUrl
+          : `https://instagram.com/${(options.instagramHandle || options.instagramUrl || '').replace(/^@/, '')}`)
+      : permanentUrl;
+    const qrDataUrl = await generateQrDataUrl(effectiveTarget, { width: 800, margin: 1 });
     const qrImg = await loadImage(qrDataUrl);
     drawQrWithBrackets(ctx, qrImg, rightCX - qrSize / 2, bottomMidY - qrSize / 2 + 15, qrSize);
 
@@ -1874,16 +2380,24 @@ export async function generateCardNfcDataUrl(
     ctx.font = '700 24px "Plus Jakarta Sans", "Inter", sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText('Sem aplicativo • Direto no celular', leftCX, bottomMidY + 230);
-    ctx.fillText('⚡ Avalie em 3 segundos', rightCX, bottomMidY + 230);
+    ctx.fillText(isInsta ? '⚡ Conecte-se em 3s' : '⚡ Avalie em 3 segundos', rightCX, bottomMidY + 230);
 
   } else {
     // Vertical CR80 Card
     const splitY = 820;
+    const isInsta = theme === 'instagram_official' || theme === 'instagram_dual';
 
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, width, height);
 
-    if (theme === 'emerald_green') {
+    if (isInsta) {
+      const g = ctx.createLinearGradient(0, 0, width, splitY);
+      g.addColorStop(0, '#405de6');
+      g.addColorStop(0.3, '#833ab4');
+      g.addColorStop(0.65, '#c13584');
+      g.addColorStop(1, '#f77737');
+      ctx.fillStyle = g;
+    } else if (theme === 'emerald_green') {
       const g = ctx.createLinearGradient(0, 0, width, splitY);
       g.addColorStop(0, '#02180d');
       g.addColorStop(0.5, '#05331b');
@@ -1915,15 +2429,27 @@ export async function generateCardNfcDataUrl(
     ctx.fillStyle = '#ffffff';
     ctx.textAlign = 'center';
     ctx.font = '900 46px "Plus Jakarta Sans", "Inter", sans-serif';
-    ctx.fillText('NÓS ADORARÍAMOS A SUA', width / 2, starY + 95);
-    ctx.fillText('AVALIAÇÃO NO GOOGLE', width / 2, starY + 160);
+    if (isInsta) {
+      ctx.fillText('SIGA-NOS NO INSTAGRAM', width / 2, starY + 95);
+      const cleanH = (options.instagramHandle || options.instagramUrl || businessName || 'empresa')
+        .replace(/.*instagram\.com\//, '')
+        .replace(/^@/, '')
+        .replace(/\/.*$/, '')
+        .trim();
+      ctx.fillStyle = '#fef08a';
+      ctx.font = '900 64px "Plus Jakarta Sans", "Inter", sans-serif';
+      ctx.fillText(`@${cleanH}`, width / 2, starY + 250);
+    } else {
+      ctx.fillText('NÓS ADORARÍAMOS A SUA', width / 2, starY + 95);
+      ctx.fillText('AVALIAÇÃO NO GOOGLE', width / 2, starY + 160);
 
-    const clientTag = (businessName ? businessName.trim() : 'SUA EMPRESA').toUpperCase();
-    ctx.fillStyle = '#fbbf24';
-    ctx.font = '900 64px "Plus Jakarta Sans", "Inter", sans-serif';
-    ctx.fillText(clientTag, width / 2, starY + 250);
+      const clientTag = (businessName ? businessName.trim() : 'SUA EMPRESA').toUpperCase();
+      ctx.fillStyle = '#fbbf24';
+      ctx.font = '900 64px "Plus Jakarta Sans", "Inter", sans-serif';
+      ctx.fillText(clientTag, width / 2, starY + 250);
+    }
 
-    // Center Google G Badge
+    // Center Badge
     const badgeR = 100;
     const badgeCY = splitY + ribbonH / 2;
     ctx.beginPath();
@@ -1933,7 +2459,12 @@ export async function generateCardNfcDataUrl(
     ctx.shadowBlur = 25;
     ctx.fill();
     ctx.shadowColor = 'transparent';
-    drawGoogleGLogo(ctx, width / 2, badgeCY, 72);
+
+    if (isInsta) {
+      drawInstagramOfficialBadge(ctx, width / 2, badgeCY, 138);
+    } else {
+      drawGoogleGLogo(ctx, width / 2, badgeCY, 72);
+    }
 
     // Bottom Content (Stacked vertically on CR80 Vertical)
     const midX = width / 2;
@@ -1951,7 +2482,12 @@ export async function generateCardNfcDataUrl(
 
     // QR Code
     const qrSize = 440;
-    const qrDataUrl = await generateQrDataUrl(permanentUrl, { width: 800, margin: 1 });
+    const effectiveTarget = isInsta && (options.instagramUrl || options.instagramHandle)
+      ? (options.instagramUrl && options.instagramUrl.startsWith('http')
+          ? options.instagramUrl
+          : `https://instagram.com/${(options.instagramHandle || options.instagramUrl || '').replace(/^@/, '')}`)
+      : permanentUrl;
+    const qrDataUrl = await generateQrDataUrl(effectiveTarget, { width: 800, margin: 1 });
     const qrImg = await loadImage(qrDataUrl);
     drawQrWithBrackets(ctx, qrImg, midX - qrSize / 2, 1510, qrSize);
   }
@@ -2001,7 +2537,11 @@ export async function downloadPlatePng(options: ArtworkOptions, fileNamePrefix?:
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-z0-9]/g, '_')
     .substring(0, 32);
-  const defaultPrefix = options.theme === 'instagram_dual' ? 'placa_instagram_google_dupla_10x10cm' : 'placa_google_nfc_10x10cm';
+  const defaultPrefix = options.theme === 'instagram_official'
+    ? 'placa_instagram_oficial_10x10cm'
+    : options.theme === 'instagram_dual'
+    ? 'placa_instagram_google_dupla_10x10cm'
+    : 'placa_google_nfc_10x10cm';
   const prefix = fileNamePrefix || defaultPrefix;
   a.download = `${prefix}_${safeName}_4k_ultra_hd_600dpi.png`;
   a.href = dataUrl;

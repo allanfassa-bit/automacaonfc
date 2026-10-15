@@ -62,10 +62,8 @@ service cloud.firestore {
     }
 
     function isValidSystemUser(data) {
-      return data.username is string && data.username.size() >= 3 && data.username.size() <= 100
-        && data.role is string && data.role in ['master', 'operator', 'support', 'client']
-        && data.passwordHash is string && data.passwordHash.size() > 0
-        && data.salt is string && data.salt.size() > 0;
+      return data.username is string && data.username.size() >= 2 && data.username.size() <= 100
+        && data.role is string && data.role in ['master', 'operator', 'support', 'client', 'seller', 'reseller', 'affiliate'];
     }
 
     function isValidLoginAttempt(data) {
@@ -74,7 +72,7 @@ service cloud.firestore {
         && data.lastAttemptAt is string;
     }
 
-    // CyberShield: System Users (PBKDF2 credentials) - Strictly Validated Schema
+    // CyberShield: System Users (PBKDF2 credentials & allowedTabs RBAC)
     match /system_users/{userId} {
       allow read: if true;
       allow create, update: if isValidId(userId) && isValidSystemUser(incoming());
@@ -86,6 +84,19 @@ service cloud.firestore {
       allow read: if true;
       allow create, update: if isValidId(attemptId) && isValidLoginAttempt(incoming());
       allow delete: if isValidId(attemptId);
+    }
+
+    function isValidSeller(data) {
+      return data.username is string && data.username.size() >= 2 && data.username.size() <= 100
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 200
+        && data.role is string && data.role in ['seller', 'reseller', 'affiliate', 'client', 'operator'];
+    }
+
+    // Sellers & Resellers Collection (with allowedTabs and permissions)
+    match /sellers/{sellerId} {
+      allow read: if true;
+      allow create, update: if isValidId(sellerId) && isValidSeller(incoming());
+      allow delete: if isValidId(sellerId);
     }
   }
 }

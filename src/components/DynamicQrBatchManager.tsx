@@ -39,7 +39,9 @@ import {
   Terminal,
   AlertTriangle,
   Camera,
-  ScanLine
+  ScanLine,
+  Minimize2,
+  Maximize2
 } from 'lucide-react';
 import { Lead } from '../App';
 import { doc, setDoc, deleteDoc, updateDoc } from 'firebase/firestore';
@@ -109,6 +111,7 @@ export function DynamicQrBatchManager({ leads, onSelectLead, onNavigateToPortal 
   // Preview & QR detail modal
   const [viewingQr, setViewingQr] = useState<Lead | null>(null);
   const [viewingQrDataUrl, setViewingQrDataUrl] = useState<string>('');
+  const [isQrModalMinimized, setIsQrModalMinimized] = useState<boolean>(false);
 
   // Inline URL editing states: map leadId -> current input value
   const [editingUrls, setEditingUrls] = useState<Record<string, string>>({});
@@ -271,6 +274,18 @@ export function DynamicQrBatchManager({ leads, onSelectLead, onNavigateToPortal 
       setViewingDynamicQrDataUrl('');
       setViewingQrDataUrl('');
     }
+  }, [viewingQr]);
+
+  // Handle ESC key to easily close viewingQr modal
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && viewingQr) {
+        setViewingQr(null);
+        setIsQrModalMinimized(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, [viewingQr]);
 
   // Copy link handler
@@ -877,13 +892,13 @@ export function DynamicQrBatchManager({ leads, onSelectLead, onNavigateToPortal 
   return (
     <div className="space-y-6">
       {/* Executive Clean Header */}
-      <div className="bg-slate-900 border border-slate-800 text-white p-6 sm:p-7 rounded-3xl shadow-sm relative overflow-hidden">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+      <div className="bg-slate-900 border border-slate-800 text-white p-4 sm:p-7 rounded-3xl shadow-sm relative overflow-hidden">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5 sm:gap-6">
           <div className="space-y-1.5 max-w-2xl">
-            <div className="flex items-center gap-2 text-xs font-semibold text-slate-400">
-              <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+            <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-400">
+              <Sparkles className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
               <span>Totens Acrílicos 10x10cm &amp; QR Codes Contactless</span>
-              <span aria-hidden="true">·</span>
+              <span aria-hidden="true" className="hidden sm:inline">·</span>
               <span className="text-emerald-400 font-bold">Google 5 Estrelas Direto</span>
             </div>
             <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white">
@@ -895,7 +910,7 @@ export function DynamicQrBatchManager({ leads, onSelectLead, onNavigateToPortal 
           </div>
 
           {/* Clean Action Buttons Row */}
-          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:flex lg:flex-wrap items-center gap-2 sm:gap-2.5 w-full lg:w-auto shrink-0">
             <button
               onClick={() => {
                 const pendingPlate = dynamicQrs.find((q) => q.status === 'pending');
@@ -913,10 +928,10 @@ export function DynamicQrBatchManager({ leads, onSelectLead, onNavigateToPortal 
                 setQuickActivatedLead(null);
                 setIsQuickActivateOpen(true);
               }}
-              className="bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-slate-950 font-bold px-4 py-2.5 rounded-xl text-xs uppercase tracking-wider transition shadow-sm flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full lg:w-auto bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-slate-950 font-bold px-4 py-2.5 rounded-xl text-xs uppercase tracking-wider transition shadow-sm flex items-center justify-center gap-2 cursor-pointer text-center"
               id="btn-quick-activate-field"
             >
-              <Zap className="w-4 h-4 fill-slate-950 text-slate-950" />
+              <Zap className="w-4 h-4 fill-slate-950 text-slate-950 shrink-0" />
               <span>⚡ Ativar Placa na Hora</span>
             </button>
 
@@ -928,27 +943,27 @@ export function DynamicQrBatchManager({ leads, onSelectLead, onNavigateToPortal 
                 setBindSuccessMessage(null);
                 setIsIdentifyModalOpen(true);
               }}
-              className="bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-bold px-4 py-2.5 rounded-xl text-xs uppercase tracking-wider transition border border-indigo-400/30 flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+              className="w-full lg:w-auto bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-bold px-4 py-2.5 rounded-xl text-xs uppercase tracking-wider transition border border-indigo-400/30 flex items-center justify-center gap-2 cursor-pointer shadow-sm text-center"
               title="Aponte a câmera ou digite o código da placa física para saber qual é a empresa e cadastrar o novo cliente"
             >
-              <ScanLine className="w-4 h-4" />
+              <ScanLine className="w-4 h-4 shrink-0" />
               <span>🔍 Identificar Placa Impressa</span>
             </button>
 
             <button
               onClick={() => setIsBatchModalOpen(true)}
-              className="bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 border border-slate-700 font-bold px-3.5 py-2.5 rounded-xl text-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
+              className="w-full lg:w-auto bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 border border-slate-700 font-bold px-3.5 py-2.5 rounded-xl text-xs transition flex items-center justify-center gap-1.5 cursor-pointer text-center"
               id="btn-open-batch-generator"
             >
-              <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+              <Sparkles className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
               <span>Gerar Lote (1 a 40)</span>
             </button>
 
             <button
               onClick={() => setIsSingleModalOpen(true)}
-              className="bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 border border-slate-700 font-bold px-3.5 py-2.5 rounded-xl text-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
+              className="w-full lg:w-auto bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 border border-slate-700 font-bold px-3.5 py-2.5 rounded-xl text-xs transition flex items-center justify-center gap-1.5 cursor-pointer text-center"
             >
-              <Plus className="w-3.5 h-3.5" />
+              <Plus className="w-3.5 h-3.5 shrink-0" />
               <span>Novo Individual</span>
             </button>
           </div>
@@ -957,7 +972,7 @@ export function DynamicQrBatchManager({ leads, onSelectLead, onNavigateToPortal 
         {/* Clean Unboxed Stats Row */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-6 pt-5 border-t border-slate-800">
           <div className="bg-slate-950/60 p-3.5 rounded-2xl border border-slate-800 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-slate-800 text-indigo-400 flex items-center justify-center font-bold">
+            <div className="w-10 h-10 rounded-xl bg-slate-800 text-indigo-400 flex items-center justify-center font-bold shrink-0">
               <QrCode className="w-5 h-5" />
             </div>
             <div>
@@ -967,7 +982,7 @@ export function DynamicQrBatchManager({ leads, onSelectLead, onNavigateToPortal 
           </div>
 
           <div className="bg-slate-950/60 p-3.5 rounded-2xl border border-slate-800 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-950/80 text-emerald-400 flex items-center justify-center font-bold border border-emerald-800/40">
+            <div className="w-10 h-10 rounded-xl bg-emerald-950/80 text-emerald-400 flex items-center justify-center font-bold border border-emerald-800/40 shrink-0">
               <CheckCircle className="w-5 h-5" />
             </div>
             <div>
@@ -977,7 +992,7 @@ export function DynamicQrBatchManager({ leads, onSelectLead, onNavigateToPortal 
           </div>
 
           <div className="bg-slate-950/60 p-3.5 rounded-2xl border border-slate-800 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-950/80 text-amber-400 flex items-center justify-center font-bold border border-amber-800/40">
+            <div className="w-10 h-10 rounded-xl bg-amber-950/80 text-amber-400 flex items-center justify-center font-bold border border-amber-800/40 shrink-0">
               <Clock className="w-5 h-5" />
             </div>
             <div>
@@ -989,10 +1004,10 @@ export function DynamicQrBatchManager({ leads, onSelectLead, onNavigateToPortal 
       </div>
 
       {/* Operating Mode & Public Domain Control Center */}
-      <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-lg space-y-4 text-white">
+      <div className="bg-slate-900 border border-slate-800 rounded-3xl p-4 sm:p-5 shadow-lg space-y-4 text-white">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-800/80 pb-4">
           <div className="space-y-1">
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <span className="text-[10px] font-black uppercase tracking-wider bg-cyan-950 text-cyan-400 border border-cyan-800 px-2.5 py-0.5 rounded-full">
                 Formato dos QR Codes
               </span>
@@ -1004,39 +1019,39 @@ export function DynamicQrBatchManager({ leads, onSelectLead, onNavigateToPortal 
           </div>
 
           {/* Mode Switcher Buttons & Educational Guide */}
-          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 shrink-0">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full lg:w-auto shrink-0">
             <button
               type="button"
               onClick={() => setIsEduModalOpen(true)}
-              className="px-3.5 py-2 rounded-xl text-xs font-bold text-amber-300 hover:text-amber-200 bg-amber-950/60 hover:bg-amber-900/60 border border-amber-800/80 transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+              className="w-full sm:w-auto px-3.5 py-2 rounded-xl text-xs font-bold text-amber-300 hover:text-amber-200 bg-amber-950/60 hover:bg-amber-900/60 border border-amber-800/80 transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs text-center"
               title="Entenda as diferenças técnicas e práticas entre Link Direto e Link Dinâmico"
             >
-              <HelpCircle className="w-3.5 h-3.5 text-amber-400" />
+              <HelpCircle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
               <span>Diferença: Direto vs Dinâmico</span>
             </button>
 
-            <div className="flex bg-slate-950 p-1 rounded-2xl border border-slate-800 text-xs font-bold shrink-0 shadow-inner">
+            <div className="flex flex-col sm:flex-row bg-slate-950 p-1 rounded-2xl border border-slate-800 text-xs font-bold shadow-inner w-full sm:w-auto">
               <button
                 onClick={() => setQrExportMode('direct')}
-                className={`px-3.5 py-2 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer ${
+                className={`flex-1 py-2 px-3 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer text-center ${
                   qrExportMode === 'direct'
                     ? 'bg-emerald-500 text-slate-950 font-black shadow-md'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
-                <CheckCircle className="w-3.5 h-3.5" />
-                ⭐ Direto Oficial (Google Reviews)
+                <CheckCircle className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate">⭐ Direto Oficial (Google)</span>
               </button>
               <button
                 onClick={() => setQrExportMode('dynamic')}
-                className={`px-3.5 py-2 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer ${
+                className={`flex-1 py-2 px-3 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer text-center ${
                   qrExportMode === 'dynamic'
                     ? 'bg-cyan-500 text-slate-950 font-black shadow-md'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
-                <RefreshCw className="w-3.5 h-3.5" />
-                🔄 Dinâmico Nuvem (/r/:id)
+                <RefreshCw className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate">🔄 Dinâmico Nuvem (/r/:id)</span>
               </button>
             </div>
           </div>
@@ -1053,7 +1068,7 @@ export function DynamicQrBatchManager({ leads, onSelectLead, onNavigateToPortal 
               <Globe className="w-4 h-4" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <span className="font-bold text-slate-300">Domínio Público do Redirecionador:</span>
                 {hasCustomPublicDomain() ? (
                   <span className="text-[10px] bg-emerald-950 text-emerald-300 border border-emerald-800 font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
@@ -1072,7 +1087,7 @@ export function DynamicQrBatchManager({ leads, onSelectLead, onNavigateToPortal 
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
             <button
               type="button"
               onClick={() => {
@@ -1080,9 +1095,9 @@ export function DynamicQrBatchManager({ leads, onSelectLead, onNavigateToPortal 
                 setDomainModalTab('settings');
                 setIsDomainModalOpen(true);
               }}
-              className="text-xs font-bold text-cyan-400 hover:text-cyan-300 bg-slate-800 hover:bg-slate-700 border border-slate-700 px-3.5 py-2 rounded-xl transition cursor-pointer shrink-0 flex items-center gap-1.5"
+              className="text-xs font-bold text-cyan-400 hover:text-cyan-300 bg-slate-800 hover:bg-slate-700 border border-slate-700 px-3.5 py-2 rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5"
             >
-              <Sliders className="w-3.5 h-3.5" />
+              <Sliders className="w-3.5 h-3.5 shrink-0" />
               <span>Configurar Domínio Próprio</span>
             </button>
             <button
@@ -1092,9 +1107,9 @@ export function DynamicQrBatchManager({ leads, onSelectLead, onNavigateToPortal 
                 setDomainModalTab('deploy_tutorial');
                 setIsDomainModalOpen(true);
               }}
-              className="text-xs font-bold text-emerald-400 hover:text-emerald-300 bg-emerald-950/60 hover:bg-emerald-900/60 border border-emerald-800/80 px-3.5 py-2 rounded-xl transition cursor-pointer shrink-0 flex items-center gap-1.5"
+              className="text-xs font-bold text-emerald-400 hover:text-emerald-300 bg-emerald-950/60 hover:bg-emerald-900/60 border border-emerald-800/80 px-3.5 py-2 rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5"
             >
-              <Server className="w-3.5 h-3.5" />
+              <Server className="w-3.5 h-3.5 shrink-0" />
               <span>Como Subir no Seu Domínio (Tutorial)</span>
             </button>
           </div>
@@ -1124,10 +1139,10 @@ export function DynamicQrBatchManager({ leads, onSelectLead, onNavigateToPortal 
             )}
           </div>
 
-          <div className="flex bg-slate-100 p-1 rounded-xl w-full sm:w-auto border border-slate-200 text-xs font-bold">
+          <div className="flex bg-slate-100 p-1 rounded-xl w-full sm:w-auto border border-slate-200 text-xs font-bold overflow-x-auto scrollbar-none">
             <button
               onClick={() => setStatusFilter('all')}
-              className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+              className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap text-center ${
                 statusFilter === 'all' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-900'
               }`}
             >
@@ -1135,15 +1150,15 @@ export function DynamicQrBatchManager({ leads, onSelectLead, onNavigateToPortal 
             </button>
             <button
               onClick={() => setStatusFilter('pending')}
-              className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+              className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap text-center ${
                 statusFilter === 'pending' ? 'bg-white text-amber-800 shadow-xs' : 'text-slate-500 hover:text-slate-900'
               }`}
             >
-              Aguardando Link ({stats.pending})
+              Aguardando ({stats.pending})
             </button>
             <button
               onClick={() => setStatusFilter('active')}
-              className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+              className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap text-center ${
                 statusFilter === 'active' ? 'bg-white text-emerald-800 shadow-xs' : 'text-slate-500 hover:text-slate-900'
               }`}
             >
@@ -1153,22 +1168,22 @@ export function DynamicQrBatchManager({ leads, onSelectLead, onNavigateToPortal 
         </div>
 
         {/* Right: Export All Buttons */}
-        <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto justify-end">
+        <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 w-full lg:w-auto justify-stretch sm:justify-end">
           <button
             onClick={handleDownloadAllZip}
             disabled={isExportingZip || dynamicQrs.length === 0}
-            className="bg-slate-900 hover:bg-slate-800 active:scale-95 text-white font-bold text-xs py-2 px-3.5 rounded-xl transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+            className="col-span-2 sm:col-auto bg-slate-900 hover:bg-slate-800 active:scale-95 text-white font-bold text-xs py-2 px-3.5 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 text-center"
             title="Baixar arquivo ZIP com todos os QR Codes em PNG HD 1000px"
           >
             {isExportingZip ? (
               <>
-                <RefreshCw className="w-3.5 h-3.5 animate-spin text-cyan-400" />
-                <span>Compactando ({zipProgress?.current}/{zipProgress?.total})...</span>
+                <RefreshCw className="w-3.5 h-3.5 animate-spin text-cyan-400 shrink-0" />
+                <span className="truncate">Compactando ({zipProgress?.current}/{zipProgress?.total})...</span>
               </>
             ) : (
               <>
-                <Download className="w-3.5 h-3.5 text-cyan-400" />
-                <span>Baixar Todos em ZIP ({dynamicQrs.length})</span>
+                <Download className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                <span className="truncate">Baixar Todos em ZIP ({dynamicQrs.length})</span>
               </>
             )}
           </button>
@@ -1176,20 +1191,20 @@ export function DynamicQrBatchManager({ leads, onSelectLead, onNavigateToPortal 
           <button
             onClick={handleBatchPrint}
             disabled={dynamicQrs.length === 0}
-            className="bg-white hover:bg-slate-50 active:scale-95 text-slate-800 border border-slate-200 font-bold text-xs py-2 px-3.5 rounded-xl transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-2xs"
+            className="bg-white hover:bg-slate-50 active:scale-95 text-slate-800 border border-slate-200 font-bold text-xs py-2 px-3.5 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-2xs text-center"
             title="Imprimir cartela formatada com todos os QR Codes para corte"
           >
-            <Printer className="w-3.5 h-3.5 text-blue-600" />
-            <span>Imprimir Cartela</span>
+            <Printer className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+            <span className="truncate">Imprimir Cartela</span>
           </button>
 
           <button
             onClick={handleExportCsv}
             disabled={dynamicQrs.length === 0}
-            className="bg-white hover:bg-slate-50 active:scale-95 text-slate-800 border border-slate-200 font-bold text-xs py-2 px-3 rounded-xl transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-2xs"
+            className="bg-white hover:bg-slate-50 active:scale-95 text-slate-800 border border-slate-200 font-bold text-xs py-2 px-3 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-2xs text-center"
             title="Exportar planilha CSV com links permanentes e URLs de destino"
           >
-            <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+            <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
             <span>CSV</span>
           </button>
 
@@ -1197,10 +1212,10 @@ export function DynamicQrBatchManager({ leads, onSelectLead, onNavigateToPortal 
           <button
             onClick={handleBackupDatabase}
             disabled={dynamicQrs.length === 0}
-            className="bg-cyan-50 hover:bg-cyan-100 active:scale-95 text-cyan-900 border border-cyan-200 font-bold text-xs py-2 px-3 rounded-xl transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-2xs"
+            className="bg-cyan-50 hover:bg-cyan-100 active:scale-95 text-cyan-900 border border-cyan-200 font-bold text-xs py-2 px-3 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-2xs text-center"
             title="Baixar Backup Completo de todas as empresas e tags em JSON com 1 clique"
           >
-            <Database className="w-3.5 h-3.5 text-cyan-700" />
+            <Database className="w-3.5 h-3.5 text-cyan-700 shrink-0" />
             <span>Backup JSON</span>
           </button>
 
@@ -1215,17 +1230,17 @@ export function DynamicQrBatchManager({ leads, onSelectLead, onNavigateToPortal 
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={isRestoring}
-            className="bg-amber-50 hover:bg-amber-100 active:scale-95 text-amber-900 border border-amber-200 font-bold text-xs py-2 px-3 rounded-xl transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-2xs"
+            className="bg-amber-50 hover:bg-amber-100 active:scale-95 text-amber-900 border border-amber-200 font-bold text-xs py-2 px-3 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-2xs text-center"
             title="Restaurar empresas e tags a partir de um arquivo de backup JSON"
           >
             {isRestoring ? (
               <>
-                <RefreshCw className="w-3.5 h-3.5 animate-spin text-amber-700" />
-                <span>Restaurando ({restoreProgress?.current}/{restoreProgress?.total})...</span>
+                <RefreshCw className="w-3.5 h-3.5 animate-spin text-amber-700 shrink-0" />
+                <span className="truncate">Restaurando...</span>
               </>
             ) : (
               <>
-                <Upload className="w-3.5 h-3.5 text-amber-700" />
+                <Upload className="w-3.5 h-3.5 text-amber-700 shrink-0" />
                 <span>Restaurar</span>
               </>
             )}
@@ -1238,11 +1253,11 @@ export function DynamicQrBatchManager({ leads, onSelectLead, onNavigateToPortal 
               setIsArtworkModalOpen(true);
             }}
             disabled={dynamicQrs.length === 0}
-            className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 active:scale-95 text-white font-bold text-xs py-2 px-3.5 rounded-xl transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-xs"
+            className="col-span-2 sm:col-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 active:scale-95 text-white font-bold text-xs py-2 px-3.5 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-xs text-center"
             title="Baixar arte da Placa 10x10cm e Cartão NFC 5.4x8.5cm em alta resolução 300 DPI com QR Code do cliente"
           >
-            <Sparkles className="w-3.5 h-3.5 text-cyan-200" />
-            <span>Artes Gráficas (10x10 & Cartão)</span>
+            <Sparkles className="w-3.5 h-3.5 text-cyan-200 shrink-0" />
+            <span className="truncate">Artes Gráficas (10x10 &amp; Cartão)</span>
           </button>
         </div>
       </div>
@@ -1301,7 +1316,7 @@ export function DynamicQrBatchManager({ leads, onSelectLead, onNavigateToPortal 
                   className="p-4 sm:p-5 hover:bg-slate-50/70 transition flex flex-col lg:flex-row lg:items-center gap-4 justify-between"
                 >
                   {/* Column 1: QR Thumbnail & Identity */}
-                  <div className="flex items-start sm:items-center gap-3.5 min-w-[280px]">
+                  <div className="flex items-start sm:items-center gap-3.5 min-w-0 sm:min-w-[240px]">
                     {/* QR Thumbnail Button (Click to enlarge) */}
                     <button
                       type="button"
@@ -1500,7 +1515,7 @@ export function DynamicQrBatchManager({ leads, onSelectLead, onNavigateToPortal 
                   </div>
 
                   {/* Column 3: Individual Actions */}
-                  <div className="flex items-center gap-1.5 shrink-0 self-end lg:self-center">
+                  <div className="flex flex-wrap items-center gap-1.5 shrink-0 self-start sm:self-end lg:self-center">
                     <button
                       onClick={() => {
                         setArtworkLead(item.lead);
@@ -1913,9 +1928,12 @@ export function DynamicQrBatchManager({ leads, onSelectLead, onNavigateToPortal 
               <button
                 onClick={() => setIsBatchModalOpen(false)}
                 disabled={isGeneratingBatch}
-                className="text-slate-400 hover:text-slate-700 p-1 rounded-lg"
+                className="flex items-center gap-1 px-2.5 py-1.5 text-slate-500 hover:text-rose-600 bg-slate-100 hover:bg-rose-50 border border-slate-200 hover:border-rose-200 rounded-xl font-bold text-xs transition cursor-pointer active:scale-95 group shrink-0"
+                title="Fechar janela (Esc ou clique fora)"
+                aria-label="Fechar janela"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4 text-slate-500 group-hover:text-rose-600" />
+                <span>Fechar</span>
               </button>
             </div>
 
@@ -2095,9 +2113,12 @@ export function DynamicQrBatchManager({ leads, onSelectLead, onNavigateToPortal 
               </div>
               <button
                 onClick={() => setIsSingleModalOpen(false)}
-                className="text-slate-400 hover:text-slate-700"
+                className="flex items-center gap-1 px-2.5 py-1.5 text-slate-500 hover:text-rose-600 bg-slate-100 hover:bg-rose-50 border border-slate-200 hover:border-rose-200 rounded-xl font-bold text-xs transition cursor-pointer active:scale-95 group shrink-0"
+                title="Fechar janela (Esc ou clique fora)"
+                aria-label="Fechar janela"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4 text-slate-500 group-hover:text-rose-600" />
+                <span>Fechar</span>
               </button>
             </div>
 
@@ -2176,188 +2197,269 @@ export function DynamicQrBatchManager({ leads, onSelectLead, onNavigateToPortal 
         </div>
       )}
 
-      {/* MODAL 3: VIEW / ENLARGE QR CODE DETAILS (DUAL DIRECT & DYNAMIC) */}
+      {/* MODAL 3: VIEW / ENLARGE QR CODE DETAILS (DUAL DIRECT & DYNAMIC) - WITH MINIMIZE & CLOSE */}
       {viewingQr && (
-        <div className="fixed inset-0 bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 text-center shadow-2xl space-y-4 border border-slate-200 relative animate-in fade-in zoom-in-95">
-            <button
-              onClick={() => setViewingQr(null)}
-              className="absolute right-4 top-4 text-slate-400 hover:text-slate-700 p-1 rounded-lg"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            <div className="space-y-1">
-              <h3 className="text-lg font-black text-slate-900">{viewingQr.name}</h3>
-              <p className="text-xs text-slate-400 font-mono">ID: {viewingQr.id}</p>
+        isQrModalMinimized ? (
+          /* Minimized floating bar at bottom-right */
+          <div className="fixed bottom-4 right-4 z-50 bg-slate-900 border-2 border-cyan-500/80 rounded-2xl shadow-2xl p-3 flex items-center gap-3 text-white animate-in slide-in-from-bottom-5 duration-200">
+            <div className="w-8 h-8 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0">
+              <QrCode className="w-4 h-4" />
             </div>
-
-            {/* Modal Tabs: Direct Official vs Dynamic Nuvem */}
-            <div className="flex bg-slate-100 p-1 rounded-xl text-xs font-bold border border-slate-200">
+            <div className="min-w-0 max-w-[180px] sm:max-w-xs">
+              <p className="text-xs font-black truncate">{viewingQr.name}</p>
+              <p className="text-[10px] text-cyan-300 font-mono truncate">ID: {viewingQr.id}</p>
+            </div>
+            <div className="flex items-center gap-1 shrink-0 ml-1">
               <button
                 type="button"
-                onClick={() => setModalQrTab('direct')}
-                className={`flex-1 py-1.5 px-2 rounded-lg transition cursor-pointer flex items-center justify-center gap-1 ${
-                  modalQrTab === 'direct'
-                    ? 'bg-emerald-600 text-white shadow-xs font-black'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
+                onClick={() => setIsQrModalMinimized(false)}
+                className="p-1.5 text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition cursor-pointer"
+                title="Restaurar / Maximizar QR Code"
+                aria-label="Restaurar tela do QR Code"
               >
-                <CheckCircle className="w-3.5 h-3.5" />
-                <span>⭐ Direto (Oficial)</span>
+                <Maximize2 className="w-4 h-4 text-cyan-400" />
               </button>
               <button
                 type="button"
-                onClick={() => setModalQrTab('dynamic')}
-                className={`flex-1 py-1.5 px-2 rounded-lg transition cursor-pointer flex items-center justify-center gap-1 ${
-                  modalQrTab === 'dynamic'
-                    ? 'bg-cyan-600 text-white shadow-xs font-black'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
+                onClick={() => {
+                  setViewingQr(null);
+                  setIsQrModalMinimized(false);
+                }}
+                className="p-1.5 text-slate-300 hover:text-rose-400 hover:bg-slate-800 rounded-lg transition cursor-pointer"
+                title="Fechar"
+                aria-label="Fechar QR Code"
               >
-                <RefreshCw className="w-3.5 h-3.5" />
-                <span>🔄 Dinâmico (/r/...)</span>
+                <X className="w-4 h-4" />
               </button>
             </div>
-
-            {modalQrTab === 'direct' ? (
-              /* TAB 1: DIRECT OFFICIAL QR CODE */
-              <div className="space-y-3">
-                <span className="inline-block text-[10px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200 px-3 py-0.5 rounded-full">
-                  ✓ Sem Erro 403 • Abre Google Reviews Imediatamente
-                </span>
-
-                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 inline-block shadow-inner">
-                  {viewingDirectQrDataUrl ? (
-                    <img
-                      src={viewingDirectQrDataUrl}
-                      alt={`QR Direto ${viewingQr.name}`}
-                      className="w-52 h-52 mx-auto rounded-lg shadow-sm"
-                    />
-                  ) : (
-                    <div className="w-52 h-52 flex items-center justify-center">
-                      <RefreshCw className="w-6 h-6 animate-spin text-emerald-500" />
-                    </div>
-                  )}
-                </div>
-
-                <div className="text-xs text-slate-500 space-y-1 text-left bg-slate-50 p-3 rounded-xl border border-slate-100">
-                  <span className="font-bold text-slate-700 block text-[10px] uppercase">Link Gravado neste QR:</span>
-                  <span className="font-mono text-[11px] text-emerald-700 break-all block leading-tight">
-                    {getDirectLeadUrl(viewingQr)}
-                  </span>
-                  <p className="text-[10px] text-slate-400 mt-1">
-                    Garante que qualquer celular de cliente na rua abra a tela de 5 estrelas do Google sem nenhuma tela de bloqueio.
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-2 pt-1">
-                  <button
-                    type="button"
-                    onClick={() => handleDownloadSingleQr(viewingQr, 'direct')}
-                    className="flex-1 py-2.5 text-xs font-black rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white uppercase tracking-wider shadow-md cursor-pointer flex items-center justify-center gap-1.5"
-                  >
-                    <Download className="w-3.5 h-3.5" />
-                    <span>Baixar QR Direto HD</span>
-                  </button>
-                  <a
-                    href={getDirectLeadUrl(viewingQr)}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="py-2.5 px-3 text-xs font-bold rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 flex items-center gap-1"
-                    title="Testar link no navegador"
-                  >
-                    <ExternalLink className="w-4 h-4" />
-                  </a>
-                </div>
-              </div>
-            ) : (
-              /* TAB 2: DYNAMIC PERMANENT QR CODE */
-              <div className="space-y-3">
-                <span className="inline-block text-[10px] font-black uppercase tracking-wider bg-cyan-50 text-cyan-700 border border-cyan-200 px-3 py-0.5 rounded-full">
-                  Redirecionamento Nuvem ALF Automação
-                </span>
-
-                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 inline-block shadow-inner">
-                  {viewingDynamicQrDataUrl ? (
-                    <img
-                      src={viewingDynamicQrDataUrl}
-                      alt={`QR Dinâmico ${viewingQr.name}`}
-                      className="w-52 h-52 mx-auto rounded-lg shadow-sm"
-                    />
-                  ) : (
-                    <div className="w-52 h-52 flex items-center justify-center">
-                      <RefreshCw className="w-6 h-6 animate-spin text-cyan-500" />
-                    </div>
-                  )}
-                </div>
-
-                <div className="text-xs text-slate-500 space-y-1 text-left bg-slate-50 p-3 rounded-xl border border-slate-100">
-                  <div>
-                    <span className="font-bold text-slate-700">Link Fixo: </span>
-                    <span className="font-mono text-[11px] text-blue-600 break-all">
-                      {getDynamicQrUrl(viewingQr.id)}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="font-bold text-slate-700">Destino Atual: </span>
-                    <span className="text-[11px] text-slate-800 break-all">
-                      {viewingQr.googleMapsUrl ||
-                        viewingQr.nfcCustomUrl ||
-                        viewingQr.websiteUrl ||
-                        viewingQr.nfcInstagramUrl ||
-                        'Em Aberto (Aguardando link)'}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 pt-1">
-                  <button
-                    type="button"
-                    onClick={() => handleDownloadSingleQr(viewingQr, 'dynamic')}
-                    className="flex-1 py-2.5 text-xs font-black rounded-xl bg-slate-900 hover:bg-slate-800 text-white uppercase tracking-wider shadow-md cursor-pointer flex items-center justify-center gap-1.5"
-                  >
-                    <Download className="w-3.5 h-3.5 text-cyan-400" />
-                    <span>Baixar QR Dinâmico HD</span>
-                  </button>
-                  <a
-                    href={getTestRedirectUrl(viewingQr.id)}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="py-2.5 px-3 text-xs font-bold rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 flex items-center gap-1"
-                    title="Testar Redirecionamento Nuvem no navegador"
-                  >
-                    <ExternalLink className="w-4 h-4 text-cyan-600" />
-                  </a>
-                </div>
-              </div>
-            )}
-
-            <button
-              type="button"
-              onClick={() => {
-                setNfcWriterLead(viewingQr);
-                setIsNfcWriterOpen(true);
-              }}
-              className="w-full py-2.5 px-3 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-md cursor-pointer flex items-center justify-center gap-1.5 mt-2"
-            >
-              <Smartphone className="w-3.5 h-3.5 text-cyan-200" />
-              <span>Gravar Tag NFC no Celular (Android Chrome)</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setArtworkLead(viewingQr);
-                setIsArtworkModalOpen(true);
-              }}
-              className="w-full py-2.5 px-3 bg-slate-900 hover:bg-slate-800 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-md cursor-pointer flex items-center justify-center gap-1.5 mt-2"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-cyan-200" />
-              <span>Gerar Placa 10x10cm & Cartão NFC</span>
-            </button>
           </div>
-        </div>
+        ) : (
+          /* Full expanded modal with mobile support, minimize button and backdrop click */
+          <div
+            className="fixed inset-0 bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 z-50 overflow-y-auto"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                setViewingQr(null);
+              }
+            }}
+          >
+            <div className="bg-white rounded-3xl max-w-md w-full p-5 sm:p-6 text-center shadow-2xl space-y-4 border border-slate-200 relative animate-in fade-in zoom-in-95 my-auto max-h-[92vh] overflow-y-auto">
+              {/* Header Action Bar: Title, Minimize & Highly Visible Intuitive 'X' Close Button */}
+              <div className="sticky top-0 bg-white/95 backdrop-blur-xs pt-1 pb-3 -mt-2 border-b border-slate-100 flex items-center justify-between gap-2 text-left z-20">
+                <div className="min-w-0 pr-2">
+                  <h3 className="text-base sm:text-lg font-black text-slate-900 truncate">{viewingQr.name}</h3>
+                  <p className="text-xs text-slate-400 font-mono">ID da Placa: {viewingQr.id}</p>
+                </div>
+
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {/* Minimize Button */}
+                  <button
+                    type="button"
+                    onClick={() => setIsQrModalMinimized(true)}
+                    className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 border border-slate-200 rounded-xl font-bold text-xs shadow-2xs transition-all cursor-pointer active:scale-95"
+                    title="Minimizar janela para o canto da tela"
+                    aria-label="Minimizar visualização do QR Code"
+                  >
+                    <Minimize2 className="w-3.5 h-3.5 text-slate-600" />
+                    <span className="hidden sm:inline">Minimizar</span>
+                  </button>
+
+                  {/* Super Visible & Intuitive Close 'X' Button */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setViewingQr(null);
+                      setIsQrModalMinimized(false);
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 hover:bg-rose-100 active:bg-rose-200 text-rose-700 hover:text-rose-900 border border-rose-200/90 rounded-xl font-black text-xs shadow-2xs hover:shadow-xs transition-all cursor-pointer active:scale-95 group"
+                    title="Fechar janela (Esc ou clique fora)"
+                    aria-label="Fechar visualização do QR Code"
+                  >
+                    <X className="w-4 h-4 text-rose-600 group-hover:rotate-90 transition-transform duration-200 stroke-[2.5]" />
+                    <span>Fechar</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Modal Tabs: Direct Official vs Dynamic Nuvem */}
+              <div className="flex bg-slate-100 p-1 rounded-xl text-xs font-bold border border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setModalQrTab('direct')}
+                  className={`flex-1 py-1.5 px-2 rounded-lg transition cursor-pointer flex items-center justify-center gap-1 ${
+                    modalQrTab === 'direct'
+                      ? 'bg-emerald-600 text-white shadow-xs font-black'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <CheckCircle className="w-3.5 h-3.5" />
+                  <span>⭐ Direto (Oficial)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setModalQrTab('dynamic')}
+                  className={`flex-1 py-1.5 px-2 rounded-lg transition cursor-pointer flex items-center justify-center gap-1 ${
+                    modalQrTab === 'dynamic'
+                      ? 'bg-cyan-600 text-white shadow-xs font-black'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>🔄 Dinâmico (/r/...)</span>
+                </button>
+              </div>
+
+              {modalQrTab === 'direct' ? (
+                /* TAB 1: DIRECT OFFICIAL QR CODE */
+                <div className="space-y-3">
+                  <span className="inline-block text-[10px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200 px-3 py-0.5 rounded-full">
+                    ✓ Sem Erro 403 • Abre Google Reviews Imediatamente
+                  </span>
+
+                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 inline-block shadow-inner">
+                    {viewingDirectQrDataUrl ? (
+                      <img
+                        src={viewingDirectQrDataUrl}
+                        alt={`QR Direto ${viewingQr.name}`}
+                        className="w-48 h-48 sm:w-52 sm:h-52 mx-auto rounded-lg shadow-sm"
+                      />
+                    ) : (
+                      <div className="w-48 h-48 sm:w-52 sm:h-52 flex items-center justify-center">
+                        <RefreshCw className="w-6 h-6 animate-spin text-emerald-500" />
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="text-xs text-slate-500 space-y-1 text-left bg-slate-50 p-3 rounded-xl border border-slate-100">
+                    <span className="font-bold text-slate-700 block text-[10px] uppercase">Link Gravado neste QR:</span>
+                    <span className="font-mono text-[11px] text-emerald-700 break-all block leading-tight">
+                      {getDirectLeadUrl(viewingQr)}
+                    </span>
+                    <p className="text-[10px] text-slate-400 mt-1">
+                      Garante que qualquer celular de cliente na rua abra a tela de 5 estrelas do Google sem nenhuma tela de bloqueio.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => handleDownloadSingleQr(viewingQr, 'direct')}
+                      className="flex-1 py-2.5 text-xs font-black rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white uppercase tracking-wider shadow-md cursor-pointer flex items-center justify-center gap-1.5"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>Baixar QR Direto HD</span>
+                    </button>
+                    <a
+                      href={getDirectLeadUrl(viewingQr)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="py-2.5 px-3 text-xs font-bold rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 flex items-center gap-1"
+                      title="Testar link no navegador"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                    </a>
+                  </div>
+                </div>
+              ) : (
+                /* TAB 2: DYNAMIC PERMANENT QR CODE */
+                <div className="space-y-3">
+                  <span className="inline-block text-[10px] font-black uppercase tracking-wider bg-cyan-50 text-cyan-700 border border-cyan-200 px-3 py-0.5 rounded-full">
+                    Redirecionamento Nuvem ALF Automação
+                  </span>
+
+                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 inline-block shadow-inner">
+                    {viewingDynamicQrDataUrl ? (
+                      <img
+                        src={viewingDynamicQrDataUrl}
+                        alt={`QR Dinâmico ${viewingQr.name}`}
+                        className="w-48 h-48 sm:w-52 sm:h-52 mx-auto rounded-lg shadow-sm"
+                      />
+                    ) : (
+                      <div className="w-48 h-48 sm:w-52 sm:h-52 flex items-center justify-center">
+                        <RefreshCw className="w-6 h-6 animate-spin text-cyan-500" />
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="text-xs text-slate-500 space-y-1 text-left bg-slate-50 p-3 rounded-xl border border-slate-100">
+                    <div>
+                      <span className="font-bold text-slate-700">Link Fixo: </span>
+                      <span className="font-mono text-[11px] text-blue-600 break-all">
+                        {getDynamicQrUrl(viewingQr.id)}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="font-bold text-slate-700">Destino Atual: </span>
+                      <span className="text-[11px] text-slate-800 break-all">
+                        {viewingQr.googleMapsUrl ||
+                          viewingQr.nfcCustomUrl ||
+                          viewingQr.websiteUrl ||
+                          viewingQr.nfcInstagramUrl ||
+                          'Em Aberto (Aguardando link)'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => handleDownloadSingleQr(viewingQr, 'dynamic')}
+                      className="flex-1 py-2.5 text-xs font-black rounded-xl bg-slate-900 hover:bg-slate-800 text-white uppercase tracking-wider shadow-md cursor-pointer flex items-center justify-center gap-1.5"
+                    >
+                      <Download className="w-3.5 h-3.5 text-cyan-400" />
+                      <span>Baixar QR Dinâmico HD</span>
+                    </button>
+                    <a
+                      href={getTestRedirectUrl(viewingQr.id)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="py-2.5 px-3 text-xs font-bold rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 flex items-center gap-1"
+                      title="Testar Redirecionamento Nuvem no navegador"
+                    >
+                      <ExternalLink className="w-4 h-4 text-cyan-600" />
+                    </a>
+                  </div>
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={() => {
+                  setNfcWriterLead(viewingQr);
+                  setIsNfcWriterOpen(true);
+                }}
+                className="w-full py-2.5 px-3 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-md cursor-pointer flex items-center justify-center gap-1.5 mt-2"
+              >
+                <Smartphone className="w-3.5 h-3.5 text-cyan-200" />
+                <span>Gravar Tag NFC no Celular (Android Chrome)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setArtworkLead(viewingQr);
+                  setIsArtworkModalOpen(true);
+                }}
+                className="w-full py-2.5 px-3 bg-slate-900 hover:bg-slate-800 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-md cursor-pointer flex items-center justify-center gap-1.5 mt-2"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-cyan-200" />
+                <span>Gerar Placa 10x10cm & Cartão NFC</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setViewingQr(null);
+                  setIsQrModalMinimized(false);
+                }}
+                className="w-full py-2 px-3 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs rounded-xl transition cursor-pointer flex items-center justify-center gap-1 mt-1"
+              >
+                <X className="w-3.5 h-3.5" />
+                <span>Fechar Visualização</span>
+              </button>
+            </div>
+          </div>
+        )
       )}
 
       {/* Custom Domain & Cloud Deploy Modal */}

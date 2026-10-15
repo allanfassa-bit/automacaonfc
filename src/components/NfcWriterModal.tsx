@@ -11,7 +11,9 @@ import {
   HelpCircle,
   Sparkles,
   RefreshCw,
-  Radio
+  Radio,
+  Minimize2,
+  Maximize2
 } from 'lucide-react';
 import { getDynamicQrUrl } from '../utils/publicUrlHelper';
 
@@ -34,6 +36,7 @@ export const NfcWriterModal: React.FC<NfcWriterModalProps> = ({
   const [errorMessage, setErrorMessage] = useState('');
   const [copied, setCopied] = useState(false);
   const [isWebNfcSupported, setIsWebNfcSupported] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(false);
 
   const targetUrl = customUrl || getDynamicQrUrl(leadId);
 
@@ -50,6 +53,43 @@ export const NfcWriterModal: React.FC<NfcWriterModalProps> = ({
   }, [isOpen]);
 
   if (!isOpen) return null;
+
+  if (isMinimized) {
+    return (
+      <div className="fixed bottom-4 right-4 z-50 bg-slate-900 border-2 border-indigo-500/80 rounded-2xl shadow-2xl p-3 flex items-center gap-3 text-white animate-in slide-in-from-bottom-5 duration-200">
+        <div className="w-8 h-8 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center shrink-0">
+          <Smartphone className="w-4 h-4" />
+        </div>
+        <div className="min-w-0 max-w-[180px] sm:max-w-xs">
+          <p className="text-xs font-black truncate">Gravador NFC: {leadName}</p>
+          <p className="text-[10px] text-indigo-300 font-mono truncate">ID: {leadId}</p>
+        </div>
+        <div className="flex items-center gap-1 shrink-0 ml-1">
+          <button
+            type="button"
+            onClick={() => setIsMinimized(false)}
+            className="p-1.5 text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition cursor-pointer"
+            title="Restaurar / Maximizar Gravador NFC"
+            aria-label="Restaurar Gravador NFC"
+          >
+            <Maximize2 className="w-4 h-4 text-indigo-400" />
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setIsMinimized(false);
+              onClose();
+            }}
+            className="p-1.5 text-slate-300 hover:text-rose-400 hover:bg-slate-800 rounded-lg transition cursor-pointer"
+            title="Fechar"
+            aria-label="Fechar Gravador NFC"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const handleStartWrite = async () => {
     if (!('NDEFReader' in window)) {
@@ -102,32 +142,55 @@ export const NfcWriterModal: React.FC<NfcWriterModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          onClose();
+        }
+      }}
+    >
       <div className="bg-slate-900 border border-slate-800 text-white rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl relative flex flex-col max-h-[90vh]">
         {/* Header */}
-        <div className="p-6 border-b border-slate-800/80 flex items-center justify-between bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center">
+        <div className="p-4 sm:p-6 border-b border-slate-800/80 flex items-center justify-between bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="h-10 w-10 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0">
               <Radio className="w-5 h-5 animate-pulse" />
             </div>
-            <div>
+            <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <span className="text-[10px] font-black uppercase tracking-wider text-cyan-400 bg-cyan-950/80 px-2.5 py-0.5 rounded-full border border-cyan-800/50">
+                <span className="text-[10px] font-black uppercase tracking-wider text-cyan-400 bg-cyan-950/80 px-2.5 py-0.5 rounded-full border border-cyan-800/50 shrink-0">
                   Gravador Web NFC
                 </span>
-                <span className="text-[10px] font-mono text-slate-400">{leadId}</span>
+                <span className="text-[10px] font-mono text-slate-400 truncate">{leadId}</span>
               </div>
               <h3 className="text-base font-black text-white mt-0.5 truncate max-w-[280px]">
                 {leadName}
               </h3>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="text-slate-400 hover:text-white p-2 rounded-xl hover:bg-slate-800 transition cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-1 shrink-0 ml-2">
+            <button
+              type="button"
+              onClick={() => setIsMinimized(true)}
+              className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 rounded-xl text-xs font-bold transition cursor-pointer"
+              title="Minimizar janela"
+              aria-label="Minimizar"
+            >
+              <Minimize2 className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Minimizar</span>
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/25 text-rose-300 hover:text-rose-100 border border-rose-500/30 rounded-xl font-black text-xs transition cursor-pointer active:scale-95 group"
+              title="Fechar janela (Esc ou clique fora)"
+              aria-label="Fechar"
+            >
+              <X className="w-4 h-4 text-rose-400 group-hover:rotate-90 transition-transform duration-200" />
+              <span>Fechar</span>
+            </button>
+          </div>
         </div>
 
         {/* Content Body */}

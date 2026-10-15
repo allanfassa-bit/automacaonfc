@@ -18,7 +18,7 @@ import {
 export interface AuthSessionUser {
   username: string;
   name: string;
-  role: 'master' | 'operator' | 'client';
+  role: 'master' | 'operator' | 'client' | 'seller' | 'reseller' | 'affiliate';
   token: string;
   leadId?: string;
 }

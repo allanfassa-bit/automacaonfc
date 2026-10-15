@@ -13,7 +13,9 @@ import {
   FileCheck,
   ShieldCheck,
   Check,
-  Printer
+  Printer,
+  Minimize2,
+  Maximize2
 } from 'lucide-react';
 import { Lead } from '../App';
 import {
@@ -26,6 +28,7 @@ import {
 } from '../utils/nfcPlateGenerator';
 import { getDynamicQrUrl, getDirectLeadUrl } from '../utils/publicUrlHelper';
 import { getPlateIdentification } from '../utils/plateNumberHelper';
+import { openHighDefinitionPrintWindow } from '../utils/platePrintHelper';
 
 interface NfcArtworkDownloadModalProps {
   isOpen: boolean;
@@ -35,6 +38,7 @@ interface NfcArtworkDownloadModalProps {
   onSelectDifferentLead?: (lead: Lead) => void;
   initialTheme?: ArtworkTheme;
   onMarkPrinted?: (leadId: string, currentStatus?: boolean) => void;
+  onPrintPlate?: (lead?: Lead, theme?: ArtworkTheme, format?: 'plate-10x10' | 'plate-15x15' | 'a4-duo' | 'card-cr80') => void;
 }
 
 export function NfcArtworkDownloadModal({
@@ -44,26 +48,54 @@ export function NfcArtworkDownloadModal({
   leads = [],
   onSelectDifferentLead,
   initialTheme = 'emerald_green',
-  onMarkPrinted
+  onMarkPrinted,
+  onPrintPlate
 }: NfcArtworkDownloadModalProps) {
   const [selectedFormat, setSelectedFormat] = useState<'plate_10x10' | 'card_horizontal' | 'card_vertical'>('plate_10x10');
   const [selectedTheme, setSelectedTheme] = useState<ArtworkTheme>(initialTheme);
+  const [customInstaUrl, setCustomInstaUrl] = useState<string>('');
+  const [customGoogleUrl, setCustomGoogleUrl] = useState<string>('');
+  const [customTiktokUrl, setCustomTiktokUrl] = useState<string>('');
+  const [socialNetworkType, setSocialNetworkType] = useState<'instagram' | 'tiktok'>('instagram');
   const [previewDataUrl, setPreviewDataUrl] = useState<string>('');
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadSuccessMsg, setDownloadSuccessMsg] = useState<string | null>(null);
   const [isZoomed, setIsZoomed] = useState(false);
   const [autoMarkPrinted, setAutoMarkPrinted] = useState(true);
+  const [isMinimized, setIsMinimized] = useState(false);
 
   // Active lead being customized
   const currentLead = lead || leads[0];
   const plateInfo = getPlateIdentification(currentLead?.id, currentLead?.name);
 
+  // Sync custom inputs when currentLead changes
+  useEffect(() => {
+    if (currentLead?.nfcInstagramUrl) {
+      setCustomInstaUrl(currentLead.nfcInstagramUrl);
+    }
+    if (currentLead?.googleMapsUrl || currentLead?.nfcCustomUrl) {
+      setCustomGoogleUrl(currentLead.googleMapsUrl || currentLead.nfcCustomUrl || '');
+    }
+    if ((currentLead as any)?.nfcTiktokUrl || (currentLead as any)?.tiktokUrl) {
+      setCustomTiktokUrl((currentLead as any)?.nfcTiktokUrl || (currentLead as any)?.tiktokUrl || '');
+    }
+  }, [currentLead?.id, currentLead?.nfcInstagramUrl, currentLead?.googleMapsUrl, currentLead?.nfcCustomUrl]);
+
   // Choice between dynamic cloud link (changes anytime via system) vs direct destination
   const [qrTargetMode, setQrTargetMode] = useState<'direct' | 'dynamic'>('dynamic');
 
+  const effectiveInstaUrl = customInstaUrl.trim() || currentLead?.nfcInstagramUrl || '';
+  const effectiveInstaHandle = effectiveInstaUrl
+    ? effectiveInstaUrl.replace(/.*instagram\.com\//, '').replace(/^@/, '').replace(/\/$/, '')
+    : (currentLead?.name ? currentLead.name.replace(/\s+/g, '').toLowerCase() : 'seuperfil');
+
   const permanentUrl = currentLead
-    ? (qrTargetMode === 'direct' ? getDirectLeadUrl(currentLead) : getDynamicQrUrl(currentLead.id))
+    ? (qrTargetMode === 'direct'
+        ? (selectedTheme === 'instagram_official' && effectiveInstaUrl
+            ? (effectiveInstaUrl.startsWith('http') ? effectiveInstaUrl : `https://instagram.com/${effectiveInstaUrl.replace(/^@/, '')}`)
+            : getDirectLeadUrl(currentLead))
+        : getDynamicQrUrl(currentLead.id))
     : (qrTargetMode === 'direct' ? 'https://maps.google.com' : getDynamicQrUrl('demo'));
 
   // Sync theme if initialTheme changes or lead has instagram configured
@@ -71,7 +103,7 @@ export function NfcArtworkDownloadModal({
     if (initialTheme && initialTheme !== 'emerald_green') {
       setSelectedTheme(initialTheme);
     } else if (currentLead?.nfcRedirectActive === 'instagram' || (currentLead?.nfcInstagramUrl && currentLead.nfcInstagramUrl.length > 0)) {
-      setSelectedTheme('instagram_dual');
+      setSelectedTheme('instagram_official');
     } else if (initialTheme) {
       setSelectedTheme(initialTheme);
     }
@@ -90,8 +122,12 @@ export function NfcArtworkDownloadModal({
           businessName: currentLead.name || 'Empresa Exemplo',
           leadId: currentLead.id || 'TAG01',
           permanentUrl,
-          instagramUrl: currentLead.nfcInstagramUrl || '',
-          instagramHandle: currentLead.nfcInstagramUrl ? currentLead.nfcInstagramUrl.replace(/.*instagram\.com\//, '').replace(/\/$/, '') : (currentLead.name || ''),
+          googleUrl: customGoogleUrl.trim() || undefined,
+          instagramUrl: effectiveInstaUrl,
+          instagramHandle: effectiveInstaHandle,
+          tiktokUrl: customTiktokUrl.trim() || undefined,
+          socialNetworkType,
+          qrTargetMode,
           theme: selectedTheme,
           city: currentLead.city || '',
           resolution: '4k' as const
@@ -123,7 +159,19 @@ export function NfcArtworkDownloadModal({
     return () => {
       isMounted = false;
     };
-  }, [isOpen, currentLead?.id, currentLead?.name, selectedFormat, selectedTheme, permanentUrl, qrTargetMode]);
+  }, [
+    isOpen,
+    currentLead?.id,
+    currentLead?.name,
+    selectedFormat,
+    selectedTheme,
+    permanentUrl,
+    qrTargetMode,
+    effectiveInstaUrl,
+    customGoogleUrl,
+    customTiktokUrl,
+    socialNetworkType
+  ]);
 
   if (!isOpen || !currentLead) return null;
 
@@ -134,12 +182,14 @@ export function NfcArtworkDownloadModal({
         businessName: currentLead.name || 'Empresa Exemplo',
         leadId: currentLead.id || 'TAG01',
         permanentUrl,
+        googleUrl: customGoogleUrl.trim() || undefined,
+        instagramUrl: effectiveInstaUrl,
+        instagramHandle: effectiveInstaHandle,
+        tiktokUrl: customTiktokUrl.trim() || undefined,
+        socialNetworkType,
+        qrTargetMode,
         theme: selectedTheme,
         city: currentLead.city || '',
-        instagramUrl: currentLead.nfcInstagramUrl || '',
-        instagramHandle: currentLead.nfcInstagramUrl
-          ? currentLead.nfcInstagramUrl.replace(/.*instagram\.com\//, '').replace(/\/$/, '')
-          : (currentLead.name || ''),
         resolution: '4k' as const
       };
 
@@ -176,10 +226,8 @@ export function NfcArtworkDownloadModal({
         permanentUrl,
         theme: selectedTheme,
         city: currentLead.city || '',
-        instagramUrl: currentLead.nfcInstagramUrl || '',
-        instagramHandle: currentLead.nfcInstagramUrl
-          ? currentLead.nfcInstagramUrl.replace(/.*instagram\.com\//, '').replace(/\/$/, '')
-          : (currentLead.name || ''),
+        instagramUrl: effectiveInstaUrl,
+        instagramHandle: effectiveInstaHandle,
         resolution: '4k' as const
       };
 
@@ -199,39 +247,101 @@ export function NfcArtworkDownloadModal({
     }
   };
 
+  if (!isOpen) return null;
+
+  if (isMinimized) {
+    return (
+      <div className="fixed bottom-4 right-4 z-50 bg-slate-900 border-2 border-cyan-500/80 rounded-2xl shadow-2xl p-3 flex items-center gap-3 text-white animate-in slide-in-from-bottom-5 duration-200">
+        <div className="w-8 h-8 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0">
+          <Sparkles className="w-4 h-4" />
+        </div>
+        <div className="min-w-0 max-w-[180px] sm:max-w-xs">
+          <p className="text-xs font-black truncate">Artes: {currentLead?.name || 'Cliente'}</p>
+          <p className="text-[10px] text-cyan-300 font-mono truncate">ID: {currentLead?.id || ''}</p>
+        </div>
+        <div className="flex items-center gap-1 shrink-0 ml-1">
+          <button
+            type="button"
+            onClick={() => setIsMinimized(false)}
+            className="p-1.5 text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition cursor-pointer"
+            title="Restaurar / Maximizar Central de Artes"
+            aria-label="Restaurar Central de Artes"
+          >
+            <Maximize2 className="w-4 h-4 text-cyan-400" />
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setIsMinimized(false);
+              onClose();
+            }}
+            className="p-1.5 text-slate-300 hover:text-rose-400 hover:bg-slate-800 rounded-lg transition cursor-pointer"
+            title="Fechar"
+            aria-label="Fechar Central de Artes"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-md overflow-y-auto animate-in fade-in duration-200">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-md overflow-y-auto animate-in fade-in duration-200"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          onClose();
+        }
+      }}
+    >
       <div className="bg-slate-900 border border-slate-700/80 rounded-3xl w-full max-w-4xl overflow-hidden shadow-2xl flex flex-col max-h-[92vh]">
         
         {/* Header */}
-        <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/90 shrink-0">
-          <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center">
-              <Sparkles className="w-5 h-5" />
+        <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/90 shrink-0">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0">
+              <Sparkles className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-base font-black text-white">Central de Impressão & Download de Artes HD</h3>
-                <span className="text-[10px] font-extrabold uppercase bg-cyan-950 text-cyan-400 px-2 py-0.5 rounded-full border border-cyan-800">
-                  600 DPI Ultra-HD
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                <h3 className="text-xs sm:text-base font-black text-white truncate">Central de Impressão &amp; Artes HD</h3>
+                <span className="text-[9px] sm:text-[10px] font-extrabold uppercase bg-cyan-950 text-cyan-400 px-1.5 sm:px-2 py-0.5 rounded-full border border-cyan-800 shrink-0">
+                  600 DPI HD
                 </span>
               </div>
-              <p className="text-xs text-slate-400">
+              <p className="text-[11px] sm:text-xs text-slate-400 hidden sm:block">
                 Baixe a placa 10x10cm e o cartão NFC 5.4x8.5cm já com o QR Code dinâmico do cliente incorporado.
               </p>
             </div>
           </div>
 
-          <button
-            onClick={onClose}
-            className="text-slate-400 hover:text-white p-2 rounded-xl hover:bg-slate-800 transition cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-1 shrink-0 ml-2">
+            <button
+              type="button"
+              onClick={() => setIsMinimized(true)}
+              className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 rounded-xl text-xs font-bold transition cursor-pointer"
+              title="Minimizar janela"
+              aria-label="Minimizar"
+            >
+              <Minimize2 className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Minimizar</span>
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/25 text-rose-300 hover:text-rose-100 border border-rose-500/30 rounded-xl font-black text-xs transition cursor-pointer active:scale-95 group"
+              title="Fechar (Esc ou clique fora)"
+              aria-label="Fechar"
+            >
+              <X className="w-4 h-4 text-rose-400 group-hover:rotate-90 transition-transform duration-200" />
+              <span>Fechar</span>
+            </button>
+          </div>
         </div>
 
         {/* Body content */}
-        <div className="p-6 overflow-y-auto grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="p-4 sm:p-6 overflow-y-auto grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6">
           
           {/* Left Column: Format, Theme & Lead Controls */}
           <div className="lg:col-span-6 space-y-5">
@@ -383,7 +493,7 @@ export function NfcArtworkDownloadModal({
               </div>
             </div>
 
-            {/* Theme Selector - All 5 identical themes from 3D Totem */}
+            {/* Theme Selector - All identical themes from 3D Totem */}
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5 text-amber-400" />
@@ -392,6 +502,7 @@ export function NfcArtworkDownloadModal({
 
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {[
+                  { id: 'instagram_official', name: '📸 Instagram Oficial', desc: '100% Instagram com Logo Oficial HD, @perfil, QR e NFC', badge: 'DESTAQUE INSTAGRAM' },
                   { id: 'instagram_dual', name: '📸 Instagram + Google', desc: 'Modelo Real da Foto: Onda fluida, 2 QR Codes + 2 NFCs', badge: 'MOCKUP DA FOTO' },
                   { id: 'emerald_green', name: 'Verde Esmeralda', desc: 'Mockup Oficial Verde com fita esmeralda e ouro', badge: 'MOCKUP OFICIAL' },
                   { id: 'royal_blue', name: 'Azul Royal', desc: 'Mockup Oficial Azul com fita ciano e azul neon', badge: 'MOCKUP OFICIAL' },
@@ -408,12 +519,18 @@ export function NfcArtworkDownloadModal({
                     onClick={() => setSelectedTheme(th.id as ArtworkTheme)}
                     className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer relative ${
                       selectedTheme === th.id
-                        ? 'border-amber-400 bg-amber-400/10 text-amber-300 font-bold shadow-xs ring-1 ring-amber-400/50'
+                        ? th.id === 'instagram_official' || th.id === 'instagram_dual'
+                          ? 'border-pink-500 bg-gradient-to-br from-pink-950/60 to-purple-950/60 text-pink-300 font-bold shadow-md ring-1 ring-pink-500'
+                          : 'border-amber-400 bg-amber-400/10 text-amber-300 font-bold shadow-xs ring-1 ring-amber-400/50'
                         : 'border-slate-800 bg-slate-950/40 text-slate-400 hover:text-slate-200 hover:border-slate-700'
                     }`}
                   >
                     {th.badge && (
-                      <span className="text-[7.5px] uppercase font-black bg-amber-500/20 text-amber-300 px-1 py-0.2 rounded border border-amber-500/30 mb-1 inline-block">
+                      <span className={`text-[7.5px] uppercase font-black px-1 py-0.2 rounded border mb-1 inline-block ${
+                        th.id === 'instagram_official'
+                          ? 'bg-gradient-to-r from-pink-500/20 to-purple-500/20 text-pink-300 border-pink-500/40'
+                          : 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+                      }`}>
                         {th.badge}
                       </span>
                     )}
@@ -423,6 +540,180 @@ export function NfcArtworkDownloadModal({
                 ))}
               </div>
             </div>
+
+            {/* Dual QR Code Routing Panel: Instagram + Google */}
+            {selectedTheme === 'instagram_dual' && (
+              <div className="bg-gradient-to-br from-purple-950/50 via-slate-900 to-blue-950/50 border border-purple-500/40 p-4 rounded-2xl space-y-3.5 shadow-xl animate-in fade-in">
+                <div className="flex items-center justify-between border-b border-purple-500/20 pb-2.5">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm">🔀</span>
+                    <div>
+                      <h4 className="text-xs font-black text-white uppercase tracking-wider">
+                        Roteamento de 2 QR Codes Distintos
+                      </h4>
+                      <p className="text-[10px] text-purple-300">Cada QR Code leva para um destino diferente na mesma arte</p>
+                    </div>
+                  </div>
+                  <span className="text-[9.5px] font-extrabold text-emerald-300 bg-emerald-950/70 border border-emerald-500/40 px-2 py-0.5 rounded-full">
+                    2 Redes Independentes
+                  </span>
+                </div>
+
+                {/* QR 1 (Top): Social Network (Instagram or TikTok) */}
+                <div className="bg-slate-950/80 border border-pink-500/30 rounded-xl p-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] font-black text-pink-300 uppercase tracking-wide flex items-center gap-1.5">
+                      <span>📸 QR Code 1 (Superior):</span>
+                      <span className="text-[9px] bg-pink-500/20 text-pink-300 px-1.5 py-0.2 rounded font-mono">
+                        {socialNetworkType === 'tiktok' ? 'TIKTOK' : 'INSTAGRAM'}
+                      </span>
+                    </label>
+                    <div className="flex items-center gap-1 bg-slate-900 p-0.5 rounded-lg border border-slate-800">
+                      <button
+                        type="button"
+                        onClick={() => setSocialNetworkType('instagram')}
+                        className={`text-[9.5px] font-bold px-2 py-0.5 rounded transition cursor-pointer ${
+                          socialNetworkType === 'instagram' ? 'bg-pink-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        Instagram
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSocialNetworkType('tiktok')}
+                        className={`text-[9.5px] font-bold px-2 py-0.5 rounded transition cursor-pointer ${
+                          socialNetworkType === 'tiktok' ? 'bg-cyan-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        TikTok
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <div className="relative flex-1">
+                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-pink-400 font-bold text-xs">@</span>
+                      <input
+                        type="text"
+                        value={socialNetworkType === 'tiktok' ? customTiktokUrl : customInstaUrl}
+                        onChange={(e) => {
+                          if (socialNetworkType === 'tiktok') {
+                            setCustomTiktokUrl(e.target.value);
+                          } else {
+                            setCustomInstaUrl(e.target.value);
+                          }
+                        }}
+                        placeholder={socialNetworkType === 'tiktok' ? "perfil_tiktok ou https://tiktok.com/@perfil" : "perfil_insta ou https://instagram.com/perfil"}
+                        className="w-full bg-slate-900 border border-pink-500/30 text-white rounded-lg pl-6 pr-3 py-1.5 text-xs font-semibold focus:outline-hidden focus:border-pink-500"
+                      />
+                    </div>
+                    <a
+                      href={
+                        socialNetworkType === 'tiktok'
+                          ? (customTiktokUrl.startsWith('http') ? customTiktokUrl : `https://tiktok.com/@${customTiktokUrl.replace(/^@/, '')}`)
+                          : (customInstaUrl.startsWith('http') ? customInstaUrl : `https://instagram.com/${customInstaUrl.replace(/^@/, '')}`)
+                      }
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-2.5 py-1.5 bg-pink-950/60 hover:bg-pink-900/60 border border-pink-500/40 text-pink-300 text-xs font-bold rounded-lg transition flex items-center gap-1 shrink-0 cursor-pointer"
+                      title="Testar destino do QR Code 1"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>Testar</span>
+                    </a>
+                  </div>
+
+                  <div className="text-[9.5px] font-mono text-slate-300 bg-slate-900/90 p-2 rounded-lg border border-slate-800 break-all">
+                    <span className="text-pink-400 font-bold block mb-0.5 uppercase tracking-wider text-[8.5px]">
+                      Destino do QR 1 gravado na arte:
+                    </span>
+                    {qrTargetMode === 'dynamic' ? getDynamicQrUrl(currentLead.id, socialNetworkType) : (socialNetworkType === 'tiktok' ? customTiktokUrl : customInstaUrl || `https://instagram.com/${effectiveInstaHandle}`)}
+                  </div>
+                </div>
+
+                {/* QR 2 (Bottom): Google Reviews */}
+                <div className="bg-slate-950/80 border border-blue-500/30 rounded-xl p-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] font-black text-blue-300 uppercase tracking-wide flex items-center gap-1.5">
+                      <span>⭐ QR Code 2 (Inferior):</span>
+                      <span className="text-[9px] bg-blue-500/20 text-blue-300 px-1.5 py-0.2 rounded font-mono">
+                        GOOGLE AVALIAÇÕES 5★
+                      </span>
+                    </label>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={customGoogleUrl}
+                      onChange={(e) => setCustomGoogleUrl(e.target.value)}
+                      placeholder="Link do Google Maps ou perfil de avaliação..."
+                      className="flex-1 bg-slate-900 border border-blue-500/30 text-white rounded-lg px-3 py-1.5 text-xs font-semibold focus:outline-hidden focus:border-blue-500 font-mono"
+                    />
+                    <a
+                      href={customGoogleUrl || getDirectLeadUrl(currentLead)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-2.5 py-1.5 bg-blue-950/60 hover:bg-blue-900/60 border border-blue-500/40 text-blue-300 text-xs font-bold rounded-lg transition flex items-center gap-1 shrink-0 cursor-pointer"
+                      title="Testar destino do QR Code 2"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>Testar</span>
+                    </a>
+                  </div>
+
+                  <div className="text-[9.5px] font-mono text-slate-300 bg-slate-900/90 p-2 rounded-lg border border-slate-800 break-all">
+                    <span className="text-blue-400 font-bold block mb-0.5 uppercase tracking-wider text-[8.5px]">
+                      Destino do QR 2 gravado na arte:
+                    </span>
+                    {qrTargetMode === 'dynamic' ? getDynamicQrUrl(currentLead.id, 'google') : (customGoogleUrl || getDirectLeadUrl(currentLead))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Instagram Configuration Box when 100% Instagram Theme is active */}
+            {selectedTheme === 'instagram_official' && (
+              <div className="bg-gradient-to-r from-pink-950/50 via-purple-950/40 to-slate-950/70 border border-pink-500/40 p-4 rounded-2xl space-y-2.5 shadow-xl animate-in fade-in">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-black text-pink-300 uppercase tracking-wider flex items-center gap-1.5">
+                    <span>📸 Perfil / Link do Instagram Oficial:</span>
+                  </label>
+                  <span className="text-[9.5px] font-extrabold text-amber-300 bg-pink-950/70 px-2 py-0.5 rounded-full border border-pink-500/30">
+                    600 DPI • Vetor Ultra HD
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-pink-400 font-bold text-xs">@</span>
+                    <input
+                      type="text"
+                      value={customInstaUrl}
+                      onChange={(e) => setCustomInstaUrl(e.target.value)}
+                      placeholder="Ex: seu_perfil ou https://instagram.com/seu_perfil"
+                      className="w-full bg-slate-900/90 border border-pink-500/40 text-white rounded-xl pl-7 pr-3 py-2 text-xs font-semibold focus:outline-hidden focus:ring-2 focus:ring-pink-500 placeholder:text-slate-500"
+                    />
+                  </div>
+                  {customInstaUrl && (
+                    <a
+                      href={customInstaUrl.startsWith('http') ? customInstaUrl : `https://instagram.com/${customInstaUrl.replace(/^@/, '')}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3 py-2 bg-pink-600/30 hover:bg-pink-600/50 text-pink-300 border border-pink-500/50 rounded-xl text-xs font-bold transition flex items-center gap-1 shrink-0"
+                      title="Testar link no Instagram"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>Testar</span>
+                    </a>
+                  )}
+                </div>
+
+                <p className="text-[10.5px] text-pink-200/80 leading-relaxed">
+                  O QR Code e a aproximação NFC direcionam instantaneamente para este perfil. A arte gerada inclui o <strong>logo oficial do Instagram com efeito de reflexo vítreo e gradiente oficial Meta em altíssima definição</strong> para impressão em acrílico balcão ou corte a laser!
+                </p>
+              </div>
+            )}
 
             {/* Technical Specifications Callout */}
             <div className="bg-slate-950/80 border border-slate-800 p-4 rounded-2xl space-y-2 text-xs">
@@ -481,6 +772,29 @@ export function NfcArtworkDownloadModal({
                     </span>
                   </>
                 )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  const targetFormat = selectedFormat === 'plate_10x10' ? 'plate-10x10' : 'card-cr80';
+                  if (onPrintPlate) {
+                    onPrintPlate(currentLead, selectedTheme, targetFormat);
+                  } else {
+                    openHighDefinitionPrintWindow({
+                      lead: currentLead,
+                      theme: selectedTheme,
+                      format: targetFormat,
+                      portalQrMode: qrTargetMode
+                    });
+                  }
+                }}
+                disabled={isDownloading || isLoadingPreview}
+                className="w-full py-3 px-4 bg-gradient-to-r from-pink-600 via-rose-600 to-amber-600 hover:from-pink-500 hover:to-amber-500 text-white font-black text-xs uppercase tracking-wider rounded-2xl shadow-lg transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 active:scale-98"
+                title="Imprimir placa ou cartão em tamanho real milimétrico e 600 DPI Ultra-HD"
+              >
+                <Printer className="w-4 h-4 text-white" />
+                <span>Imprimir Arte em Tamanho Real (4K • 600 DPI)</span>
               </button>
 
               <button
@@ -558,7 +872,7 @@ export function NfcArtworkDownloadModal({
             ) : previewDataUrl ? (
               <div className="flex flex-col items-center gap-3 my-auto w-full">
                 <div
-                  className={`bg-black/50 p-2 rounded-2xl shadow-2xl border border-white/15 flex items-center justify-center max-w-full transition-all ${
+                  className={`bg-black/50 p-2 rounded-2xl print-container border border-white/15 flex items-center justify-center max-w-full transition-all ${
                     isZoomed
                       ? 'max-h-[440px] overflow-auto'
                       : 'overflow-hidden'
