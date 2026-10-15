@@ -5,7 +5,6 @@ import {
   Copy,
   ExternalLink,
   Download,
-  Share2,
   Check,
   Star,
   Globe,
@@ -13,9 +12,7 @@ import {
   Sparkles,
   Layers,
   ArrowRight,
-  ShieldCheck,
   Radio,
-  RefreshCw,
   FolderArchive,
   Phone,
   FileCode,
@@ -23,10 +20,8 @@ import {
   Zap,
   MapPin,
   Clock,
-  MessageSquare,
   HelpCircle,
   CheckCircle2,
-  Code2,
   PackageCheck,
   Eye,
   X,
@@ -35,12 +30,22 @@ import {
   Trash2,
   Briefcase,
   Save,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Palette,
+  Type,
+  Navigation,
+  ShoppingBag,
+  UtensilsCrossed,
+  Award
 } from 'lucide-react';
 import {
   MiniSiteConfig,
-  generateMiniSiteHtml,
-  generateMiniSiteStandaloneHtml,
+  MiniSiteFontFamily,
+  MiniSiteSegmentType,
+  FONT_FAMILY_OPTIONS,
+  COLOR_PALETTE_PRESETS,
+  CURATED_4K_IMAGES_BY_SEGMENT,
+  getSegmentSmartMetadata,
   downloadMiniSiteHtml,
   downloadMiniSiteZip,
   openMiniSiteLivePreview,
@@ -60,8 +65,7 @@ import { getPublicAppOrigin } from '../utils/publicUrlHelper';
 import { GoogleReviewLinkGenerator } from './GoogleReviewLinkGenerator';
 import {
   READY_MINISITE_MOCKUPS,
-  ReadyMockupTemplate,
-  getMockupByNiche
+  ReadyMockupTemplate
 } from '../utils/readyMiniSiteMockups';
 
 interface MiniSiteViewerProps {
@@ -84,6 +88,9 @@ export const MiniSiteViewer: React.FC<MiniSiteViewerProps> = ({
   isLinkedToNfc = false
 }) => {
   const [activeTab, setActiveTab] = useState<'preview' | 'edit' | 'vercel' | 'export'>('preview');
+  const [miniSiteViewTab, setMiniSiteViewTab] = useState<'all' | 'catalogo' | 'como_chegar' | 'avaliacoes'>('all');
+  const [selectedMenuCategory, setSelectedMenuCategory] = useState<string>('Todos');
+  const [quickCart, setQuickCart] = useState<Record<string, number>>({});
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedPix, setCopiedPix] = useState(false);
   const [copiedWifi, setCopiedWifi] = useState(false);
@@ -100,15 +107,25 @@ export const MiniSiteViewer: React.FC<MiniSiteViewerProps> = ({
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
   const [isClientPresentationOpen, setIsClientPresentationOpen] = useState(false);
+  const [is4KLibraryOpen, setIs4KLibraryOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [newServiceTitle, setNewServiceTitle] = useState('');
   const [newServicePrice, setNewServicePrice] = useState('');
+  const [newServiceCategory, setNewServiceCategory] = useState('');
   const [newServiceDesc, setNewServiceDesc] = useState('');
+  const [newServiceImg, setNewServiceImg] = useState('');
+  const [newAmenity, setNewAmenity] = useState('');
   const [isSavingConfig, setIsSavingConfig] = useState(false);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3500);
+  };
+
+  const updateAndPersist = (patch: Partial<MiniSiteConfig>) => {
+    const updated: MiniSiteConfig = { ...config, ...patch };
+    if (onChangeConfig) onChangeConfig(updated);
+    if (onSaveConfig) onSaveConfig(updated);
   };
 
   const handleApplyReadyMockup = (template: ReadyMockupTemplate) => {
@@ -117,11 +134,16 @@ export const MiniSiteViewer: React.FC<MiniSiteViewerProps> = ({
       id: config.id || leadId || template.config.id,
       phone: (config.phone && config.phone.trim()) || template.config.phone,
       address: (config.address && config.address.trim()) || template.config.address,
-      googleReviewUrl: (config.googleReviewUrl && config.googleReviewUrl !== 'https://maps.google.com') ? config.googleReviewUrl : template.config.googleReviewUrl,
+      googleReviewUrl:
+        config.googleReviewUrl && config.googleReviewUrl !== 'https://maps.google.com'
+          ? config.googleReviewUrl
+          : template.config.googleReviewUrl
     };
     if (onChangeConfig) onChangeConfig(updated);
     if (onSaveConfig) onSaveConfig(updated);
-    showToast(`✨ Modelo "${template.title}" carregado! Você já pode mostrar ao cliente e personalizar na aba Editar.`);
+    setQuickCart({});
+    setSelectedMenuCategory('Todos');
+    showToast(`✨ Modelo 4K "${template.title}" aplicado! Personalize cor, fonte e fotos na aba Editar.`);
     setIsTemplateModalOpen(false);
   };
 
@@ -133,7 +155,7 @@ export const MiniSiteViewer: React.FC<MiniSiteViewerProps> = ({
       const img = new Image();
       img.onload = () => {
         const canvas = document.createElement('canvas');
-        const maxDim = 260;
+        const maxDim = 320;
         let w = img.width;
         let h = img.height;
         if (w > h && w > maxDim) {
@@ -149,9 +171,7 @@ export const MiniSiteViewer: React.FC<MiniSiteViewerProps> = ({
         if (ctx) {
           ctx.drawImage(img, 0, 0, w, h);
           const dataUrl = canvas.toDataURL('image/png', 0.9);
-          const updated = { ...config, logoUrl: dataUrl };
-          if (onChangeConfig) onChangeConfig(updated);
-          if (onSaveConfig) onSaveConfig(updated);
+          updateAndPersist({ logoUrl: dataUrl });
           showToast('Logotipo enviado e aplicado ao Mini Site!');
         }
       };
@@ -162,47 +182,7 @@ export const MiniSiteViewer: React.FC<MiniSiteViewerProps> = ({
     reader.readAsDataURL(file);
   };
 
-  const handleAddService = () => {
-    if (!newServiceTitle.trim()) {
-      showToast('Digite o nome do serviço ou produto.');
-      return;
-    }
-    const currentServices = Array.isArray(config.services) ? config.services : [];
-    const updatedServices = [
-      ...currentServices,
-      {
-        id: `srv_${Date.now()}`,
-        title: newServiceTitle.trim(),
-        price: newServicePrice.trim(),
-        description: newServiceDesc.trim()
-      }
-    ];
-    const updated = { ...config, services: updatedServices };
-    if (onChangeConfig) onChangeConfig(updated);
-    if (onSaveConfig) onSaveConfig(updated);
-    setNewServiceTitle('');
-    setNewServicePrice('');
-    setNewServiceDesc('');
-    showToast('Serviço adicionado ao Mini Site!');
-  };
-
-  const handleRemoveService = (idx: number) => {
-    const currentServices = Array.isArray(config.services) ? config.services : [];
-    const updatedServices = currentServices.filter((_, i) => i !== idx);
-    const updated = { ...config, services: updatedServices };
-    if (onChangeConfig) onChangeConfig(updated);
-    if (onSaveConfig) onSaveConfig(updated);
-  };
-
-  const handleGenerateDefaultServices = () => {
-    const presets = getDefaultFourProducts(config.niche, config.companyName || 'Sua Empresa');
-    const updated = { ...config, services: presets };
-    if (onChangeConfig) onChangeConfig(updated);
-    if (onSaveConfig) onSaveConfig(updated);
-    showToast('4 Destaques do nicho com fotos e WhatsApp gerados com sucesso!');
-  };
-
-  const handleProductImageUpload = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCoverFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
@@ -210,7 +190,7 @@ export const MiniSiteViewer: React.FC<MiniSiteViewerProps> = ({
       const img = new Image();
       img.onload = () => {
         const canvas = document.createElement('canvas');
-        const maxDim = 400;
+        const maxDim = 1280;
         let w = img.width;
         let h = img.height;
         if (w > h && w > maxDim) {
@@ -225,15 +205,213 @@ export const MiniSiteViewer: React.FC<MiniSiteViewerProps> = ({
         const ctx = canvas.getContext('2d');
         if (ctx) {
           ctx.drawImage(img, 0, 0, w, h);
-          const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
-          const currentServices = Array.isArray(config.services) ? [...config.services] : [];
-          if (currentServices[index]) {
-            currentServices[index] = { ...currentServices[index], imageUrl: dataUrl };
-            const updated = { ...config, services: currentServices };
-            if (onChangeConfig) onChangeConfig(updated);
-            if (onSaveConfig) onSaveConfig(updated);
-            showToast(`Foto do produto ${index + 1} atualizada!`);
-          }
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.88);
+          updateAndPersist({ coverImageUrl: dataUrl });
+          showToast('Foto de Capa (Head) enviada e aplicada com sucesso!');
+        }
+      };
+      if (typeof ev.target?.result === 'string') {
+        img.src = ev.target.result;
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Values & Smart Segment Metadata
+  const name = config.companyName || 'Sua Empresa';
+  const niche = config.niche || 'Atendimento Exclusivo';
+  const city = config.city || 'Brasil';
+  const initial = (name.trim().charAt(0) || 'A').toUpperCase();
+  const smartMeta = getSegmentSmartMetadata(niche, name, city, config.segmentType);
+
+  const primaryColor = (config.primaryColor && config.primaryColor.trim()) || smartMeta.primaryColor;
+  const coverImage = (config.coverImageUrl && config.coverImageUrl.trim()) || smartMeta.coverImageUrl;
+  const activeFont =
+    FONT_FAMILY_OPTIONS.find((f) => f.id === (config.fontFamily || smartMeta.fontFamily)) ||
+    FONT_FAMILY_OPTIONS[0];
+  const openingHours = (config.openingHours && config.openingHours.trim()) || 'Terça a Domingo: 18h às 23h30';
+  const addressText = (config.address && config.address.trim()) || `Av. Principal, 1000 - Centro, ${city}`;
+  const aboutText = (config.aboutText && config.aboutText.trim()) || smartMeta.aboutText;
+  const amenities =
+    Array.isArray(config.amenities) && config.amenities.length > 0
+      ? config.amenities
+      : smartMeta.amenities;
+  const galleryUrls =
+    Array.isArray(config.galleryUrls) && config.galleryUrls.length > 0
+      ? config.galleryUrls
+      : smartMeta.galleryUrls;
+  const testimonials =
+    Array.isArray(config.testimonials) && config.testimonials.length > 0
+      ? config.testimonials
+      : smartMeta.testimonials;
+
+  const whatsappUrl = buildMiniSiteWhatsappUrl(
+    config.whatsappNumber || config.phone || '5511999999999',
+    config.whatsappMessage || `Olá! Vim através do Mini Site de ${name}. Gostaria de mais informações!`
+  );
+  const instaHandle = sanitizeMiniSiteHandle(config.instagramUrl || '', '@');
+  const tiktokHandle = sanitizeMiniSiteHandle(config.tiktokUrl || '', '@');
+  const pixKey = config.pixKey || 'pix@empresa.com.br';
+  const pixBeneficiary = config.pixBeneficiary || name;
+  const wifiSsid = config.wifiSsid || `${name.replace(/\s+/g, '_')}_WiFi`;
+  const wifiPass = config.wifiPassword || 'VisiteNos123';
+
+  const pixQrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&margin=8&data=${encodeURIComponent(pixKey)}`;
+  const wifiQrData = `WIFI:T:${config.wifiSecurity || 'WPA'};S:${wifiSsid};P:${wifiPass};;`;
+  const wifiQrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&margin=8&data=${encodeURIComponent(wifiQrData)}`;
+
+  const mapsSearchUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addressText + ' ' + city)}`;
+  const wazeUrl = `https://waze.com/ul?q=${encodeURIComponent(addressText + ' ' + city)}&navigate=yes`;
+
+  // Featured 4 Products & Full Segment Catalog/Menu
+  const userServices = Array.isArray(config.services) ? config.services : [];
+  const defaultServices = getDefaultFourProducts(config.niche, name);
+  const rawFeatured =
+    userServices.length >= 4
+      ? userServices.slice(0, 4)
+      : [...userServices, ...defaultServices.slice(userServices.length, 4)];
+  const featuredProducts = rawFeatured.map((p, idx) => ({
+    ...p,
+    id: p.id || `feat_${idx}`,
+    category: p.category || 'Destaques',
+    imageUrl:
+      p.imageUrl && p.imageUrl.trim().length > 0
+        ? p.imageUrl
+        : defaultServices[idx % defaultServices.length]?.imageUrl ||
+          'https://images.unsplash.com/photo-1556742049-0a67e55722c6?auto=format&fit=crop&w=800&q=85'
+  }));
+  const additionalServices =
+    userServices.length > 4 ? userServices.slice(4) : smartMeta.extraCatalogItems;
+  const allCatalogItems = [...featuredProducts, ...additionalServices];
+  const catalogCategories = [
+    'Todos',
+    ...Array.from(
+      new Set(allCatalogItems.map((item) => item.category || 'Cardápio / Catálogo'))
+    )
+  ];
+  const filteredCatalogItems =
+    selectedMenuCategory === 'Todos'
+      ? allCatalogItems
+      : allCatalogItems.filter(
+          (item) => (item.category || 'Cardápio / Catálogo') === selectedMenuCategory
+        );
+
+  const marqueeText =
+    config.marqueeText ||
+    '🔥 ATENDIMENTO VIP • QUALIDADE 4K COMPROVADA • PEÇA OU AGENDE PELO WHATSAPP • AVALIAÇÃO 5 ESTRELAS NO GOOGLE 🔥';
+
+  // Quick Cart helpers for interactive menu inside Mini Site
+  const totalCartItems = Object.values(quickCart).reduce((acc, q) => acc + q, 0);
+  const handleAddToQuickCart = (itemId: string, title: string) => {
+    setQuickCart((prev) => ({ ...prev, [itemId]: (prev[itemId] || 0) + 1 }));
+    showToast(`+1 "${title}" adicionado ao pedido!`);
+  };
+  const handleRemoveFromQuickCart = (itemId: string) => {
+    setQuickCart((prev) => {
+      const next = { ...prev };
+      if ((next[itemId] || 0) <= 1) {
+        delete next[itemId];
+      } else {
+        next[itemId] -= 1;
+      }
+      return next;
+    });
+  };
+  const buildQuickCartWhatsappUrl = () => {
+    const lines = Object.entries(quickCart)
+      .map(([id, qty]) => {
+        const found = allCatalogItems.find((i, idx) => (i.id || `item_${idx}`) === id);
+        if (!found) return null;
+        return `• ${qty}x *${found.title}* ${found.price ? `(${found.price})` : ''}`;
+      })
+      .filter(Boolean);
+    const msg = `Olá, *${name}*! 👋\nFiz minha seleção pelo *Mini Site / Cardápio Digital*:\n\n${lines.join('\n')}\n\nPoderia confirmar meu pedido/atendimento?`;
+    return buildMiniSiteWhatsappUrl(config.whatsappNumber || config.phone || '5511999999999', msg);
+  };
+
+  const handleUpdateProduct = (
+    index: number,
+    patch: Partial<{
+      title: string;
+      price?: string;
+      description?: string;
+      imageUrl?: string;
+      customWhatsappMsg?: string;
+      category?: string;
+    }>
+  ) => {
+    const current = [...featuredProducts];
+    current[index] = { ...current[index], ...patch };
+    const extraUser = userServices.length > 4 ? userServices.slice(4) : [];
+    updateAndPersist({ services: [...current, ...extraUser] });
+  };
+
+  const handleAddService = () => {
+    if (!newServiceTitle.trim()) {
+      showToast('Digite o nome do item do cardápio ou serviço.');
+      return;
+    }
+    const baseList = userServices.length >= 4 ? userServices : featuredProducts;
+    const updatedServices = [
+      ...baseList,
+      {
+        id: `srv_${Date.now()}`,
+        title: newServiceTitle.trim(),
+        price: newServicePrice.trim() || 'Consulte',
+        category: newServiceCategory.trim() || 'Especialidades',
+        description: newServiceDesc.trim(),
+        imageUrl:
+          newServiceImg.trim() ||
+          'https://images.unsplash.com/photo-1556742049-0a67e55722c6?auto=format&fit=crop&w=800&q=85'
+      }
+    ];
+    updateAndPersist({ services: updatedServices });
+    setNewServiceTitle('');
+    setNewServicePrice('');
+    setNewServiceCategory('');
+    setNewServiceDesc('');
+    setNewServiceImg('');
+    showToast('Item adicionado ao Cardápio / Catálogo do Mini Site!');
+  };
+
+  const handleRemoveService = (idx: number) => {
+    const baseList = userServices.length >= 4 ? userServices : [...featuredProducts, ...additionalServices];
+    const updatedServices = baseList.filter((_, i) => i !== idx);
+    updateAndPersist({ services: updatedServices });
+  };
+
+  const handleGenerateDefaultServices = () => {
+    const presets = getDefaultFourProducts(config.niche, config.companyName || 'Sua Empresa');
+    updateAndPersist({ services: presets });
+    showToast('4 Destaques do segmento com imagens 4K restaurados!');
+  };
+
+  const handleProductImageUpload = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const maxDim = 600;
+        let w = img.width;
+        let h = img.height;
+        if (w > h && w > maxDim) {
+          h = Math.round((h * maxDim) / w);
+          w = maxDim;
+        } else if (h > maxDim) {
+          w = Math.round((w * maxDim) / h);
+          h = maxDim;
+        }
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, w, h);
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.88);
+          handleUpdateProduct(index, { imageUrl: dataUrl });
+          showToast(`Foto em alta definição do destaque ${index + 1} atualizada!`);
         }
       };
       if (typeof ev.target?.result === 'string') {
@@ -324,594 +502,1034 @@ export const MiniSiteViewer: React.FC<MiniSiteViewerProps> = ({
     } catch (_) {}
   };
 
-  // Values
-  const name = config.companyName || 'Sua Empresa';
-  const niche = config.niche || 'Atendimento Exclusivo';
-  const city = config.city || 'Brasil';
-  const initial = (name.trim().charAt(0) || 'A').toUpperCase();
-  const whatsappUrl = buildMiniSiteWhatsappUrl(
-    config.whatsappNumber || config.phone || '5511999999999',
-    config.whatsappMessage || `Olá! Vim através do Mini Site de ${name}. Gostaria de mais informações!`
-  );
-  const instaHandle = sanitizeMiniSiteHandle(config.instagramUrl || '', '@');
-  const tiktokHandle = sanitizeMiniSiteHandle(config.tiktokUrl || '', '@');
-  const pixKey = config.pixKey || 'pix@empresa.com.br';
-  const pixBeneficiary = config.pixBeneficiary || name;
-  const wifiSsid = config.wifiSsid || `${name.replace(/\s+/g, '_')}_WiFi`;
-  const wifiPass = config.wifiPassword || 'VisiteNos123';
-
-  // Pix and WiFi QR codes
-  const pixQrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&margin=8&data=${encodeURIComponent(pixKey)}`;
-  const wifiQrData = `WIFI:T:${config.wifiSecurity || 'WPA'};S:${wifiSsid};P:${wifiPass};;`;
-  const wifiQrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&margin=8&data=${encodeURIComponent(wifiQrData)}`;
-
-  // 4 Main Featured Products & Marquee calculations
-  const userServices = Array.isArray(config.services) ? config.services : [];
-  const defaultServices = getDefaultFourProducts(config.niche, name);
-  const rawFeatured = userServices.length >= 4
-    ? userServices.slice(0, 4)
-    : [
-        ...userServices,
-        ...defaultServices.slice(userServices.length, 4)
-      ];
-  const featuredProducts = rawFeatured.map((p, idx) => ({
-    ...p,
-    imageUrl: (p.imageUrl && p.imageUrl.trim().length > 0)
-      ? p.imageUrl
-      : (defaultServices[idx % defaultServices.length]?.imageUrl || 'https://images.unsplash.com/photo-1556742049-0a67e55722c6?auto=format&fit=crop&w=600&q=80')
-  }));
-  const additionalServices = userServices.length > 4 ? userServices.slice(4) : [];
-  const marqueeText = config.marqueeText || '🔥 NOVIDADES TODA SEMANA • VISITE NOSSA LOJA • ATENDIMENTO VIP • COMPRE PELO WHATSAPP • QUALIDADE GARANTIDA 🔥';
-
-  const handleUpdateProduct = (index: number, patch: Partial<{ title: string; price?: string; description?: string; imageUrl?: string; customWhatsappMsg?: string }>) => {
-    const current = [...featuredProducts];
-    current[index] = { ...current[index], ...patch };
-    const updated = { ...config, services: [...current, ...additionalServices] };
-    if (onChangeConfig) onChangeConfig(updated);
-    if (onSaveConfig) onSaveConfig(updated);
-  };
-
-  // Interactive phone preview card or standalone full page
+  // ============================================================================
+  // INNOVATIVE 4K MINI LANDING PAGE RENDERER (Simulator & Standalone Public View)
+  // ============================================================================
   const renderPhoneSimulator = (isStandaloneMode = false) => {
     const isFullPage = isStandaloneMode || standalone;
+
     return (
-      <div className={`relative mx-auto w-full ${isFullPage ? 'max-w-md min-h-screen px-4 py-6 bg-gradient-to-b from-[#090d16] via-[#0f172a] to-[#030712] text-slate-100 shadow-2xl' : 'max-w-[380px] bg-slate-950 rounded-[44px] p-3 shadow-2xl border-4 border-slate-800 ring-1 ring-white/10 select-none'}`}>
-        {/* Smartphone Notch / Dynamic Island */}
+      <div
+        style={{ fontFamily: activeFont.cssFamily }}
+        className={`relative mx-auto w-full ${
+          isFullPage
+            ? 'max-w-md min-h-screen bg-[#070b14] text-slate-100 shadow-2xl border-x border-white/5 pb-24'
+            : 'max-w-[395px] bg-slate-950 rounded-[46px] p-2.5 shadow-2xl border-4 border-slate-800 ring-1 ring-white/15 select-none'
+        }`}
+      >
+        {/* Smartphone Dynamic Island Notch */}
         {!isFullPage && (
-          <div className="absolute top-6 left-1/2 -translate-x-1/2 w-28 h-4.5 bg-black rounded-full z-30 flex items-center justify-center gap-2">
+          <div className="absolute top-5 left-1/2 -translate-x-1/2 w-28 h-4.5 bg-black rounded-full z-40 flex items-center justify-center gap-2 shadow-md border border-white/10">
             <div className="w-2.5 h-2.5 rounded-full bg-slate-900 border border-slate-700/60"></div>
-            <div className="w-1.5 h-1.5 rounded-full bg-slate-800"></div>
+            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500/80 animate-pulse"></div>
           </div>
         )}
 
         {/* Screen Body */}
-        <div className={`relative ${isFullPage ? 'w-full' : 'rounded-[36px] bg-gradient-to-b from-[#090d16] via-[#0f172a] to-[#030712] text-slate-100 p-4 pt-11 pb-8 overflow-y-auto max-h-[660px] scrollbar-thin scrollbar-thumb-slate-800'}`}>
-        
-        {/* Glow behind profile */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-56 h-56 rounded-full bg-sky-500/20 blur-3xl pointer-events-none"></div>
+        <div
+          className={`relative ${
+            isFullPage
+              ? 'w-full'
+              : 'rounded-[38px] bg-[#070b14] text-slate-100 pb-20 overflow-y-auto max-h-[710px] scrollbar-thin scrollbar-thumb-slate-800'
+          }`}
+        >
+          {/* ================================================================
+              1. HERO HEAD 4K PHOTO BANNER + LIVE STATUS + GOOGLE RATING BADGE
+             ================================================================ */}
+          <div className="relative w-full h-52 sm:h-56 overflow-hidden bg-slate-900">
+            <img
+              src={coverImage}
+              alt={`${name} Capa 4K`}
+              className="w-full h-full object-cover contrast-105 saturate-110 transition-transform duration-700 hover:scale-105"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src =
+                  'https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=1600&q=90';
+              }}
+            />
+            {/* Multi-stop cinematic vignette overlay */}
+            <div className="absolute inset-0 bg-gradient-to-b from-black/65 via-black/30 to-[#070b14]"></div>
 
-        {/* 1. Profile Header */}
-        <div className="relative z-10 text-center space-y-2 mb-3">
-          <div className="relative w-20 h-20 mx-auto">
-            <div className="w-full h-full rounded-2xl bg-gradient-to-tr from-blue-600 via-sky-500 to-indigo-600 flex items-center justify-center text-white text-3xl font-black shadow-lg shadow-sky-500/30 border-2 border-white/20 overflow-hidden">
-              {config.logoUrl ? (
-                <img src={config.logoUrl} alt={name} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} />
-              ) : (
-                initial
-              )}
-            </div>
-            <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center border-2 border-slate-900 shadow-sm" title="Verificado">
-              <Check className="w-3.5 h-3.5 stroke-[3]" />
-            </div>
-          </div>
-
-          <div>
-            <h2 className="text-lg font-black text-white tracking-tight">{name}</h2>
-            <div className="inline-flex items-center gap-1 px-2.5 py-0.5 mt-1 rounded-full bg-white/10 border border-white/10 text-[10px] uppercase font-bold text-sky-300">
-              <Sparkles className="w-3 h-3 text-sky-400" />
-              <span>{niche} • {city}</span>
-            </div>
-            <p className="text-xs text-slate-400 mt-1 leading-relaxed max-w-[260px] mx-auto">
-              {config.tagline || `${niche} de excelência em ${city}`}
-            </p>
-          </div>
-
-          {config.openingHours && (
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-white/5 border border-white/10 text-[10px] text-slate-300">
-              <Clock className="w-3 h-3 text-sky-400" />
-              <span>{config.openingHours}</span>
-            </div>
-          )}
-
-          <div>
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/25 text-[10px] font-semibold text-emerald-400">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-              <span>Aberto agora • Atendimento Online</span>
-            </div>
-          </div>
-        </div>
-
-        {/* 2. Faixa Dourada Rolante (Marquee Ribbon Banner) */}
-        <div className="relative z-10 w-full overflow-hidden bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 text-slate-950 font-black text-[10px] py-1.5 px-2 rounded-xl shadow-md uppercase tracking-wider mb-3">
-          <div className="whitespace-nowrap animate-marquee flex items-center gap-4">
-            <span>{marqueeText}</span>
-            <span>•</span>
-            <span>{marqueeText}</span>
-          </div>
-        </div>
-
-        {/* 3. 4 Produtos Principais (Grade 2x2 com Fotos e Botões "Chamar no WhatsApp") */}
-        <div className="relative z-10 mb-3 space-y-2">
-          <div className="flex items-center justify-between px-1">
-            <span className="text-[11px] font-black uppercase tracking-wider text-sky-400 flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>4 Principais Destaques</span>
-            </span>
-            <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-300 border border-sky-500/30">
-              Catálogo 1-Clique
-            </span>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2.5">
-            {featuredProducts.slice(0, 4).map((p, idx) => {
-              const pWaMsg = p.customWhatsappMsg || `Olá! Vi no Mini Site de ${name} o destaque "${p.title}"${p.price ? ` (${p.price})` : ''} e gostaria de mais informações!`;
-              const pWaUrl = buildMiniSiteWhatsappUrl(config.whatsappNumber || config.phone || '5511999999999', pWaMsg);
-              return (
-                <div
-                  key={p.id || `feat_${idx}`}
-                  className="bg-slate-900/90 border border-slate-800 hover:border-emerald-500/50 rounded-2xl overflow-hidden flex flex-col justify-between transition-all hover:-translate-y-0.5 shadow-md group h-full"
-                >
-                  {/* Fixed uniform image container */}
-                  <div className="relative w-full h-28 bg-slate-950 overflow-hidden shrink-0">
-                    <img
-                      src={p.imageUrl || 'https://images.unsplash.com/photo-1556742049-0a67e55722c6?auto=format&fit=crop&w=600&q=80'}
-                      alt={p.title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      onError={(e) => { (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1556742049-0a67e55722c6?auto=format&fit=crop&w=600&q=80'; }}
-                    />
-                    <span className="absolute top-2 right-2 px-2 py-0.5 rounded-md bg-slate-950/90 backdrop-blur-xs text-[9px] font-black text-emerald-400 border border-emerald-500/30 shadow-xs">
-                      {p.price || 'Destaque'}
-                    </span>
-                  </div>
-                  {/* Uniform text content and CTA button */}
-                  <div className="p-2.5 flex flex-col flex-1 justify-between gap-2 text-left">
-                    <div>
-                      <h4 className="text-xs font-black text-white line-clamp-1">{p.title}</h4>
-                      <p className="text-[10px] text-slate-400 line-clamp-2 mt-0.5 leading-snug h-[28px] overflow-hidden">
-                        {p.description || 'Disponível para pedido imediato via WhatsApp.'}
-                      </p>
-                    </div>
-                    <a
-                      href={pWaUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="w-full py-2 px-2 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-black text-[10px] rounded-xl flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all shrink-0"
-                    >
-                      <Send className="w-3 h-3" />
-                      <span>Chamar no WhatsApp</span>
-                    </a>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* 4. Card Avaliação no Google (Google Reviews) */}
-        <div className="relative z-10 mb-3 p-3.5 rounded-2xl bg-gradient-to-br from-blue-950/40 via-amber-950/25 to-blue-950/40 border border-amber-400/40 shadow-lg text-left space-y-2">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-white flex items-center justify-center shadow-md shrink-0">
-                <svg className="w-4 h-4" viewBox="0 0 24 24">
-                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
-                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
-                </svg>
+            {/* Top Status & Rating Pills over Hero Cover */}
+            <div className={`absolute ${isFullPage ? 'top-4' : 'top-9'} left-3.5 right-3.5 flex items-center justify-between gap-2 z-20`}>
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-950/80 backdrop-blur-md border border-emerald-400/40 text-[10px] font-extrabold text-emerald-300 shadow-lg">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping absolute"></span>
+                <span className="w-2 h-2 rounded-full bg-emerald-400 relative"></span>
+                <span>Aberto Agora</span>
               </div>
-              <div>
-                <span className="text-xs font-black text-white block">Avaliação no Google</span>
-                <div className="flex items-center gap-1 text-amber-300 text-xs">
-                  <span>★★★★★</span>
-                  <span className="text-[10px] font-bold text-slate-300 ml-1">
-                    ({config.reviewCount || 128} avaliações)
+
+              <button
+                type="button"
+                onClick={() => setMiniSiteViewTab('avaliacoes')}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-950/80 backdrop-blur-md border border-amber-400/50 text-[10px] font-black text-amber-300 shadow-lg cursor-pointer hover:scale-105 transition"
+              >
+                <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                <span>{(config.rating && config.rating > 0 ? config.rating : 5.0).toFixed(1)}</span>
+                <span className="text-slate-300 font-semibold">({config.reviewCount || 128})</span>
+              </button>
+            </div>
+
+            {/* 4K Ultra HD Watermark tag */}
+            <div className="absolute bottom-14 right-3.5 z-10">
+              <span
+                style={{ borderColor: `${primaryColor}66`, color: primaryColor }}
+                className="px-2 py-0.5 rounded-md bg-black/70 backdrop-blur-md border text-[8px] font-black uppercase tracking-widest"
+              >
+                Experiência 4K
+              </span>
+            </div>
+          </div>
+
+          {/* ================================================================
+              2. PROFILE IDENTITY + OPENING HOURS IN HEADER
+             ================================================================ */}
+          <div className="relative z-20 px-4 -mt-12">
+            <div className="flex items-end gap-3.5">
+              {/* Overlapping Logo with Brand Color Ring */}
+              <div className="relative w-20 h-20 rounded-2xl bg-slate-900 p-0.5 shadow-2xl shrink-0"
+                   style={{ boxShadow: `0 10px 25px -5px ${primaryColor}55`, border: `2px solid ${primaryColor}` }}>
+                <div className="w-full h-full rounded-[14px] overflow-hidden bg-slate-950 flex items-center justify-center text-white text-2xl font-black">
+                  {config.logoUrl ? (
+                    <img
+                      src={config.logoUrl}
+                      alt={name}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLElement).style.display = 'none';
+                      }}
+                    />
+                  ) : (
+                    initial
+                  )}
+                </div>
+                <div
+                  style={{ backgroundColor: primaryColor }}
+                  className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full text-slate-950 flex items-center justify-center border-2 border-[#070b14] shadow-md"
+                  title="Empresa Verificada"
+                >
+                  <Check className="w-3.5 h-3.5 stroke-[3.5]" />
+                </div>
+              </div>
+
+              {/* Business Title & Category */}
+              <div className="flex-1 min-w-0 pb-0.5 text-left">
+                <h1 className="text-lg font-black text-white leading-tight truncate drop-shadow-sm">
+                  {name}
+                </h1>
+                <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                  <span
+                    style={{ color: primaryColor }}
+                    className="text-[10px] font-black uppercase tracking-wider"
+                  >
+                    {niche}
+                  </span>
+                  <span className="text-slate-600">•</span>
+                  <span className="text-[10px] text-slate-300 font-semibold flex items-center gap-0.5">
+                    <MapPin className="w-2.5 h-2.5 text-rose-400 shrink-0" />
+                    {city}
                   </span>
                 </div>
               </div>
             </div>
-            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/30">
-              ★ {config.rating ? config.rating.toFixed(1) : '5.0'} no Google
-            </span>
-          </div>
-          <p className="text-[10px] text-slate-300 leading-tight">
-            Sua opinião é fundamental para nossa empresa! Avalie nosso atendimento no Google em 5 segundos.
-          </p>
-          <a
-            href={config.googleReviewUrl || 'https://maps.google.com'}
-            target="_blank"
-            rel="noreferrer"
-            className="w-full py-2 px-3 bg-gradient-to-r from-blue-600 via-sky-600 to-emerald-600 hover:from-blue-500 hover:to-emerald-500 text-white font-black text-xs rounded-xl flex items-center justify-center gap-2 shadow-md active:scale-95 transition-all"
-          >
-            <Star className="w-3.5 h-3.5 fill-amber-300 text-amber-300" />
-            <span>Deixar Avaliação no Google (1-Clique)</span>
-          </a>
-        </div>
 
-        {/* 5. Card Pagamento PIX (Copia & Cola + QR Code) */}
-        <div className="relative z-10 mb-3 p-3.5 rounded-2xl bg-teal-950/20 border border-teal-500/30 shadow-md text-left space-y-2">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-teal-400 to-emerald-600 flex items-center justify-center text-white shadow-sm">
-                <Zap className="w-4 h-4 fill-white" />
+            {/* Tagline / Value Proposition */}
+            <p className="text-xs text-slate-300 mt-2.5 text-left leading-relaxed">
+              {config.tagline || `${niche} de alto padrão em ${city}. Experiência exclusiva e atendimento 1-clique.`}
+            </p>
+
+            {/* HORÁRIO DE ATENDIMENTO DESTACADO NO HEAD + BOTÃO COMO CHEGAR */}
+            <div className="mt-3 p-2.5 rounded-2xl bg-slate-900/95 border border-white/10 shadow-md flex items-center justify-between gap-2 text-left">
+              <div className="flex items-center gap-2 min-w-0">
+                <div
+                  style={{ backgroundColor: `${primaryColor}22`, color: primaryColor }}
+                  className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                >
+                  <Clock className="w-4 h-4" />
+                </div>
+                <div className="min-w-0">
+                  <span className="text-[9px] uppercase font-black tracking-wider text-emerald-400 block">
+                    🕒 Horário de Atendimento
+                  </span>
+                  <span className="text-[11px] font-bold text-white truncate block">
+                    {openingHours}
+                  </span>
+                </div>
               </div>
-              <div>
-                <span className="text-xs font-black text-white block">Pagamento via Pix</span>
-                <span className="text-[9px] text-slate-400">Favorecido: {pixBeneficiary}</span>
-              </div>
+
+              <button
+                type="button"
+                onClick={() => setMiniSiteViewTab('como_chegar')}
+                style={{ backgroundColor: `${primaryColor}25`, color: primaryColor, borderColor: `${primaryColor}50` }}
+                className="px-2.5 py-1.5 rounded-xl border text-[10px] font-black shrink-0 flex items-center gap-1 cursor-pointer hover:brightness-110 transition"
+              >
+                <MapPin className="w-3 h-3" />
+                <span>Como Chegar</span>
+              </button>
             </div>
-            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-teal-500/20 text-teal-300">
-              1-Toque
-            </span>
           </div>
-          <div className="p-2 rounded-xl bg-black/40 border border-white/5 flex items-center justify-between gap-2">
-            <span className="font-mono text-[10px] text-slate-200 truncate">{config.pixKey || 'pix@empresa.com.br'}</span>
-            <span className="text-[8px] font-black uppercase text-slate-400">{(config.pixKeyType || 'pix').toUpperCase()}</span>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={handlePixClick}
-              className="py-1.5 px-2 bg-teal-500 hover:bg-teal-400 text-slate-950 font-black text-[10px] rounded-xl flex items-center justify-center gap-1.5 cursor-pointer transition active:scale-95 shadow-sm"
+
+          {/* ================================================================
+              3. FRASE DE DESTAQUE PASSANDO (DYNAMIC MARQUEE BANNER)
+             ================================================================ */}
+          <div className="px-4 mt-3">
+            <div
+              style={{
+                background: `linear-gradient(90deg, ${primaryColor}, #fbbf24, ${primaryColor})`
+              }}
+              className="w-full overflow-hidden text-slate-950 font-black text-[10px] py-1.5 px-2 rounded-xl shadow-md uppercase tracking-wider"
             >
-              {copiedPix ? <Check className="w-3 h-3 text-slate-950 stroke-[3]" /> : <Copy className="w-3 h-3" />}
-              <span>{copiedPix ? 'Chave Copiada!' : 'Copiar Chave'}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveModal('pix')}
-              className="py-1.5 px-2 bg-white/10 hover:bg-white/15 text-white font-bold text-[10px] rounded-xl flex items-center justify-center gap-1.5 cursor-pointer border border-white/10 transition active:scale-95"
-            >
-              <QrCode className="w-3 h-3 text-teal-300" />
-              <span>Ver QR Code</span>
-            </button>
+              <div className="whitespace-nowrap animate-marquee flex items-center gap-6">
+                <span>{marqueeText}</span>
+                <span>•</span>
+                <span>{marqueeText}</span>
+              </div>
+            </div>
           </div>
-        </div>
 
-        {/* 6. Action Buttons List */}
-        <div className="relative z-10 space-y-2">
-          
-          {/* Wi-Fi 1-Click */}
-          <button
-            type="button"
-            onClick={handleWifiClick}
-            className="w-full flex items-center justify-between p-3 rounded-2xl bg-sky-950/20 border border-sky-500/30 hover:border-sky-500/60 transition-all cursor-pointer group shadow-sm active:scale-98 text-left"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-sky-500 to-blue-600 flex items-center justify-center text-white shadow-md">
-                <Wifi className="w-4 h-4" />
-              </div>
-              <div>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-black text-white">Conectar ao Wi-Fi</span>
-                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-md bg-sky-500/20 text-sky-300">Grátis</span>
-                </div>
-                <p className="text-[10px] text-slate-400">Conecte sem digitar senha</p>
-              </div>
+          {/* ================================================================
+              4. NAVEGAÇÃO INTELIGENTE DA MINI PÁGINA (TABS INTERATIVAS)
+             ================================================================ */}
+          <div className="px-4 mt-3">
+            <div className="grid grid-cols-4 gap-1 p-1 bg-slate-900/95 border border-white/10 rounded-2xl">
+              <button
+                type="button"
+                onClick={() => setMiniSiteViewTab('all')}
+                style={
+                  miniSiteViewTab === 'all'
+                    ? { backgroundColor: primaryColor, color: '#090d16' }
+                    : undefined
+                }
+                className={`py-1.5 px-1 rounded-xl text-[10px] font-black transition cursor-pointer truncate ${
+                  miniSiteViewTab === 'all' ? 'shadow-sm' : 'text-slate-300 hover:text-white'
+                }`}
+              >
+                ✨ Início
+              </button>
+              <button
+                type="button"
+                onClick={() => setMiniSiteViewTab('catalogo')}
+                style={
+                  miniSiteViewTab === 'catalogo'
+                    ? { backgroundColor: primaryColor, color: '#090d16' }
+                    : undefined
+                }
+                className={`py-1.5 px-1 rounded-xl text-[10px] font-black transition cursor-pointer truncate ${
+                  miniSiteViewTab === 'catalogo' ? 'shadow-sm' : 'text-slate-300 hover:text-white'
+                }`}
+              >
+                {smartMeta.segment === 'gastronomia' ? '🍽️ Cardápio' : '📋 Catálogo'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setMiniSiteViewTab('como_chegar')}
+                style={
+                  miniSiteViewTab === 'como_chegar'
+                    ? { backgroundColor: primaryColor, color: '#090d16' }
+                    : undefined
+                }
+                className={`py-1.5 px-1 rounded-xl text-[10px] font-black transition cursor-pointer truncate ${
+                  miniSiteViewTab === 'como_chegar' ? 'shadow-sm' : 'text-slate-300 hover:text-white'
+                }`}
+              >
+                📍 Chegar
+              </button>
+              <button
+                type="button"
+                onClick={() => setMiniSiteViewTab('avaliacoes')}
+                style={
+                  miniSiteViewTab === 'avaliacoes'
+                    ? { backgroundColor: primaryColor, color: '#090d16' }
+                    : undefined
+                }
+                className={`py-1.5 px-1 rounded-xl text-[10px] font-black transition cursor-pointer truncate ${
+                  miniSiteViewTab === 'avaliacoes' ? 'shadow-sm' : 'text-slate-300 hover:text-white'
+                }`}
+              >
+                ⭐ Google
+              </button>
             </div>
-            <ArrowRight className="w-4 h-4 text-slate-500 group-hover:text-white group-hover:translate-x-0.5 transition-transform" />
-          </button>
+          </div>
 
-          {/* WhatsApp Direct (Geral) */}
-          <a
-            href={whatsappUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="flex items-center justify-between p-3 rounded-2xl bg-emerald-950/20 border border-emerald-500/30 hover:border-emerald-500/60 transition-all cursor-pointer group shadow-sm active:scale-98"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white shadow-md">
-                <Send className="w-4 h-4" />
-              </div>
-              <div className="text-left">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-black text-white">WhatsApp Geral</span>
-                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-md bg-emerald-500/20 text-emerald-300">1-Clique</span>
+          {/* ================================================================
+              MAIN CONTENT SECTIONS OF THE MINI PAGE
+             ================================================================ */}
+          <div className="px-4 mt-4 space-y-4">
+            {/* --------------------------------------------------------------
+                SECTION A: 4 PRINCIPAIS DESTAQUES EM 4K (Shown on 'all')
+               -------------------------------------------------------------- */}
+            {miniSiteViewTab === 'all' && (
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span
+                    style={{ color: primaryColor }}
+                    className="text-xs font-black uppercase tracking-wider flex items-center gap-1.5"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>{smartMeta.featuredTitle}</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setMiniSiteViewTab('catalogo')}
+                    className="text-[10px] font-bold text-slate-300 hover:text-white underline cursor-pointer"
+                  >
+                    Ver tudo ({allCatalogItems.length}) ➔
+                  </button>
                 </div>
-                <p className="text-[10px] text-slate-400">Fale com nossa equipe agora</p>
-              </div>
-            </div>
-            <ArrowRight className="w-4 h-4 text-slate-500 group-hover:text-white group-hover:translate-x-0.5 transition-transform" />
-          </a>
 
-          {/* Instagram */}
-          <a
-            href={config.instagramUrl || 'https://instagram.com'}
-            target="_blank"
-            rel="noreferrer"
-            className="flex items-center justify-between p-3 rounded-2xl bg-pink-950/20 border border-pink-500/30 hover:border-pink-500/60 transition-all cursor-pointer group shadow-sm active:scale-98"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500 via-rose-500 to-purple-600 flex items-center justify-center text-white shadow-md">
-                <Radio className="w-4 h-4" />
-              </div>
-              <div className="text-left">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-black text-white">Instagram</span>
-                  {instaHandle && <span className="text-[10px] text-pink-300 font-bold">{instaHandle}</span>}
-                </div>
-                <p className="text-[10px] text-slate-400">Fotos, novidades e stories</p>
-              </div>
-            </div>
-            <ArrowRight className="w-4 h-4 text-slate-500 group-hover:text-white group-hover:translate-x-0.5 transition-transform" />
-          </a>
+                <div className="grid grid-cols-2 gap-2.5">
+                  {featuredProducts.slice(0, 4).map((p, idx) => {
+                    const pWaMsg =
+                      p.customWhatsappMsg ||
+                      `Olá! Vi no Mini Site de ${name} o destaque "${p.title}"${
+                        p.price ? ` (${p.price})` : ''
+                      } e gostaria de pedir/agendar!`;
+                    const pWaUrl = buildMiniSiteWhatsappUrl(
+                      config.whatsappNumber || config.phone || '5511999999999',
+                      pWaMsg
+                    );
+                    const itemId = p.id || `feat_${idx}`;
+                    const inCartQty = quickCart[itemId] || 0;
 
-          {/* Endereço & Rota Maps */}
-          {config.address && (
-            <a
-              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(config.address + ' ' + (config.city || ''))}`}
-              target="_blank"
-              rel="noreferrer"
-              className="flex items-center justify-between p-3 rounded-2xl bg-rose-950/20 border border-rose-500/30 hover:border-rose-500/60 transition-all cursor-pointer group shadow-sm active:scale-98"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-rose-500 to-amber-500 flex items-center justify-center text-white shadow-md">
-                  <MapPin className="w-4 h-4" />
+                    return (
+                      <div
+                        key={itemId}
+                        className="bg-slate-900/95 border border-white/10 hover:border-white/25 rounded-2xl overflow-hidden flex flex-col justify-between transition-all shadow-lg group"
+                      >
+                        <div className="relative w-full h-28 bg-slate-950 overflow-hidden shrink-0">
+                          <img
+                            src={p.imageUrl}
+                            alt={p.title}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src =
+                                'https://images.unsplash.com/photo-1556742049-0a67e55722c6?auto=format&fit=crop&w=800&q=80';
+                            }}
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-transparent to-transparent"></div>
+                          <span
+                            style={{ backgroundColor: '#090d16e6', color: primaryColor, borderColor: `${primaryColor}55` }}
+                            className="absolute top-2 right-2 px-2 py-0.5 rounded-lg text-[9px] font-black border shadow-sm"
+                          >
+                            {p.price || 'Destaque'}
+                          </span>
+                        </div>
+
+                        <div className="p-2.5 flex flex-col flex-1 justify-between gap-2 text-left">
+                          <div>
+                            <h4 className="text-xs font-black text-white line-clamp-1">{p.title}</h4>
+                            <p className="text-[10px] text-slate-400 line-clamp-2 mt-0.5 leading-snug h-[28px] overflow-hidden">
+                              {p.description || 'Disponível com atendimento imediato no WhatsApp.'}
+                            </p>
+                          </div>
+
+                          <div className="flex items-center gap-1.5">
+                            <a
+                              href={pWaUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              style={{ backgroundColor: primaryColor, color: '#090d16' }}
+                              className="flex-1 py-1.5 px-2 font-black text-[10px] rounded-xl flex items-center justify-center gap-1 shadow-sm hover:brightness-110 active:scale-95 transition-all"
+                            >
+                              <Send className="w-2.5 h-2.5" />
+                              <span className="truncate">{smartMeta.ctaLabel}</span>
+                            </a>
+                            <button
+                              type="button"
+                              onClick={() => handleAddToQuickCart(itemId, p.title)}
+                              title="Adicionar à sacola rápida do WhatsApp"
+                              className="w-7 h-7 rounded-xl bg-white/10 hover:bg-white/20 text-white font-black text-xs flex items-center justify-center shrink-0 cursor-pointer transition relative"
+                            >
+                              +
+                              {inCartQty > 0 && (
+                                <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-emerald-500 text-slate-950 text-[9px] font-black flex items-center justify-center">
+                                  {inCartQty}
+                                </span>
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-                <div className="text-left">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs font-black text-white">Como Chegar</span>
-                    <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-md bg-rose-500/20 text-rose-300">Maps</span>
+              </div>
+            )}
+
+            {/* --------------------------------------------------------------
+                SECTION B: CARDÁPIO DIGITAL / CATÁLOGO INTERATIVO DO SEGMENTO
+               -------------------------------------------------------------- */}
+            {(miniSiteViewTab === 'catalogo' ||
+              (miniSiteViewTab === 'all' && (config.showInteractiveMenu ?? true))) && (
+              <div className="p-3.5 rounded-2xl bg-slate-900/90 border border-white/10 space-y-3 text-left shadow-lg">
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <span className="text-xs font-black text-white flex items-center gap-1.5">
+                      <UtensilsCrossed className="w-3.5 h-3.5" style={{ color: primaryColor }} />
+                      <span>{smartMeta.menuTabLabel} Completo</span>
+                    </span>
+                    <p className="text-[10px] text-slate-400">
+                      Toque em + para montar seu pedido ou chame direto no WhatsApp
+                    </p>
                   </div>
-                  <p className="text-[10px] text-slate-400 truncate max-w-[190px]">{config.address}</p>
+                  <span
+                    style={{ backgroundColor: `${primaryColor}20`, color: primaryColor }}
+                    className="text-[9px] font-black px-2 py-0.5 rounded-full shrink-0"
+                  >
+                    {allCatalogItems.length} itens
+                  </span>
+                </div>
+
+                {/* Category Filter Tabs */}
+                <div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-1">
+                  {catalogCategories.map((cat) => {
+                    const active = selectedMenuCategory === cat;
+                    return (
+                      <button
+                        key={cat}
+                        type="button"
+                        onClick={() => setSelectedMenuCategory(cat)}
+                        style={
+                          active
+                            ? { backgroundColor: primaryColor, color: '#090d16' }
+                            : undefined
+                        }
+                        className={`px-2.5 py-1 rounded-xl text-[10px] font-black whitespace-nowrap transition cursor-pointer ${
+                          active
+                            ? 'shadow-xs'
+                            : 'bg-slate-950/80 text-slate-400 border border-white/10 hover:text-white'
+                        }`}
+                      >
+                        {cat}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Interactive Menu / Service Items List */}
+                <div className="space-y-2">
+                  {filteredCatalogItems.map((item, idx) => {
+                    const itemId = item.id || `cat_item_${idx}`;
+                    const qty = quickCart[itemId] || 0;
+                    const itemWaUrl = buildMiniSiteWhatsappUrl(
+                      config.whatsappNumber || config.phone || '5511999999999',
+                      `Olá! Vi no ${smartMeta.menuTabLabel} de ${name} o item "${item.title}"${
+                        item.price ? ` (${item.price})` : ''
+                      } e quero pedir/agendar!`
+                    );
+
+                    return (
+                      <div
+                        key={itemId}
+                        className="p-2.5 rounded-xl bg-slate-950/90 border border-white/10 flex items-center gap-2.5 hover:border-white/20 transition"
+                      >
+                        {item.imageUrl && (
+                          <img
+                            src={item.imageUrl}
+                            alt={item.title}
+                            className="w-14 h-14 rounded-xl object-cover shrink-0 border border-white/10"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src =
+                                'https://images.unsplash.com/photo-1556742049-0a67e55722c6?auto=format&fit=crop&w=400&q=80';
+                            }}
+                          />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-1">
+                            <h5 className="text-xs font-black text-white truncate">{item.title}</h5>
+                            {item.price && (
+                              <span
+                                style={{ color: primaryColor }}
+                                className="text-[10px] font-black shrink-0"
+                              >
+                                {item.price}
+                              </span>
+                            )}
+                          </div>
+                          {item.description && (
+                            <p className="text-[10px] text-slate-400 line-clamp-2 mt-0.5 leading-snug">
+                              {item.description}
+                            </p>
+                          )}
+                          <div className="flex items-center justify-between mt-1.5 gap-2">
+                            <a
+                              href={itemWaUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-[10px] font-bold text-emerald-400 hover:underline flex items-center gap-1"
+                            >
+                              <Send className="w-2.5 h-2.5" />
+                              <span>Pedir 1-Clique</span>
+                            </a>
+
+                            <div className="flex items-center gap-1.5">
+                              {qty > 0 && (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveFromQuickCart(itemId)}
+                                    className="w-5 h-5 rounded-lg bg-slate-800 text-white text-xs font-black flex items-center justify-center cursor-pointer"
+                                  >
+                                    -
+                                  </button>
+                                  <span className="text-[10px] font-black text-white w-3 text-center">
+                                    {qty}
+                                  </span>
+                                </>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => handleAddToQuickCart(itemId, item.title)}
+                                style={{ backgroundColor: primaryColor, color: '#090d16' }}
+                                className="px-2 py-0.5 rounded-lg text-[10px] font-black cursor-pointer hover:brightness-110 transition"
+                              >
+                                + Incluir
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
-              <ArrowRight className="w-4 h-4 text-slate-500 group-hover:text-white group-hover:translate-x-0.5 transition-transform" />
-            </a>
-          )}
+            )}
 
-          {/* Ligar Direto */}
-          {config.phone && (
-            <a
-              href={`tel:${config.phone.replace(/\D/g, '')}`}
-              className="flex items-center justify-between p-3 rounded-2xl bg-blue-950/20 border border-blue-500/30 hover:border-blue-500/60 transition-all cursor-pointer group shadow-sm active:scale-98"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white shadow-md">
-                  <Phone className="w-4 h-4" />
-                </div>
-                <div className="text-left">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs font-black text-white">Ligar no Telefone</span>
-                    <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-md bg-blue-500/20 text-blue-300">Ligação</span>
+            {/* --------------------------------------------------------------
+                SECTION C: SOBRE A EMPRESA & DIFERENCIAIS DE VALOR + GALERIA 4K
+               -------------------------------------------------------------- */}
+            {miniSiteViewTab === 'all' && (
+              <>
+                <div className="p-3.5 rounded-2xl bg-slate-900/90 border border-white/10 space-y-2.5 text-left shadow-md">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black text-white flex items-center gap-1.5">
+                      <Award className="w-4 h-4" style={{ color: primaryColor }} />
+                      <span>Por que escolher {name}?</span>
+                    </span>
+                    <span className="text-[9px] font-bold text-slate-400 uppercase">
+                      Diferenciais VIP
+                    </span>
                   </div>
-                  <p className="text-[10px] text-slate-400">{config.phone}</p>
+
+                  <p className="text-[11px] text-slate-300 leading-relaxed">{aboutText}</p>
+
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {amenities.map((amenity, i) => (
+                      <span
+                        key={i}
+                        className="px-2.5 py-1 rounded-xl bg-slate-950/90 border border-white/10 text-[10px] font-bold text-slate-200"
+                      >
+                        {amenity}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Galeria de Fotos Realistas em 4K */}
+                <div className="p-3.5 rounded-2xl bg-slate-900/90 border border-white/10 space-y-2.5 text-left shadow-md">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black text-white flex items-center gap-1.5">
+                      <ImageIcon className="w-3.5 h-3.5" style={{ color: primaryColor }} />
+                      <span>Nosso Espaço &amp; Qualidade em 4K</span>
+                    </span>
+                    <span className="text-[9px] font-black px-2 py-0.5 rounded-md bg-white/10 text-slate-300">
+                      Ultra HD
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {galleryUrls.slice(0, 4).map((gUrl, idx) => (
+                      <div
+                        key={idx}
+                        className="relative h-24 rounded-xl overflow-hidden border border-white/10 bg-slate-950 group"
+                      >
+                        <img
+                          src={gUrl}
+                          alt={`${name} Galeria ${idx + 1}`}
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src =
+                              'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=800&q=80';
+                          }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* --------------------------------------------------------------
+                SECTION D: TELA "COMO CHEGAR" & LOCALIZAÇÃO GPS (Estilo Print)
+               -------------------------------------------------------------- */}
+            {(miniSiteViewTab === 'all' || miniSiteViewTab === 'como_chegar') && (
+              <div className="p-3.5 rounded-2xl bg-gradient-to-br from-slate-900 via-slate-900 to-rose-950/30 border border-rose-500/35 shadow-lg text-left space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-xl bg-rose-500/20 border border-rose-500/40 text-rose-400 flex items-center justify-center">
+                      <Navigation className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="text-xs font-black text-white block">
+                        Como Chegar &amp; Localização
+                      </span>
+                      <span className="text-[10px] text-rose-300 font-semibold">
+                        Navegação GPS com 1 Toque
+                      </span>
+                    </div>
+                  </div>
+                  <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30">
+                    Maps &amp; Waze
+                  </span>
+                </div>
+
+                {/* Stylized Interactive Map Preview Card */}
+                <div className="relative h-28 rounded-xl overflow-hidden border border-white/15 bg-slate-950 flex flex-col items-center justify-center p-3 text-center">
+                  <div
+                    className="absolute inset-0 opacity-25"
+                    style={{
+                      backgroundImage:
+                        'radial-gradient(#94a3b8 1px, transparent 1px), linear-gradient(to right, #1e293b 1px, transparent 1px), linear-gradient(to bottom, #1e293b 1px, transparent 1px)',
+                      backgroundSize: '20px 20px'
+                    }}
+                  ></div>
+                  <div className="relative z-10 w-9 h-9 rounded-full bg-rose-500 text-white flex items-center justify-center shadow-lg shadow-rose-500/50 animate-bounce mb-1">
+                    <MapPin className="w-5 h-5" />
+                  </div>
+                  <strong className="relative z-10 text-xs font-black text-white line-clamp-1">
+                    {name}
+                  </strong>
+                  <span className="relative z-10 text-[10px] text-slate-300 line-clamp-1 mt-0.5">
+                    {addressText}
+                  </span>
+                </div>
+
+                {/* Detailed Hours & Phone inside Como Chegar */}
+                <div className="p-2.5 rounded-xl bg-slate-950/80 border border-white/10 space-y-1.5 text-[11px]">
+                  <div className="flex items-center justify-between text-slate-200">
+                    <span className="flex items-center gap-1.5 text-slate-400">
+                      <Clock className="w-3.5 h-3.5 text-emerald-400" />
+                      Horário:
+                    </span>
+                    <strong className="text-white text-right">{openingHours}</strong>
+                  </div>
+                  {config.phone && (
+                    <div className="flex items-center justify-between text-slate-200">
+                      <span className="flex items-center gap-1.5 text-slate-400">
+                        <Phone className="w-3.5 h-3.5 text-sky-400" />
+                        Telefone:
+                      </span>
+                      <a href={`tel:${config.phone.replace(/\D/g, '')}`} className="font-bold text-sky-400 hover:underline">
+                        {config.phone}
+                      </a>
+                    </div>
+                  )}
+                </div>
+
+                {/* 2 GPS Buttons: Google Maps + Waze */}
+                <div className="grid grid-cols-2 gap-2">
+                  <a
+                    href={mapsSearchUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="py-2.5 px-3 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white font-black text-[11px] rounded-xl flex items-center justify-center gap-1.5 shadow-md active:scale-95 transition"
+                  >
+                    <MapPin className="w-3.5 h-3.5" />
+                    <span>Google Maps</span>
+                  </a>
+                  <a
+                    href={wazeUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="py-2.5 px-3 bg-sky-500 hover:bg-sky-400 text-slate-950 font-black text-[11px] rounded-xl flex items-center justify-center gap-1.5 shadow-md active:scale-95 transition"
+                  >
+                    <Navigation className="w-3.5 h-3.5" />
+                    <span>Ir de Waze</span>
+                  </a>
                 </div>
               </div>
-              <ArrowRight className="w-4 h-4 text-slate-500 group-hover:text-white group-hover:translate-x-0.5 transition-transform" />
-            </a>
-          )}
+            )}
 
-          {/* Website / Catálogo Completo */}
-          {config.websiteUrl && (
-            <a
-              href={config.websiteUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="flex items-center justify-between p-3 rounded-2xl bg-indigo-950/20 border border-indigo-500/30 hover:border-indigo-500/60 transition-all cursor-pointer group shadow-sm active:scale-98"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-md">
-                  <Globe className="w-4 h-4" />
+            {/* --------------------------------------------------------------
+                SECTION E: AVALIAÇÃO DO GOOGLE ESTILO PRINT REAL + DEPOIMENTOS
+               -------------------------------------------------------------- */}
+            {(miniSiteViewTab === 'all' || miniSiteViewTab === 'avaliacoes') && (
+              <div className="p-4 rounded-2xl bg-gradient-to-br from-slate-900 via-blue-950/35 to-amber-950/25 border-2 border-amber-400/45 shadow-xl text-left space-y-3">
+                {/* Official Google Review Header */}
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-md shrink-0">
+                      <svg className="w-5 h-5" viewBox="0 0 24 24">
+                        <path
+                          fill="#4285F4"
+                          d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                        />
+                        <path
+                          fill="#34A853"
+                          d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                        />
+                        <path
+                          fill="#FBBC05"
+                          d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+                        />
+                        <path
+                          fill="#EA4335"
+                          d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+                        />
+                      </svg>
+                    </div>
+                    <div>
+                      <span className="text-xs font-black text-white block">
+                        Avaliações do Google
+                      </span>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <span className="text-sm font-black text-amber-300">
+                          {(config.rating && config.rating > 0 ? config.rating : 5.0).toFixed(1)}
+                        </span>
+                        <span className="text-amber-400 text-xs tracking-tighter">★★★★★</span>
+                        <span className="text-[10px] font-bold text-slate-300">
+                          ({config.reviewCount || 128} avaliações)
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/40">
+                    Verificado
+                  </span>
                 </div>
-                <div className="text-left">
-                  <span className="text-xs font-black text-white block">Site Oficial &amp; Catálogo</span>
-                  <p className="text-[10px] text-slate-400">Catálogo completo de serviços</p>
-                </div>
-              </div>
-              <ArrowRight className="w-4 h-4 text-slate-500 group-hover:text-white group-hover:translate-x-0.5 transition-transform" />
-            </a>
-          )}
 
-          {/* Telegram */}
-          {config.telegramUrl && (
-            <a
-              href={config.telegramUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="flex items-center justify-between p-3 rounded-2xl bg-sky-950/20 border border-sky-400/30 hover:border-sky-400/60 transition-all cursor-pointer group shadow-sm active:scale-98"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-sky-400 to-blue-500 flex items-center justify-center text-white shadow-md">
-                  <Send className="w-4 h-4" />
-                </div>
-                <div className="text-left">
-                  <span className="text-xs font-black text-white block">Canal no Telegram</span>
-                  <p className="text-[10px] text-slate-400">Promoções e avisos diretos</p>
-                </div>
-              </div>
-              <ArrowRight className="w-4 h-4 text-slate-500 group-hover:text-white group-hover:translate-x-0.5 transition-transform" />
-            </a>
-          )}
-
-          {/* TikTok */}
-          {config.tiktokUrl && (
-            <a
-              href={config.tiktokUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="flex items-center justify-between p-3 rounded-2xl bg-neutral-900 border border-rose-500/30 hover:border-rose-500/60 transition-all cursor-pointer group shadow-sm active:scale-98"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-black border border-rose-500/40 flex items-center justify-center text-white shadow-md">
-                  <Sparkles className="w-4 h-4 text-rose-400" />
-                </div>
-                <div className="text-left">
-                  <span className="text-xs font-black text-white block">TikTok Oficial</span>
-                  <p className="text-[10px] text-slate-400">{tiktokHandle || 'Vídeos e tendências'}</p>
-                </div>
-              </div>
-              <ArrowRight className="w-4 h-4 text-slate-500 group-hover:text-white group-hover:translate-x-0.5 transition-transform" />
-            </a>
-          )}
-
-          {/* Additional Services (se mais de 4 itens) */}
-          {additionalServices.length > 0 && (
-            <div className="pt-3 mt-3 border-t border-white/10 text-left space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-black uppercase tracking-wider text-sky-400 flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span>Outros Serviços &amp; Produtos</span>
-                </span>
-                <span className="text-[9px] text-slate-400 font-semibold">
-                  {additionalServices.length} {additionalServices.length === 1 ? 'item' : 'itens'}
-                </span>
-              </div>
-
-              <div className="space-y-1.5">
-                {additionalServices.map((srv, idx) => {
-                  const srvWaUrl = buildMiniSiteWhatsappUrl(
-                    config.whatsappNumber || config.phone || '5511999999999',
-                    `Olá! Vi no Mini Site de ${name} o serviço "${srv.title}"${srv.price ? ` (${srv.price})` : ''} e gostaria de mais informações!`
-                  );
-                  return (
-                    <a
-                      key={srv.id || idx}
-                      href={srvWaUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="flex items-center justify-between gap-2.5 p-2.5 rounded-xl bg-slate-900/90 border border-sky-500/25 hover:border-sky-400/60 transition group"
+                {/* Real Customer Review Snippets (Print Style) */}
+                <div className="space-y-2">
+                  {testimonials.slice(0, 2).map((rev, idx) => (
+                    <div
+                      key={rev.id || idx}
+                      className="p-2.5 rounded-xl bg-slate-950/85 border border-white/10 space-y-1"
                     >
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="text-xs font-black text-white">{srv.title}</span>
-                          {srv.price && (
-                            <span className="text-[9px] font-black px-1.5 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                              {srv.price}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div
+                            style={{ backgroundColor: idx === 0 ? primaryColor : '#38bdf8' }}
+                            className="w-6 h-6 rounded-full text-slate-950 font-black text-[10px] flex items-center justify-center"
+                          >
+                            {rev.author.charAt(0)}
+                          </div>
+                          <div>
+                            <strong className="text-[11px] font-bold text-white block leading-none">
+                              {rev.author}
+                            </strong>
+                            <span className="text-[9px] text-slate-400">
+                              {rev.role || 'Local Guide • Google'}
                             </span>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-amber-400 text-[10px] block">★★★★★</span>
+                          <span className="text-[8px] text-slate-500">{rev.timeAgo || 'há 2 dias'}</span>
+                        </div>
+                      </div>
+                      <p className="text-[10.5px] text-slate-300 leading-snug italic">
+                        &ldquo;{rev.text}&rdquo;
+                      </p>
+                    </div>
+                  ))}
+                </div>
+
+                <a
+                  href={config.googleReviewUrl || 'https://maps.google.com'}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="w-full py-2.5 px-3 bg-gradient-to-r from-blue-600 via-sky-600 to-emerald-600 hover:from-blue-500 hover:to-emerald-500 text-white font-black text-xs rounded-xl flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-all"
+                >
+                  <Star className="w-3.5 h-3.5 fill-amber-300 text-amber-300" />
+                  <span>Avaliar no Google Agora (1-Clique)</span>
+                </a>
+              </div>
+            )}
+
+            {/* --------------------------------------------------------------
+                SECTION F: PIX 1-TOQUE, WI-FI QR CODE & CANAIS SOCIAIS
+               -------------------------------------------------------------- */}
+            {miniSiteViewTab === 'all' && (
+              <>
+                <div className="p-3.5 rounded-2xl bg-teal-950/25 border border-teal-500/35 shadow-md text-left space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-teal-400 to-emerald-600 flex items-center justify-center text-white shadow-sm">
+                        <Zap className="w-4 h-4 fill-white" />
+                      </div>
+                      <div>
+                        <span className="text-xs font-black text-white block">
+                          Pagamento via Pix
+                        </span>
+                        <span className="text-[9px] text-slate-400">
+                          Favorecido: {pixBeneficiary}
+                        </span>
+                      </div>
+                    </div>
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-teal-500/20 text-teal-300">
+                      1-Toque
+                    </span>
+                  </div>
+                  <div className="p-2 rounded-xl bg-black/40 border border-white/5 flex items-center justify-between gap-2">
+                    <span className="font-mono text-[10px] text-slate-200 truncate">
+                      {config.pixKey || 'pix@empresa.com.br'}
+                    </span>
+                    <span className="text-[8px] font-black uppercase text-slate-400">
+                      {(config.pixKeyType || 'pix').toUpperCase()}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={handlePixClick}
+                      className="py-2 px-2 bg-teal-500 hover:bg-teal-400 text-slate-950 font-black text-[10px] rounded-xl flex items-center justify-center gap-1.5 cursor-pointer transition active:scale-95 shadow-sm"
+                    >
+                      {copiedPix ? (
+                        <Check className="w-3 h-3 text-slate-950 stroke-[3]" />
+                      ) : (
+                        <Copy className="w-3 h-3" />
+                      )}
+                      <span>{copiedPix ? 'Chave Copiada!' : 'Copiar Chave'}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveModal('pix')}
+                      className="py-2 px-2 bg-white/10 hover:bg-white/15 text-white font-bold text-[10px] rounded-xl flex items-center justify-center gap-1.5 cursor-pointer border border-white/10 transition active:scale-95"
+                    >
+                      <QrCode className="w-3 h-3 text-teal-300" />
+                      <span>Ver QR Code</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Quick Channels Grid */}
+                <div className="space-y-2">
+                  <button
+                    type="button"
+                    onClick={handleWifiClick}
+                    className="w-full flex items-center justify-between p-3 rounded-2xl bg-sky-950/25 border border-sky-500/30 hover:border-sky-500/60 transition-all cursor-pointer group text-left"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-sky-500 to-blue-600 flex items-center justify-center text-white shadow-md">
+                        <Wifi className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-black text-white">Wi-Fi Grátis para Clientes</span>
+                          <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-md bg-sky-500/20 text-sky-300">
+                            QR Code
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-slate-400">Conecte sem precisar digitar senha</p>
+                      </div>
+                    </div>
+                    <ArrowRight className="w-4 h-4 text-slate-500 group-hover:text-white transition" />
+                  </button>
+
+                  <a
+                    href={whatsappUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center justify-between p-3 rounded-2xl bg-emerald-950/25 border border-emerald-500/30 hover:border-emerald-500/60 transition-all cursor-pointer group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white shadow-md">
+                        <Send className="w-4 h-4" />
+                      </div>
+                      <div className="text-left">
+                        <span className="text-xs font-black text-white block">
+                          Atendimento no WhatsApp
+                        </span>
+                        <p className="text-[10px] text-slate-400">Fale direto com nossa equipe</p>
+                      </div>
+                    </div>
+                    <ArrowRight className="w-4 h-4 text-slate-500 group-hover:text-white transition" />
+                  </a>
+
+                  <a
+                    href={config.instagramUrl || 'https://instagram.com'}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center justify-between p-3 rounded-2xl bg-pink-950/25 border border-pink-500/30 hover:border-pink-500/60 transition-all cursor-pointer group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500 via-rose-500 to-purple-600 flex items-center justify-center text-white shadow-md">
+                        <Radio className="w-4 h-4" />
+                      </div>
+                      <div className="text-left">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-black text-white">Instagram Oficial</span>
+                          {instaHandle && (
+                            <span className="text-[10px] text-pink-300 font-bold">{instaHandle}</span>
                           )}
                         </div>
-                        {srv.description && (
-                          <p className="text-[10px] text-slate-400 mt-0.5 leading-snug line-clamp-1">
-                            {srv.description}
-                          </p>
-                        )}
+                        <p className="text-[10px] text-slate-400">Novidades, stories e bastidores</p>
                       </div>
-                      <span className="shrink-0 px-2 py-1 rounded-lg bg-emerald-500 text-slate-950 font-black text-[9px] group-hover:bg-emerald-400 transition">
-                        Pedir
-                      </span>
+                    </div>
+                    <ArrowRight className="w-4 h-4 text-slate-500 group-hover:text-white transition" />
+                  </a>
+
+                  {config.tiktokUrl && (
+                    <a
+                      href={config.tiktokUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center justify-between p-3 rounded-2xl bg-neutral-900 border border-rose-500/30 hover:border-rose-500/60 transition-all cursor-pointer group"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-black border border-rose-500/40 flex items-center justify-center text-white shadow-md">
+                          <Sparkles className="w-4 h-4 text-rose-400" />
+                        </div>
+                        <div className="text-left">
+                          <span className="text-xs font-black text-white block">TikTok Oficial</span>
+                          <p className="text-[10px] text-slate-400">{tiktokHandle || 'Vídeos e tendências'}</p>
+                        </div>
+                      </div>
+                      <ArrowRight className="w-4 h-4 text-slate-500 group-hover:text-white transition" />
                     </a>
-                  );
-                })}
-              </div>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Floating Quick Cart Bar inside Mini Site if visitor selected items */}
+          {totalCartItems > 0 && (
+            <div className="sticky bottom-3 left-3 right-3 px-3 mt-4 z-30">
+              <a
+                href={buildQuickCartWhatsappUrl()}
+                target="_blank"
+                rel="noreferrer"
+                className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 text-slate-950 font-black text-xs shadow-2xl flex items-center justify-between border border-emerald-300"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-full bg-slate-950 text-emerald-400 flex items-center justify-center text-[11px] font-black">
+                    {totalCartItems}
+                  </span>
+                  <span>Enviar Pedido pelo WhatsApp</span>
+                </div>
+                <ArrowRight className="w-4 h-4" />
+              </a>
             </div>
           )}
 
+          {/* Footer */}
+          <div className="mt-8 pt-4 border-t border-slate-800/80 text-center space-y-1 px-4">
+            <span className="inline-flex items-center gap-1 text-[10px] text-slate-400 font-bold bg-white/5 px-2.5 py-0.5 rounded-full border border-white/10">
+              <Radio className="w-2.5 h-2.5" style={{ color: primaryColor }} />
+              Mini Página Inteligente 4K • NFC Hub
+            </span>
+            <p className="text-[9px] text-slate-500">
+              &copy; {new Date().getFullYear()} {name}. Todos os direitos reservados.
+            </p>
+          </div>
         </div>
 
-        {/* Footer */}
-        <div className="mt-8 pt-4 border-t border-slate-800/80 text-center space-y-1">
-          <span className="inline-flex items-center gap-1 text-[10px] text-slate-500 font-bold bg-white/5 px-2.5 py-0.5 rounded-full border border-white/5">
-            <Radio className="w-2.5 h-2.5 text-sky-400" />
-            Tecnologia NFC &amp; Link-in-Bio
-          </span>
-          <p className="text-[9px] text-slate-600">
-            &copy; {new Date().getFullYear()} {name}. Todos os direitos reservados.
-          </p>
-        </div>
+        {/* Simulator Modal for Pix */}
+        {activeModal === 'pix' && (
+          <div
+            className={`${
+              isFullPage ? 'fixed' : 'absolute'
+            } inset-0 bg-black/85 backdrop-blur-md ${
+              isFullPage ? 'rounded-none' : 'rounded-[44px]'
+            } p-6 z-50 flex flex-col items-center justify-center text-center animate-in fade-in duration-200`}
+          >
+            <button
+              onClick={() => setActiveModal('none')}
+              className="absolute top-6 right-6 w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition cursor-pointer"
+            >
+              ✕
+            </button>
 
+            <div className="w-12 h-12 rounded-2xl bg-teal-500/20 border border-teal-500/40 text-teal-300 flex items-center justify-center mb-2">
+              <Zap className="w-6 h-6 fill-teal-400" />
+            </div>
+            <h3 className="text-base font-black text-white">Chave Pix Instantânea</h3>
+            <p className="text-xs text-slate-400 mb-3">Aponte o app do banco ou copie a chave:</p>
+
+            <div className="bg-white p-2.5 rounded-2xl shadow-lg mb-3">
+              <img src={pixQrUrl} alt="Pix QR" className="w-36 h-36 rounded-xl" />
+            </div>
+
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-2.5 w-full text-left mb-3">
+              <span className="text-[10px] uppercase font-bold text-slate-400 block">
+                {config.pixKeyType || 'Chave Pix'}:
+              </span>
+              <span className="text-xs font-mono font-bold text-sky-400 break-all">{pixKey}</span>
+              <span className="text-[11px] text-slate-300 block mt-1">
+                Favorecido: <strong>{pixBeneficiary}</strong>
+              </span>
+            </div>
+
+            <button
+              onClick={async () => {
+                await navigator.clipboard.writeText(pixKey);
+                showToast('Chave Pix copiada!');
+              }}
+              className="w-full py-2.5 bg-teal-500 hover:bg-teal-400 text-slate-950 font-black text-xs rounded-xl flex items-center justify-center gap-1.5 transition cursor-pointer"
+            >
+              <Copy className="w-4 h-4" />
+              <span>Copiar Chave Pix</span>
+            </button>
+          </div>
+        )}
+
+        {/* Simulator Modal for Wi-Fi */}
+        {activeModal === 'wifi' && (
+          <div
+            className={`${
+              isFullPage ? 'fixed' : 'absolute'
+            } inset-0 bg-black/85 backdrop-blur-md ${
+              isFullPage ? 'rounded-none' : 'rounded-[44px]'
+            } p-6 z-50 flex flex-col items-center justify-center text-center animate-in fade-in duration-200`}
+          >
+            <button
+              onClick={() => setActiveModal('none')}
+              className="absolute top-6 right-6 w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition cursor-pointer"
+            >
+              ✕
+            </button>
+
+            <div className="w-12 h-12 rounded-2xl bg-sky-500/20 border border-sky-500/40 text-sky-300 flex items-center justify-center mb-2">
+              <Wifi className="w-6 h-6" />
+            </div>
+            <h3 className="text-base font-black text-white">Conectar ao Wi-Fi</h3>
+            <p className="text-xs text-slate-400 mb-3">
+              Aponte a câmera do celular para o QR Code:
+            </p>
+
+            <div className="bg-white p-2.5 rounded-2xl shadow-lg mb-3">
+              <img src={wifiQrUrl} alt="Wi-Fi QR" className="w-36 h-36 rounded-xl" />
+            </div>
+
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-2.5 w-full text-left space-y-1 mb-3">
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-slate-400">Rede (SSID):</span>
+                <strong className="text-white">{wifiSsid}</strong>
+              </div>
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-slate-400">Senha:</span>
+                <strong className="text-sky-400 font-mono">{wifiPass}</strong>
+              </div>
+            </div>
+
+            <button
+              onClick={handleCopyWifiPass}
+              className="w-full py-2.5 bg-sky-500 hover:bg-sky-400 text-slate-950 font-black text-xs rounded-xl flex items-center justify-center gap-1.5 transition cursor-pointer"
+            >
+              <Copy className="w-4 h-4" />
+              <span>Copiar Senha do Wi-Fi</span>
+            </button>
+          </div>
+        )}
       </div>
+    );
+  };
 
-      {/* Simulator Modal for Pix */}
-      {activeModal === 'pix' && (
-        <div className={`${isFullPage ? 'fixed' : 'absolute'} inset-0 bg-black/85 backdrop-blur-md ${isFullPage ? 'rounded-none' : 'rounded-[44px]'} p-6 z-50 flex flex-col items-center justify-center text-center animate-in fade-in duration-200`}>
-          <button
-            onClick={() => setActiveModal('none')}
-            className="absolute top-6 right-6 w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition cursor-pointer"
-          >
-            ✕
-          </button>
-          
-          <div className="w-12 h-12 rounded-2xl bg-teal-500/20 border border-teal-500/40 text-teal-300 flex items-center justify-center mb-2">
-            <Zap className="w-6 h-6 fill-teal-400" />
-          </div>
-          <h3 className="text-base font-black text-white">Chave Pix Instantânea</h3>
-          <p className="text-xs text-slate-400 mb-3">Aponte o app do banco ou copie a chave:</p>
-          
-          <div className="bg-white p-2.5 rounded-2xl shadow-lg mb-3">
-            <img src={pixQrUrl} alt="Pix QR" className="w-36 h-36 rounded-xl" />
-          </div>
-
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-2.5 w-full text-left mb-3">
-            <span className="text-[10px] uppercase font-bold text-slate-400 block">{config.pixKeyType || 'Chave Pix'}:</span>
-            <span className="text-xs font-mono font-bold text-sky-400 break-all">{pixKey}</span>
-            <span className="text-[11px] text-slate-300 block mt-1">Favorecido: <strong>{pixBeneficiary}</strong></span>
-          </div>
-
-          <button
-            onClick={async () => {
-              await navigator.clipboard.writeText(pixKey);
-              showToast('Chave Pix copiada!');
-            }}
-            className="w-full py-2.5 bg-teal-500 hover:bg-teal-400 text-slate-950 font-black text-xs rounded-xl flex items-center justify-center gap-1.5 transition cursor-pointer"
-          >
-            <Copy className="w-4 h-4" />
-            <span>Copiar Chave Pix</span>
-          </button>
-        </div>
-      )}
-
-      {/* Simulator Modal for Wi-Fi */}
-      {activeModal === 'wifi' && (
-        <div className={`${isFullPage ? 'fixed' : 'absolute'} inset-0 bg-black/85 backdrop-blur-md ${isFullPage ? 'rounded-none' : 'rounded-[44px]'} p-6 z-50 flex flex-col items-center justify-center text-center animate-in fade-in duration-200`}>
-          <button
-            onClick={() => setActiveModal('none')}
-            className="absolute top-6 right-6 w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition cursor-pointer"
-          >
-            ✕
-          </button>
-          
-          <div className="w-12 h-12 rounded-2xl bg-sky-500/20 border border-sky-500/40 text-sky-300 flex items-center justify-center mb-2">
-            <Wifi className="w-6 h-6" />
-          </div>
-          <h3 className="text-base font-black text-white">Conectar ao Wi-Fi</h3>
-          <p className="text-xs text-slate-400 mb-3">Aponte a câmera do celular para o QR Code:</p>
-          
-          <div className="bg-white p-2.5 rounded-2xl shadow-lg mb-3">
-            <img src={wifiQrUrl} alt="Wi-Fi QR" className="w-36 h-36 rounded-xl" />
-          </div>
-
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-2.5 w-full text-left space-y-1 mb-3">
-            <div className="flex justify-between items-center text-xs">
-              <span className="text-slate-400">Rede (SSID):</span>
-              <strong className="text-white">{wifiSsid}</strong>
-            </div>
-            <div className="flex justify-between items-center text-xs">
-              <span className="text-slate-400">Senha:</span>
-              <strong className="text-sky-400 font-mono">{wifiPass}</strong>
-            </div>
-          </div>
-
-          <button
-            onClick={handleCopyWifiPass}
-            className="w-full py-2.5 bg-sky-500 hover:bg-sky-400 text-slate-950 font-black text-xs rounded-xl flex items-center justify-center gap-1.5 transition cursor-pointer"
-          >
-            <Copy className="w-4 h-4" />
-            <span>Copiar Senha do Wi-Fi</span>
-          </button>
-        </div>
-      )}
-
-    </div>
-  );
-};
-
-  // If standalone full-page mode (when someone opens ?minisite=ID directly)
+  // Standalone public page mode
   if (standalone) {
     return (
-      <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-start sm:py-6">
+      <div className="min-h-screen bg-[#04070e] text-slate-100 flex flex-col items-center justify-start">
         {renderPhoneSimulator(true)}
         {toastMessage && (
-          <div className="fixed bottom-6 bg-emerald-600 text-white px-5 py-2.5 rounded-full font-bold text-xs shadow-xl animate-in slide-in-from-bottom duration-200 z-50 flex items-center gap-2">
+          <div className="fixed bottom-6 bg-emerald-600 text-white px-5 py-2.5 rounded-full font-bold text-xs shadow-xl z-50 flex items-center gap-2">
             <Check className="w-4 h-4" />
             <span>{toastMessage}</span>
           </div>
@@ -920,92 +1538,61 @@ export const MiniSiteViewer: React.FC<MiniSiteViewerProps> = ({
     );
   }
 
-  // Dashboard / Editor / Demonstrative mode
   return (
     <div className="space-y-6">
-      
       {/* Top Banner with Quick Actions */}
       <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white rounded-3xl p-5 md:p-6 shadow-xl border border-slate-800 flex flex-col md:flex-row items-center justify-between gap-4">
         <div className="space-y-1.5 text-center md:text-left">
           <div className="flex items-center justify-center md:justify-start gap-2 flex-wrap">
-            <span className="bg-sky-500/20 text-sky-300 border border-sky-400/30 text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full flex items-center gap-1">
-              <Sparkles className="w-3 h-3 text-sky-300" />
-              Mini Site Inovador • Hub Digital NFC
+            <span className="bg-amber-500/20 text-amber-300 border border-amber-400/30 text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full flex items-center gap-1">
+              <Sparkles className="w-3 h-3 text-amber-300" />
+              Mini Página Inovadora 4K • Adaptável ao Segmento
             </span>
             <span className="bg-emerald-500/20 text-emerald-300 text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full flex items-center gap-1">
-              <PackageCheck className="w-3 h-3" />
-              Exportável 1-Clique
-            </span>
-            <span className="bg-amber-500/20 text-amber-300 text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full">
-              Hospedagem 100% Independente
+              <Palette className="w-3 h-3" />
+              Cor, Fonte &amp; Imagens 4K Personalizáveis
             </span>
           </div>
-          <h2 className="text-xl md:text-2xl font-black tracking-tight text-white flex items-center justify-center md:justify-start gap-2">
-            Mini Site de Alta Conversão ({name})
+          <h2 className="text-xl md:text-2xl font-black tracking-tight text-white">
+            Mini Site 4K &amp; Cardápio / Catálogo ({name})
           </h2>
           <p className="text-xs text-slate-300 max-w-xl">
-            Página ultrarrápida para bio do Instagram e redirecionamento de placas NFC: botões de WhatsApp, Pix automático, Wi-Fi 1-clique, Google Reviews e redes sociais.
+            Foto de capa em 4K no Head, horário de atendimento em destaque, frase rolante, tela Como Chegar GPS, avaliação real do Google com depoimentos e cardápio/catálogo do segmento.
           </p>
         </div>
 
-        {/* Action button triggers */}
         <div className="flex flex-wrap items-center justify-center gap-2">
-          
-          {/* PRIMARY: CLIENT PRESENTATION MOCKUP BUTTON */}
           <button
             onClick={() => setIsClientPresentationOpen(true)}
             className="px-4 py-2.5 bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 hover:from-amber-400 text-slate-950 font-black text-xs rounded-xl shadow-lg shadow-amber-500/25 flex items-center gap-2 cursor-pointer transition-all active:scale-95 border border-amber-300/40"
-            title="Abrir modo de apresentação em mockup estilo celular para mostrar ao cliente"
           >
             <Smartphone className="w-4 h-4 text-slate-950 stroke-[2.5]" />
-            <span>Apresentar Mockup ao Cliente</span>
+            <span>Apresentar Mockup 4K</span>
           </button>
 
-          {/* PRIMARY: EXPORT HTML MODAL BUTTON */}
+          <button
+            onClick={() => setIs4KLibraryOpen(true)}
+            className="px-3.5 py-2.5 bg-purple-600 hover:bg-purple-500 text-white font-black text-xs rounded-xl shadow-lg flex items-center gap-1.5 cursor-pointer transition-all active:scale-95"
+          >
+            <ImageIcon className="w-4 h-4" />
+            <span>Biblioteca 4K</span>
+          </button>
+
           <button
             onClick={() => setIsExportModalOpen(true)}
-            className="px-4 py-2.5 bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-black text-xs rounded-xl shadow-lg shadow-emerald-500/20 flex items-center gap-2 cursor-pointer transition-all active:scale-95 border border-emerald-400/30"
-            title="Exportar arquivo HTML estático completo para o cliente hospedar independentemente"
+            className="px-4 py-2.5 bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 hover:from-emerald-400 text-slate-950 font-black text-xs rounded-xl shadow-lg flex items-center gap-2 cursor-pointer transition-all active:scale-95"
           >
             <Download className="w-4 h-4 text-slate-950 stroke-[2.5]" />
-            <span>Exportar HTML Estático</span>
-            <span className="bg-slate-950/20 text-[9px] uppercase px-1.5 py-0.5 rounded font-black tracking-wider text-slate-950">
-              Autônomo
-            </span>
+            <span>Exportar HTML</span>
           </button>
 
           <button
             onClick={handleCopyShareLink}
-            className="px-3.5 py-2.5 bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-sky-500/25 flex items-center gap-1.5 cursor-pointer transition-all active:scale-95"
-            title="Copiar link compartilhável do Mini Site"
+            className="px-3.5 py-2.5 bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs rounded-xl shadow-lg flex items-center gap-1.5 cursor-pointer transition-all active:scale-95"
           >
             {copiedLink ? <Check className="w-4 h-4 text-emerald-300" /> : <Copy className="w-4 h-4" />}
             <span>{copiedLink ? 'Copiado!' : 'Copiar Link'}</span>
           </button>
-
-          <button
-            onClick={() => openMiniSiteLivePreview(config)}
-            className="px-3 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs rounded-xl border border-slate-700 flex items-center gap-1.5 transition cursor-pointer"
-            title="Abrir o Mini Site em nova aba em tela cheia"
-          >
-            <ExternalLink className="w-4 h-4 text-sky-400" />
-            <span>Ver em Nova Aba</span>
-          </button>
-
-          {onLinkToNfc && (
-            <button
-              onClick={() => onLinkToNfc()}
-              className={`px-3.5 py-2.5 rounded-xl font-black text-xs flex items-center gap-1.5 transition cursor-pointer ${
-                isLinkedToNfc
-                  ? 'bg-emerald-600 text-white border border-emerald-400 shadow-md shadow-emerald-500/20'
-                  : 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950'
-              }`}
-              title="Vincular este Mini Site como destino do Totem e Placa NFC deste cliente"
-            >
-              <Radio className="w-4 h-4" />
-              <span>{isLinkedToNfc ? '✓ Placa NFC Vinculada' : 'Vincular à Placa NFC'}</span>
-            </button>
-          )}
         </div>
       </div>
 
@@ -1015,12 +1602,12 @@ export const MiniSiteViewer: React.FC<MiniSiteViewerProps> = ({
           <div>
             <div className="flex items-center gap-2">
               <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse"></span>
-              <h3 className="text-sm sm:text-base font-black text-white flex items-center gap-2">
-                <span>Modelos de Mockup Prontos para Demonstrar &amp; Vender</span>
+              <h3 className="text-sm sm:text-base font-black text-white">
+                Modelos Prontos em 4K por Segmento (Clique para Carregar e Editar)
               </h3>
             </div>
             <p className="text-xs text-slate-400 mt-0.5">
-              Clique em qualquer modelo pronto abaixo para carregar fotos HD, cardápio/serviços, avaliação Google e Pix na hora. Em seguida, personalize o que desejar!
+              Cada segmento adapta automaticamente a foto do Head em 4K, horário, diferenciais, cardápio/catálogo, tela Como Chegar e depoimentos do Google!
             </p>
           </div>
 
@@ -1028,64 +1615,49 @@ export const MiniSiteViewer: React.FC<MiniSiteViewerProps> = ({
             <button
               type="button"
               onClick={() => setIsTemplateModalOpen(true)}
-              className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-400/30 rounded-xl text-xs font-black flex items-center gap-1.5 transition active:scale-95 cursor-pointer"
+              className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-400/30 rounded-xl text-xs font-black flex items-center gap-1.5 transition cursor-pointer"
             >
               <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-              <span>Galeria de Modelos ({READY_MINISITE_MOCKUPS.length})</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setIsClientPresentationOpen(true)}
-              className="px-3.5 py-1.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 rounded-xl text-xs font-black flex items-center gap-1.5 transition active:scale-95 shadow-md cursor-pointer"
-            >
-              <Eye className="w-3.5 h-3.5" />
-              <span>Apresentar Mockup</span>
+              <span>Ver Galeria ({READY_MINISITE_MOCKUPS.length})</span>
             </button>
           </div>
         </div>
 
-        {/* Scrollable Model Chips */}
         <div className="flex gap-2.5 overflow-x-auto no-scrollbar py-1">
           {READY_MINISITE_MOCKUPS.map((template) => {
-            const isCurrent = config.companyName === template.config.companyName;
+            const isSelected = config.companyName === template.config.companyName;
             return (
               <button
                 key={template.id}
                 type="button"
                 onClick={() => handleApplyReadyMockup(template)}
-                className={`shrink-0 p-3 rounded-2xl border text-left transition-all active:scale-95 flex items-center gap-3 w-60 sm:w-68 cursor-pointer group ${
-                  isCurrent
-                    ? 'bg-amber-500/15 border-amber-400 ring-2 ring-amber-400/40 shadow-lg shadow-amber-500/10'
-                    : 'bg-slate-950/70 border-slate-800 hover:border-slate-700 hover:bg-slate-950'
+                className={`group flex items-center gap-3 p-2.5 rounded-2xl border text-left transition-all shrink-0 w-64 cursor-pointer ${
+                  isSelected
+                    ? 'bg-amber-500/20 border-amber-400 ring-2 ring-amber-400/30 shadow-lg'
+                    : 'bg-slate-950/70 border-slate-800 hover:border-slate-600 hover:bg-slate-900'
                 }`}
               >
-                <div className="w-12 h-12 rounded-xl overflow-hidden bg-slate-900 border border-slate-700/60 shrink-0 relative">
+                <div className="relative w-12 h-12 rounded-xl overflow-hidden shrink-0 border border-white/15 bg-slate-900">
                   <img
                     src={template.coverImage}
                     alt={template.title}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform"
                   />
                   <span className="absolute bottom-0 right-0 text-xs bg-slate-950/80 px-1 rounded-tl-md">
                     {template.emoji}
                   </span>
                 </div>
-
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider truncate">
-                      {template.category.split('&')[0]}
-                    </span>
-                    <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-white/10 text-slate-300">
+                  <div className="flex items-center gap-1">
+                    <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
                       {template.badge}
                     </span>
+                    {isSelected && (
+                      <span className="text-[9px] font-black text-emerald-400">• Ativo</span>
+                    )}
                   </div>
-                  <h4 className="text-xs font-black text-white truncate group-hover:text-amber-300 transition-colors">
-                    {template.title}
-                  </h4>
-                  <span className="text-[10px] text-slate-400 line-clamp-1">
-                    {isCurrent ? '✓ Modelo Ativo no Celular' : 'Clique p/ Carregar Modelo'}
-                  </span>
+                  <p className="text-xs font-black text-white truncate mt-0.5">{template.title}</p>
+                  <p className="text-[10px] text-slate-400 truncate">{template.category}</p>
                 </div>
               </button>
             );
@@ -1093,243 +1665,326 @@ export const MiniSiteViewer: React.FC<MiniSiteViewerProps> = ({
         </div>
       </div>
 
-      {/* Main Grid: Left Controls / Right Simulator */}
+      {/* Main Content Grid: Left Controls & Customizer / Right Live Phone Simulator */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        
-        {/* Left Column: Customization & Tabs */}
-        <div className="lg:col-span-6 space-y-5">
-          
-          {/* Navigation Sub-Tabs */}
-          <div className="flex bg-slate-100 p-1.5 rounded-2xl border border-slate-200 gap-1 overflow-x-auto">
+        {/* Left Column: Studio Customizer & Sharing Controls */}
+        <div className="lg:col-span-6 space-y-4">
+          {/* Mode Tabs */}
+          <div className="flex p-1.5 bg-slate-100 rounded-2xl border border-slate-200 gap-1">
             <button
               onClick={() => setActiveTab('preview')}
-              className={`flex-1 py-2 px-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shrink-0 ${
-                activeTab === 'preview' ? 'bg-white text-blue-700 shadow-xs font-black ring-1 ring-blue-500/20' : 'text-slate-600 hover:text-slate-900'
+              className={`flex-1 py-2 px-2 rounded-xl text-xs font-black transition cursor-pointer flex items-center justify-center gap-1.5 ${
+                activeTab === 'preview'
+                  ? 'bg-slate-900 text-white shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              <Smartphone className="w-3.5 h-3.5" />
-              <span>1. Modelo &amp; Mockup ao Vivo</span>
+              <Palette className="w-3.5 h-3.5 text-amber-400" />
+              <span>1. Cor, Fonte &amp; 4K</span>
             </button>
             <button
               onClick={() => setActiveTab('edit')}
-              className={`flex-1 py-2 px-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shrink-0 ${
-                activeTab === 'edit' ? 'bg-blue-600 text-white shadow-xs font-black' : 'text-slate-600 hover:text-slate-900'
+              className={`flex-1 py-2 px-2 rounded-xl text-xs font-black transition cursor-pointer flex items-center justify-center gap-1.5 ${
+                activeTab === 'edit'
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               <Layers className="w-3.5 h-3.5" />
-              <span>2. Editar Textos, Logo &amp; Fotos</span>
+              <span>2. Conteúdo &amp; Cardápio</span>
             </button>
             <button
               onClick={() => setActiveTab('vercel')}
-              className={`flex-1 py-2 px-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shrink-0 ${
-                activeTab === 'vercel' ? 'bg-slate-950 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+              className={`flex-1 py-2 px-2 rounded-xl text-xs font-black transition cursor-pointer flex items-center justify-center gap-1.5 ${
+                activeTab === 'vercel'
+                  ? 'bg-slate-950 text-white shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              <span className="font-mono font-black text-xs">▲</span>
-              <span>3. Hospedar na Vercel</span>
+              <span>▲</span>
+              <span>3. Link Vercel</span>
             </button>
             <button
               onClick={() => setActiveTab('export')}
-              className={`flex-1 py-2 px-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shrink-0 ${
-                activeTab === 'export' ? 'bg-white text-blue-700 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+              className={`flex-1 py-2 px-2 rounded-xl text-xs font-black transition cursor-pointer flex items-center justify-center gap-1.5 ${
+                activeTab === 'export'
+                  ? 'bg-emerald-600 text-white shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              <Download className="w-3.5 h-3.5" />
-              <span>4. Exportar HTML</span>
+              <FileCode className="w-3.5 h-3.5" />
+              <span>4. Baixar ZIP</span>
             </button>
           </div>
 
-          {/* TAB 1: OVERVIEW & SHARING */}
+          {/* ================================================================
+              TAB 1: VISUAL CUSTOMIZER STUDIO (COR, FONTE, FOTO HEAD 4K & SEGMENTO)
+             ================================================================ */}
           {activeTab === 'preview' && (
             <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm space-y-5">
-              
-              {/* Active Mockup Presentation Card */}
-              <div className="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white rounded-2xl p-4 sm:p-5 border border-indigo-500/40 shadow-lg space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 flex items-center gap-1">
-                        <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-                        Modelo Mockup Pronto Ativo
-                      </span>
-                      <span className="text-[11px] font-bold text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
-                        ★ {config.rating ? config.rating.toFixed(1) : '5.0'} no Google
-                      </span>
-                      <span className="text-[10px] text-slate-400">
-                        ({featuredProducts.length} produtos c/ fotos HD)
-                      </span>
-                    </div>
-                    <h3 className="text-lg font-black text-white">{name}</h3>
-                    <p className="text-xs text-slate-300 line-clamp-2">
-                      {config.tagline || `${niche} de excelência em ${city}`}
-                    </p>
+              {/* 1. SELETOR DE COR PRINCIPAL DO CLIENTE */}
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black uppercase text-slate-900 flex items-center gap-1.5">
+                    <Palette className="w-4 h-4 text-amber-500" />
+                    1. Definir Cor Principal do Mini Site
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <label className="text-[10px] font-bold text-slate-600">Cor Livre:</label>
+                    <input
+                      type="color"
+                      value={primaryColor}
+                      onChange={(e) => updateAndPersist({ primaryColor: e.target.value })}
+                      className="w-7 h-7 rounded-lg cursor-pointer border border-slate-300"
+                      title="Escolher qualquer cor personalizada"
+                    />
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t border-slate-800">
-                  <button
-                    type="button"
-                    onClick={() => setIsClientPresentationOpen(true)}
-                    className="py-2.5 px-3 bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 hover:from-amber-400 text-slate-950 font-black text-xs rounded-xl flex items-center justify-center gap-1.5 shadow-md active:scale-95 transition cursor-pointer"
-                  >
-                    <Smartphone className="w-4 h-4 text-slate-950" />
-                    <span>Apresentar Mockup ao Cliente</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('edit')}
-                    className="py-2.5 px-3 bg-blue-600 hover:bg-blue-500 text-white font-black text-xs rounded-xl flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition cursor-pointer"
-                  >
-                    <Layers className="w-4 h-4 text-white" />
-                    <span>Personalizar Dados deste Modelo</span>
-                  </button>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {COLOR_PALETTE_PRESETS.map((preset) => {
+                    const isSelected = primaryColor.toLowerCase() === preset.hex.toLowerCase();
+                    return (
+                      <button
+                        key={preset.id}
+                        type="button"
+                        onClick={() => updateAndPersist({ primaryColor: preset.hex })}
+                        className={`p-2 rounded-xl border text-left flex items-center gap-2 transition cursor-pointer ${
+                          isSelected
+                            ? 'bg-slate-900 text-white border-slate-900 shadow-md'
+                            : 'bg-white hover:bg-slate-100 border-slate-200 text-slate-800'
+                        }`}
+                      >
+                        <span
+                          style={{ backgroundColor: preset.hex }}
+                          className="w-5 h-5 rounded-full shrink-0 border border-black/15 shadow-xs"
+                        ></span>
+                        <div className="min-w-0">
+                          <strong className="text-[10px] font-black block truncate">
+                            {preset.name}
+                          </strong>
+                          <span className="text-[9px] opacity-75 block truncate">
+                            {preset.badge}
+                          </span>
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
-              <div className="space-y-1">
-                <span className="text-[10px] uppercase font-black text-slate-400 tracking-wider">Link Compartilhável do Mini Site</span>
-                <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 p-2 rounded-xl">
+              {/* 2. SELETOR DE FONTE / TIPOGRAFIA */}
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black uppercase text-slate-900 flex items-center gap-1.5">
+                    <Type className="w-4 h-4 text-blue-600" />
+                    2. Definir Fonte (Tipografia do Cliente)
+                  </span>
+                  <span className="text-[10px] font-bold text-blue-600">
+                    Fonte Ativa: {activeFont.name}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {FONT_FAMILY_OPTIONS.map((font) => {
+                    const isSelected = activeFont.id === font.id;
+                    return (
+                      <button
+                        key={font.id}
+                        type="button"
+                        onClick={() => updateAndPersist({ fontFamily: font.id as MiniSiteFontFamily })}
+                        style={{ fontFamily: font.cssFamily }}
+                        className={`p-2.5 rounded-xl border text-left transition cursor-pointer flex items-center justify-between ${
+                          isSelected
+                            ? 'bg-blue-600 text-white border-blue-600 shadow-md'
+                            : 'bg-white hover:bg-slate-100 border-slate-200 text-slate-900'
+                        }`}
+                      >
+                        <div>
+                          <strong className="text-xs font-black block">{font.name}</strong>
+                          <span
+                            className={`text-[10px] ${
+                              isSelected ? 'text-blue-100' : 'text-slate-500'
+                            }`}
+                          >
+                            {font.subtitle}
+                          </span>
+                        </div>
+                        <span className="text-sm font-black">Aa</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* 3. FOTO DO HEAD EM 4K (HERO COVER BANNER) */}
+              <div className="p-4 rounded-2xl bg-gradient-to-br from-purple-50 via-indigo-50/50 to-sky-50 border-2 border-purple-200 space-y-3">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div>
+                    <span className="text-xs font-black uppercase text-purple-950 flex items-center gap-1.5">
+                      <ImageIcon className="w-4 h-4 text-purple-600" />
+                      3. Foto no Head (Capa Hero 4K) &amp; Imagens
+                    </span>
+                    <p className="text-[11px] text-purple-800">
+                      Suba a foto da fachada/produto ou escolha da Biblioteca Realista em 4K.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIs4KLibraryOpen(true)}
+                    className="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-[11px] font-black flex items-center gap-1.5 cursor-pointer shadow-sm"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>Abrir Biblioteca 4K</span>
+                  </button>
+                </div>
+
+                {/* Current Cover Preview + Upload */}
+                <div className="flex flex-col sm:flex-row items-center gap-3">
+                  <div className="relative w-full sm:w-32 h-20 rounded-xl overflow-hidden border-2 border-purple-300 bg-slate-900 shrink-0 shadow-sm">
+                    <img src={coverImage} alt="Capa Head" className="w-full h-full object-cover" />
+                    <span className="absolute bottom-1 right-1 px-1.5 py-0.2 rounded bg-black/80 text-white text-[8px] font-black">
+                      CAPA 4K
+                    </span>
+                  </div>
+                  <div className="flex-1 w-full space-y-2">
+                    <label className="w-full py-2 px-3 bg-purple-600 hover:bg-purple-700 text-white font-black text-xs rounded-xl flex items-center justify-center gap-2 cursor-pointer shadow-xs transition">
+                      <Upload className="w-3.5 h-3.5" />
+                      <span>Enviar Foto de Capa do Celular / PC</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleCoverFileUpload}
+                        className="hidden"
+                      />
+                    </label>
+                    <input
+                      type="text"
+                      value={config.coverImageUrl || ''}
+                      onChange={(e) => updateAndPersist({ coverImageUrl: e.target.value })}
+                      placeholder="Ou cole a URL de uma imagem 4K para o Head..."
+                      className="w-full bg-white border border-purple-200 rounded-xl p-2 text-xs font-semibold text-slate-700"
+                    />
+                  </div>
+                </div>
+
+                {/* Quick 4K Cover Presets */}
+                <div className="space-y-1.5">
+                  <span className="text-[10px] font-black uppercase text-purple-900 block">
+                    Capas 4K Rápidas por Segmento (1-Clique):
+                  </span>
+                  <div className="grid grid-cols-4 gap-2">
+                    {CURATED_4K_IMAGES_BY_SEGMENT.flatMap((s) => s.covers)
+                      .slice(0, 8)
+                      .map((cov, i) => (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => {
+                            updateAndPersist({ coverImageUrl: cov.url });
+                            showToast(`Capa 4K "${cov.title}" aplicada no Head!`);
+                          }}
+                          className="relative h-14 rounded-xl overflow-hidden border-2 border-white hover:border-purple-600 shadow-xs group cursor-pointer"
+                          title={cov.title}
+                        >
+                          <img
+                            src={cov.url}
+                            alt={cov.title}
+                            className="w-full h-full object-cover group-hover:scale-110 transition-transform"
+                          />
+                          <div className="absolute inset-0 bg-black/30 group-hover:bg-black/10 transition"></div>
+                          <span className="absolute bottom-0.5 left-1 right-1 text-[8px] font-bold text-white truncate drop-shadow">
+                            {cov.title.split(' ')[0]}
+                          </span>
+                        </button>
+                      ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* 4. SEGMENTO DE ATUAÇÃO & CARDÁPIO DIGITAL */}
+              <div className="p-4 rounded-2xl bg-emerald-50/70 border border-emerald-200 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black uppercase text-emerald-950 flex items-center gap-1.5">
+                    <ShoppingBag className="w-4 h-4 text-emerald-600" />
+                    4. Segmento do Cliente &amp; Cardápio / Catálogo
+                  </span>
+                  <label className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-900 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={config.showInteractiveMenu ?? true}
+                      onChange={(e) => updateAndPersist({ showInteractiveMenu: e.target.checked })}
+                      className="rounded text-emerald-600"
+                    />
+                    <span>Exibir Cardápio / Catálogo Interativo</span>
+                  </label>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {[
+                    { id: 'gastronomia', label: '🍔 Gastronomia & Cardápio' },
+                    { id: 'servicos_beleza', label: '💈 Barbearia & Salão' },
+                    { id: 'saude_clinica', label: '💆‍♀️ Clínica & Estética' },
+                    { id: 'loja_moda', label: '👗 Moda & Boutique' },
+                    { id: 'automotivo_oficina', label: '🚗 Automotivo & Oficina' },
+                    { id: 'geral', label: '🏢 Comércio & Serviços' }
+                  ].map((seg) => {
+                    const activeSeg = smartMeta.segment === seg.id;
+                    return (
+                      <button
+                        key={seg.id}
+                        type="button"
+                        onClick={() =>
+                          updateAndPersist({ segmentType: seg.id as MiniSiteSegmentType })
+                        }
+                        className={`p-2 rounded-xl border text-[11px] font-black text-left transition cursor-pointer ${
+                          activeSeg
+                            ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                            : 'bg-white text-slate-700 border-slate-200 hover:bg-emerald-100/50'
+                        }`}
+                      >
+                        {seg.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* 5. LINK DIRETO PARA COMPARTILHAR COM O CLIENTE */}
+              <div className="bg-slate-50 border border-slate-200 p-4 rounded-2xl space-y-2">
+                <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider block">
+                  Link Direto do Mini Site (Para Bio do Instagram e Placa NFC)
+                </span>
+                <div className="flex items-center gap-2">
                   <input
                     type="text"
                     readOnly
                     value={shareableUrl}
-                    className="flex-1 bg-transparent text-xs font-mono font-bold text-slate-700 outline-none"
+                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono text-slate-700"
                   />
                   <button
                     onClick={handleCopyShareLink}
-                    className="p-2 bg-sky-600 hover:bg-sky-500 text-white rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1 shrink-0"
+                    className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold shrink-0 cursor-pointer"
                   >
-                    <Copy className="w-3.5 h-3.5" />
-                    <span>Copiar</span>
+                    {copiedLink ? 'Copiado!' : 'Copiar'}
                   </button>
                 </div>
-                <p className="text-[11px] text-slate-500">
-                  Envie este link no WhatsApp para seu cliente testar, coloque na bio do Instagram ou grave diretamente na placa NFC.
-                </p>
               </div>
-
-              {/* Quick shortcut to Logo & Services */}
-              <div className="p-4 bg-blue-50 border border-blue-200 rounded-2xl flex items-center justify-between gap-3">
-                <div>
-                  <strong className="text-xs font-black text-blue-950 block">Personalizar Logotipo e Serviços do Cliente</strong>
-                  <p className="text-[11px] text-blue-800">
-                    Suba a logo da empresa e cadastre os serviços/preços para aparecerem no celular ao lado.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('edit')}
-                  className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black shrink-0 cursor-pointer"
-                >
-                  Subir Logo &amp; Serviços
-                </button>
-              </div>
-
-              {/* Botões Ativos Overview Cards */}
-              <div className="space-y-2">
-                <h4 className="text-xs font-black uppercase text-slate-700 tracking-wider">Botões Ativos no Mini Site:</h4>
-                
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div className="p-3 bg-amber-50/60 border border-amber-200 rounded-xl flex items-center gap-2">
-                    <Star className="w-4 h-4 text-amber-500 fill-amber-400 shrink-0" />
-                    <div>
-                      <strong className="block text-slate-900">Google Reviews</strong>
-                      <span className="text-[10px] text-slate-500">5 estrelas direto</span>
-                    </div>
-                  </div>
-
-                  <div className="p-3 bg-emerald-50/60 border border-emerald-200 rounded-xl flex items-center gap-2">
-                    <Send className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <div>
-                      <strong className="block text-slate-900">WhatsApp</strong>
-                      <span className="text-[10px] text-slate-500">1-clique conversa</span>
-                    </div>
-                  </div>
-
-                  <div className="p-3 bg-teal-50/60 border border-teal-200 rounded-xl flex items-center gap-2">
-                    <Zap className="w-4 h-4 text-teal-600 shrink-0" />
-                    <div>
-                      <strong className="block text-slate-900">Pix Instantâneo</strong>
-                      <span className="text-[10px] text-slate-500">Copia chave + QR</span>
-                    </div>
-                  </div>
-
-                  <div className="p-3 bg-sky-50/60 border border-sky-200 rounded-xl flex items-center gap-2">
-                    <Wifi className="w-4 h-4 text-sky-600 shrink-0" />
-                    <div>
-                      <strong className="block text-slate-900">Wi-Fi 1-Clique</strong>
-                      <span className="text-[10px] text-slate-500">QR Code sem senha</span>
-                    </div>
-                  </div>
-
-                  <div className="p-3 bg-pink-50/60 border border-pink-200 rounded-xl flex items-center gap-2">
-                    <Radio className="w-4 h-4 text-pink-600 shrink-0" />
-                    <div>
-                      <strong className="block text-slate-900">Instagram</strong>
-                      <span className="text-[10px] text-slate-500">{instaHandle || 'Perfil oficial'}</span>
-                    </div>
-                  </div>
-
-                  <div className="p-3 bg-rose-50/60 border border-rose-200 rounded-xl flex items-center gap-2">
-                    <MapPin className="w-4 h-4 text-rose-600 shrink-0" />
-                    <div>
-                      <strong className="block text-slate-900">Endereço &amp; Maps</strong>
-                      <span className="text-[10px] text-slate-500">{config.address ? 'Rota no Google' : 'Cadastre abaixo'}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Call to action for export */}
-              <div className="bg-gradient-to-r from-emerald-50 via-teal-50 to-sky-50 border border-emerald-200/80 rounded-2xl p-4 flex items-center justify-between gap-3">
-                <div>
-                  <div className="flex items-center gap-1.5">
-                    <PackageCheck className="w-4 h-4 text-emerald-600" />
-                    <strong className="text-xs font-black text-emerald-950">Entregar Mini Site ao Cliente</strong>
-                  </div>
-                  <p className="text-[11px] text-emerald-800 mt-0.5">
-                    Exporte o arquivo HTML único ou o pacote ZIP com manual de hospedagem gratuita.
-                  </p>
-                </div>
-                <button
-                  onClick={() => setIsExportModalOpen(true)}
-                  className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-black transition cursor-pointer shrink-0 shadow-sm"
-                >
-                  Exportar Agora
-                </button>
-              </div>
-
-              {/* NFC Integration Status */}
-              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex items-center justify-between">
-                <div>
-                  <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Status na Placa NFC</span>
-                  <p className="text-xs font-bold text-slate-800 mt-0.5">
-                    {isLinkedToNfc ? '🟢 Placa NFC redireciona para este Mini Site' : '⚪ Placa NFC redireciona para Google Reviews'}
-                  </p>
-                </div>
-                {onLinkToNfc && (
-                  <button
-                    onClick={() => onLinkToNfc()}
-                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition cursor-pointer"
-                  >
-                    {isLinkedToNfc ? 'Manter Mini Site' : 'Vincular Agora'}
-                  </button>
-                )}
-              </div>
-
             </div>
           )}
 
-          {/* TAB 2: EDIT LOGO, SERVICES & DETAILS */}
+          {/* ================================================================
+              TAB 2: EDIT CONTENT, HOURS, MARQUEE, COMO CHEGAR, GOOGLE & MENU
+             ================================================================ */}
           {activeTab === 'edit' && (
-            <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm space-y-5 max-h-[760px] overflow-y-auto">
+            <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm space-y-5 max-h-[780px] overflow-y-auto">
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div>
                   <h4 className="text-sm font-black uppercase text-slate-900 tracking-tight">
-                    Logotipo, Serviços &amp; Dados do Cliente
+                    Dados do Cliente, Horário, Como Chegar &amp; Cardápio
                   </h4>
                   <p className="text-[11px] text-slate-500">
-                    Suba a logo da empresa e adicione os serviços que aparecerão no Mini Site.
+                    Edite todas as informações relevantes do negócio em tempo real.
                   </p>
                 </div>
                 {onSaveConfig && (
@@ -1353,152 +2008,101 @@ export const MiniSiteViewer: React.FC<MiniSiteViewerProps> = ({
                 )}
               </div>
 
-              {/* Ready Mockup Quick Preset in Editor */}
-              <div className="p-3.5 bg-gradient-to-r from-amber-50 via-yellow-50 to-orange-50 border border-amber-300 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
-                <div className="space-y-0.5">
-                  <div className="flex items-center gap-1.5 text-amber-950 font-black text-xs">
-                    <Sparkles className="w-3.5 h-3.5 text-amber-600" />
-                    <span>Deseja começar com um modelo pronto de outro nicho?</span>
-                  </div>
-                  <p className="text-[11px] text-amber-900 leading-tight">
-                    Carregue um modelo completo (hamburgueria, barbearia, estética, etc.) e apenas ajuste o nome e dados do seu cliente!
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setIsTemplateModalOpen(true)}
-                  className="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-xl text-xs font-black shrink-0 transition active:scale-95 shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
-                >
-                  <Eye className="w-3.5 h-3.5" />
-                  <span>Escolher Modelo Pronto</span>
-                </button>
-              </div>
-
-              {/* 0. DADOS DA EMPRESA & CLIENTE */}
+              {/* 1. DADOS BÁSICOS + HORÁRIO DE ATENDIMENTO NO HEAD */}
               <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-black uppercase text-slate-900 flex items-center gap-1.5">
-                    <Briefcase className="w-4 h-4 text-blue-600" />
-                    Dados Básicos da Empresa / Cliente
-                  </span>
-                  <span className="text-[10px] font-bold text-slate-500">
-                    Atualiza o celular em tempo real
-                  </span>
-                </div>
+                <span className="text-xs font-black uppercase text-slate-900 flex items-center gap-1.5">
+                  <Briefcase className="w-4 h-4 text-blue-600" />
+                  1. Nome, Horário de Atendimento &amp; Bio do Head
+                </span>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-700 mb-1">Nome da Empresa / Negócio</label>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      Nome da Empresa / Cliente
+                    </label>
                     <input
                       type="text"
                       value={config.companyName || ''}
-                      onChange={(e) => {
-                        const updated = { ...config, companyName: e.target.value };
-                        if (onChangeConfig) onChangeConfig(updated);
-                        if (onSaveConfig) onSaveConfig(updated);
-                      }}
+                      onChange={(e) => updateAndPersist({ companyName: e.target.value })}
                       placeholder="Ex: Burger Prime Artesanal"
-                      className="w-full bg-white border border-slate-300 rounded-xl p-2 text-xs font-bold text-slate-900 focus:outline-blue-500"
+                      className="w-full bg-white border border-slate-300 rounded-xl p-2 text-xs font-bold text-slate-900"
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-700 mb-1">Nicho / Categoria</label>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      Segmento / Nicho
+                    </label>
                     <input
                       type="text"
                       value={config.niche || ''}
-                      onChange={(e) => {
-                        const updated = { ...config, niche: e.target.value };
-                        if (onChangeConfig) onChangeConfig(updated);
-                        if (onSaveConfig) onSaveConfig(updated);
-                      }}
+                      onChange={(e) => updateAndPersist({ niche: e.target.value })}
                       placeholder="Ex: Hamburgueria & Gastronomia"
-                      className="w-full bg-white border border-slate-300 rounded-xl p-2 text-xs font-bold text-slate-900 focus:outline-blue-500"
+                      className="w-full bg-white border border-slate-300 rounded-xl p-2 text-xs font-bold text-slate-900"
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-700 mb-1">Cidade / UF</label>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      🕒 Horário de Atendimento (Destaque no Head)
+                    </label>
                     <input
                       type="text"
-                      value={config.city || ''}
-                      onChange={(e) => {
-                        const updated = { ...config, city: e.target.value };
-                        if (onChangeConfig) onChangeConfig(updated);
-                        if (onSaveConfig) onSaveConfig(updated);
-                      }}
-                      placeholder="Ex: São Paulo - SP"
-                      className="w-full bg-white border border-slate-300 rounded-xl p-2 text-xs font-semibold text-slate-900 focus:outline-blue-500"
+                      value={config.openingHours !== undefined ? config.openingHours : openingHours}
+                      onChange={(e) => updateAndPersist({ openingHours: e.target.value })}
+                      placeholder="Ex: Terça a Domingo: 18h às 23h30"
+                      className="w-full bg-white border-2 border-emerald-400 rounded-xl p-2 text-xs font-bold text-slate-900"
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-700 mb-1">Horário de Funcionamento</label>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      Cidade / UF
+                    </label>
                     <input
                       type="text"
-                      value={config.openingHours || ''}
-                      onChange={(e) => {
-                        const updated = { ...config, openingHours: e.target.value };
-                        if (onChangeConfig) onChangeConfig(updated);
-                        if (onSaveConfig) onSaveConfig(updated);
-                      }}
-                      placeholder="Ex: Terça a Domingo: 18h às 23h30"
-                      className="w-full bg-white border border-slate-300 rounded-xl p-2 text-xs font-semibold text-slate-900 focus:outline-blue-500"
+                      value={config.city || ''}
+                      onChange={(e) => updateAndPersist({ city: e.target.value })}
+                      placeholder="Ex: São Paulo - SP"
+                      className="w-full bg-white border border-slate-300 rounded-xl p-2 text-xs font-semibold text-slate-900"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-700 mb-1">Slogan / Bio Curta (Subtítulo)</label>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                    Frase de Impacto / Subtítulo no Head
+                  </label>
                   <input
                     type="text"
                     value={config.tagline || ''}
-                    onChange={(e) => {
-                      const updated = { ...config, tagline: e.target.value };
-                      if (onChangeConfig) onChangeConfig(updated);
-                      if (onSaveConfig) onSaveConfig(updated);
-                    }}
+                    onChange={(e) => updateAndPersist({ tagline: e.target.value })}
                     placeholder="Ex: Hambúrgueres artesanais na brasa e atendimento VIP."
-                    className="w-full bg-white border border-slate-300 rounded-xl p-2 text-xs font-semibold text-slate-900 focus:outline-blue-500"
+                    className="w-full bg-white border border-slate-300 rounded-xl p-2 text-xs font-semibold text-slate-900"
                   />
                 </div>
               </div>
 
-              {/* 1. UPLOAD DE LOGOTIPO DO CLIENTE */}
-              <div className="p-4 bg-gradient-to-r from-blue-50 via-indigo-50/60 to-sky-50 border-2 border-blue-200 rounded-2xl space-y-3">
+              {/* 2. LOGOTIPO DA EMPRESA */}
+              <div className="p-4 bg-blue-50/60 border border-blue-200 rounded-2xl space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-black uppercase text-blue-950 flex items-center gap-1.5">
                     <ImageIcon className="w-4 h-4 text-blue-600" />
-                    1. Logotipo da Empresa / Cliente
+                    2. Logotipo da Empresa
                   </span>
-                  {config.logoUrl && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const updated = { ...config, logoUrl: '' };
-                        if (onChangeConfig) onChangeConfig(updated);
-                        if (onSaveConfig) onSaveConfig(updated);
-                      }}
-                      className="text-[10px] font-bold text-red-600 hover:underline cursor-pointer"
-                    >
-                      Remover Logo
-                    </button>
-                  )}
                 </div>
-
-                <div className="flex flex-col sm:flex-row items-center gap-3.5">
-                  <div className="w-16 h-16 rounded-2xl bg-slate-900 border-2 border-blue-300 flex items-center justify-center overflow-hidden shrink-0 shadow-md">
+                <div className="flex flex-col sm:flex-row items-center gap-3">
+                  <div className="w-16 h-16 rounded-2xl bg-slate-900 border-2 border-blue-300 flex items-center justify-center overflow-hidden shrink-0">
                     {config.logoUrl ? (
                       <img src={config.logoUrl} alt="Logo" className="w-full h-full object-cover" />
                     ) : (
                       <span className="text-xl font-black text-white">{initial}</span>
                     )}
                   </div>
-
                   <div className="flex-1 w-full space-y-2">
-                    <label className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white font-black text-xs rounded-xl flex items-center justify-center gap-2 cursor-pointer shadow-sm transition">
-                      <Upload className="w-4 h-4" />
-                      <span>Subir Imagem da Logo (Celular ou Computador)</span>
+                    <label className="w-full py-2 px-3 bg-blue-600 hover:bg-blue-700 text-white font-black text-xs rounded-xl flex items-center justify-center gap-2 cursor-pointer">
+                      <Upload className="w-3.5 h-3.5" />
+                      <span>Subir Logo do Celular / Computador</span>
                       <input
                         type="file"
                         accept="image/*"
@@ -1506,134 +2110,183 @@ export const MiniSiteViewer: React.FC<MiniSiteViewerProps> = ({
                         className="hidden"
                       />
                     </label>
-
                     <input
                       type="text"
                       value={config.logoUrl || ''}
-                      onChange={(e) => onChangeConfig && onChangeConfig({ ...config, logoUrl: e.target.value })}
-                      placeholder="Ou cole aqui o link/URL da imagem da logo..."
-                      className="w-full bg-white border border-blue-200 rounded-xl p-2 text-xs font-semibold text-slate-700 focus:outline-blue-500"
+                      onChange={(e) => updateAndPersist({ logoUrl: e.target.value })}
+                      placeholder="Ou cole o link da imagem da logo..."
+                      className="w-full bg-white border border-blue-200 rounded-xl p-2 text-xs"
                     />
                   </div>
                 </div>
               </div>
 
-              {/* 1.5. FAIXA DOURADA ROLANTE (MARQUEE RIBBON BANNER) */}
-              <div className="p-4 bg-gradient-to-r from-amber-50 via-yellow-50 to-amber-50 border-2 border-amber-300 rounded-2xl space-y-3">
-                <div className="flex items-center justify-between flex-wrap gap-2">
-                  <span className="text-xs font-black uppercase text-amber-950 flex items-center gap-1.5">
-                    <Sparkles className="w-4 h-4 text-amber-600" />
-                    1.5. Faixa Dourada Rolante (Letreiro Luminoso)
-                  </span>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-900 border border-amber-400/40">
-                    Animação Automática
-                  </span>
-                </div>
-                <p className="text-[11px] text-amber-900 leading-tight">
-                  Texto que corre na faixa dourada logo abaixo da logo e dados da empresa. Destaque novidades, horários ou promoções!
-                </p>
+              {/* 3. FRASE DE DESTAQUE PASSANDO (LETREIRO ROLANTE) */}
+              <div className="p-4 bg-amber-50 border border-amber-300 rounded-2xl space-y-2.5">
+                <span className="text-xs font-black uppercase text-amber-950 flex items-center gap-1.5">
+                  <Sparkles className="w-4 h-4 text-amber-600" />
+                  3. Frase de Destaque Passando (Letreiro Dinâmico)
+                </span>
                 <input
                   type="text"
                   value={config.marqueeText !== undefined ? config.marqueeText : marqueeText}
-                  onChange={(e) => {
-                    const updated = { ...config, marqueeText: e.target.value };
-                    if (onChangeConfig) onChangeConfig(updated);
-                    if (onSaveConfig) onSaveConfig(updated);
-                  }}
-                  placeholder="Ex: 🔥 NOVIDADES TODA SEMANA • ATENDIMENTO VIP • WHATSAPP • QUALIDADE GARANTIDA 🔥"
-                  className="w-full bg-white border border-amber-300 rounded-xl p-2.5 text-xs font-bold text-slate-800 focus:outline-amber-500 shadow-xs"
+                  onChange={(e) => updateAndPersist({ marqueeText: e.target.value })}
+                  className="w-full bg-white border border-amber-300 rounded-xl p-2 text-xs font-bold text-slate-900"
                 />
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className="text-[10px] font-bold text-amber-900">Sugestões rápidas:</span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const updated = { ...config, marqueeText: '🔥 NOVIDADES TODA SEMANA • VISITE NOSSA LOJA • ATENDIMENTO VIP • COMPRE PELO WHATSAPP 🔥' };
-                      if (onChangeConfig) onChangeConfig(updated);
-                      if (onSaveConfig) onSaveConfig(updated);
-                    }}
-                    className="text-[9px] font-extrabold px-2 py-1 bg-amber-200/60 hover:bg-amber-200 text-amber-950 rounded-lg cursor-pointer transition"
-                  >
-                    🔥 Novidades Toda Semana
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const updated = { ...config, marqueeText: '⭐ NOTA 5 ESTRELAS NO GOOGLE • ATENDIMENTO RÁPIDO • SATISFAÇÃO GARANTIDA ⭐' };
-                      if (onChangeConfig) onChangeConfig(updated);
-                      if (onSaveConfig) onSaveConfig(updated);
-                    }}
-                    className="text-[9px] font-extrabold px-2 py-1 bg-amber-200/60 hover:bg-amber-200 text-amber-950 rounded-lg cursor-pointer transition"
-                  >
-                    ⭐ Nota 5 no Google
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const updated = { ...config, marqueeText: '⚡ ATENDIMENTO 1-CLIQUE • PIX INSTANTÂNEO • WI-FI GRÁTIS • COMPRE PELO WHATSAPP ⚡' };
-                      if (onChangeConfig) onChangeConfig(updated);
-                      if (onSaveConfig) onSaveConfig(updated);
-                    }}
-                    className="text-[9px] font-extrabold px-2 py-1 bg-amber-200/60 hover:bg-amber-200 text-amber-950 rounded-lg cursor-pointer transition"
-                  >
-                    ⚡ Atendimento &amp; Pix
-                  </button>
+              </div>
+
+              {/* 4. SOBRE A EMPRESA & DIFERENCIAIS DE VALOR */}
+              <div className="p-4 bg-purple-50/60 border border-purple-200 rounded-2xl space-y-3">
+                <span className="text-xs font-black uppercase text-purple-950 flex items-center gap-1.5">
+                  <Award className="w-4 h-4 text-purple-600" />
+                  4. Sobre a Empresa &amp; Diferenciais que Geram Valor
+                </span>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-700 mb-1">
+                    História / Proposta de Valor da Empresa
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={config.aboutText !== undefined ? config.aboutText : aboutText}
+                    onChange={(e) => updateAndPersist({ aboutText: e.target.value })}
+                    className="w-full bg-white border border-purple-200 rounded-xl p-2 text-xs text-slate-800"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="block text-[10px] font-bold text-slate-700">
+                    Diferenciais &amp; Comodidades (Estacionamento, Delivery, Climatizado, etc.)
+                  </label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {amenities.map((am, idx) => (
+                      <span
+                        key={idx}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white border border-purple-200 text-[11px] font-bold text-slate-800"
+                      >
+                        <span>{am}</span>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            updateAndPersist({
+                              amenities: amenities.filter((_, i) => i !== idx)
+                            })
+                          }
+                          className="text-rose-500 hover:text-rose-700 ml-1 cursor-pointer"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                  <div className="flex gap-2 pt-1">
+                    <input
+                      type="text"
+                      value={newAmenity}
+                      onChange={(e) => setNewAmenity(e.target.value)}
+                      placeholder="Ex: 🅿️ Estacionamento Grátis"
+                      className="flex-1 bg-white border border-purple-200 rounded-xl p-2 text-xs"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!newAmenity.trim()) return;
+                        updateAndPersist({ amenities: [...amenities, newAmenity.trim()] });
+                        setNewAmenity('');
+                      }}
+                      className="px-3 py-2 bg-purple-600 text-white rounded-xl text-xs font-black cursor-pointer"
+                    >
+                      + Adicionar
+                    </button>
+                  </div>
                 </div>
               </div>
 
-              {/* 2. OS 4 PRINCIPAIS PRODUTOS & DESTAQUES (GRADE 2x2 OFICIAL) */}
+              {/* 5. TELA COMO CHEGAR (ENDEREÇO & ROTA GPS) */}
+              <div className="p-4 bg-rose-50/70 border border-rose-200 rounded-2xl space-y-2.5">
+                <span className="text-xs font-black uppercase text-rose-900 flex items-center gap-1.5">
+                  <MapPin className="w-4 h-4 text-rose-600" />
+                  5. Tela &ldquo;Como Chegar&rdquo; (Google Maps &amp; Waze)
+                </span>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-700 mb-1">
+                    Endereço Completo (Gera Mapa Visual + Rota Maps e Waze)
+                  </label>
+                  <input
+                    type="text"
+                    value={config.address !== undefined ? config.address : addressText}
+                    onChange={(e) => updateAndPersist({ address: e.target.value })}
+                    placeholder="Av. Paulista, 1500 - Bela Vista, São Paulo - SP"
+                    className="w-full bg-white border border-rose-300 rounded-xl p-2 text-xs font-bold text-slate-900"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-700 mb-1">
+                      Telefone Comercial
+                    </label>
+                    <input
+                      type="text"
+                      value={config.phone || ''}
+                      onChange={(e) => updateAndPersist({ phone: e.target.value })}
+                      placeholder="(11) 99999-9999"
+                      className="w-full bg-white border border-rose-200 rounded-xl p-2 text-xs font-semibold"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-700 mb-1">
+                      WhatsApp de Pedidos / Atendimento
+                    </label>
+                    <input
+                      type="text"
+                      value={config.whatsappNumber || config.phone || ''}
+                      onChange={(e) => updateAndPersist({ whatsappNumber: e.target.value })}
+                      placeholder="5511999999999"
+                      className="w-full bg-white border border-rose-200 rounded-xl p-2 text-xs font-semibold"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* 6. OS 4 DESTAQUES EM 4K + CARDÁPIO / CATÁLOGO COMPLETO */}
               <div className="p-4 bg-emerald-50/70 border-2 border-emerald-300 rounded-2xl space-y-4">
                 <div className="flex items-center justify-between flex-wrap gap-2">
                   <div>
                     <span className="text-xs font-black uppercase text-emerald-950 flex items-center gap-1.5">
-                      <Sparkles className="w-4 h-4 text-emerald-600" />
-                      2. Os 4 Principais Produtos &amp; Destaques (Grade 2x2)
+                      <UtensilsCrossed className="w-4 h-4 text-emerald-600" />
+                      6. Destaques 4K &amp; Cardápio / Catálogo do Segmento
                     </span>
                     <p className="text-[11px] text-emerald-800">
-                      Estes 4 produtos aparecem com foto de alta conversão, preço e botão &quot;Chamar no WhatsApp&quot; com mensagem personalizada.
+                      Personalize os 4 produtos principais e adicione quantos itens quiser ao Cardápio/Catálogo.
                     </p>
                   </div>
-
                   <button
                     type="button"
                     onClick={handleGenerateDefaultServices}
-                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-[11px] font-black flex items-center gap-1.5 cursor-pointer transition shadow-xs"
+                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-[11px] font-black cursor-pointer"
                   >
-                    <Sparkles className="w-3.5 h-3.5" />
-                    <span>⚡ Restaurar 4 Destaques do Nicho</span>
+                    ⚡ Restaurar Destaques do Segmento
                   </button>
                 </div>
 
-                {/* 4 Cards Editor Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {featuredProducts.slice(0, 4).map((p, idx) => (
                     <div
                       key={p.id || `edit_p_${idx}`}
-                      className="bg-white border-2 border-emerald-200 rounded-2xl p-3 space-y-2.5 shadow-xs"
+                      className="bg-white border border-emerald-200 rounded-2xl p-3 space-y-2 shadow-2xs"
                     >
                       <div className="flex items-center justify-between">
                         <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
                           Destaque #{idx + 1}
                         </span>
-                        <span className="text-[9px] font-bold text-slate-400">
-                          Grade 2x2
-                        </span>
                       </div>
 
-                      {/* Photo preview + upload */}
                       <div className="flex items-center gap-2.5">
-                        <div className="relative w-16 h-16 rounded-xl bg-slate-900 border border-slate-200 overflow-hidden shrink-0 shadow-xs">
-                          <img
-                            src={p.imageUrl || 'https://images.unsplash.com/photo-1556742049-0a67e55722c6?auto=format&fit=crop&w=600&q=80'}
-                            alt={p.title}
-                            className="w-full h-full object-cover"
-                            onError={(e) => { (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1556742049-0a67e55722c6?auto=format&fit=crop&w=600&q=80'; }}
-                          />
+                        <div className="w-14 h-14 rounded-xl bg-slate-900 overflow-hidden shrink-0">
+                          <img src={p.imageUrl} alt={p.title} className="w-full h-full object-cover" />
                         </div>
                         <div className="flex-1 space-y-1">
-                          <label className="py-1.5 px-2 bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 font-bold text-[10px] rounded-lg flex items-center justify-center gap-1 cursor-pointer transition">
-                            <Upload className="w-3 h-3 text-slate-600" />
-                            <span>Trocar Foto</span>
+                          <label className="py-1 px-2 bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 font-bold text-[10px] rounded-lg flex items-center justify-center gap-1 cursor-pointer">
+                            <Upload className="w-3 h-3" />
+                            <span>Subir Foto</span>
                             <input
                               type="file"
                               accept="image/*"
@@ -1645,346 +2298,173 @@ export const MiniSiteViewer: React.FC<MiniSiteViewerProps> = ({
                             type="text"
                             value={p.imageUrl || ''}
                             onChange={(e) => handleUpdateProduct(idx, { imageUrl: e.target.value })}
-                            placeholder="Ou cole o link da foto..."
-                            className="w-full bg-slate-50 border border-slate-200 rounded-lg p-1 text-[10px] font-semibold text-slate-600"
+                            placeholder="URL da foto 4K..."
+                            className="w-full bg-slate-50 border border-slate-200 rounded-lg p-1 text-[10px]"
                           />
                         </div>
                       </div>
 
-                      {/* Title & Price */}
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <label className="block text-[9px] font-bold text-slate-600">Nome do Produto (*)</label>
-                          <input
-                            type="text"
-                            value={p.title}
-                            onChange={(e) => handleUpdateProduct(idx, { title: e.target.value })}
-                            placeholder="Ex: Prato VIP / Peça..."
-                            className="w-full bg-slate-50 border border-slate-200 rounded-lg p-1.5 text-xs font-bold text-slate-900"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[9px] font-bold text-slate-600">Preço / Destaque</label>
-                          <input
-                            type="text"
-                            value={p.price || ''}
-                            onChange={(e) => handleUpdateProduct(idx, { price: e.target.value })}
-                            placeholder="Ex: R$ 49,90 ou VIP"
-                            className="w-full bg-slate-50 border border-slate-200 rounded-lg p-1.5 text-xs font-bold text-emerald-700"
-                          />
-                        </div>
-                      </div>
-
-                      {/* Description */}
-                      <div>
-                        <label className="block text-[9px] font-bold text-slate-600">Descrição Curta</label>
+                      <div className="grid grid-cols-2 gap-1.5">
                         <input
                           type="text"
-                          value={p.description || ''}
-                          onChange={(e) => handleUpdateProduct(idx, { description: e.target.value })}
-                          placeholder="Benefícios ou detalhes rápidos..."
-                          className="w-full bg-slate-50 border border-slate-200 rounded-lg p-1.5 text-[11px] text-slate-600"
+                          value={p.title}
+                          onChange={(e) => handleUpdateProduct(idx, { title: e.target.value })}
+                          placeholder="Nome do item"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg p-1.5 text-xs font-bold"
+                        />
+                        <input
+                          type="text"
+                          value={p.price || ''}
+                          onChange={(e) => handleUpdateProduct(idx, { price: e.target.value })}
+                          placeholder="Preço (ex: R$ 39,90)"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg p-1.5 text-xs font-bold text-emerald-700"
                         />
                       </div>
 
-                      {/* Custom WhatsApp Msg */}
-                      <div>
-                        <label className="block text-[9px] font-bold text-slate-600">Mensagem do Botão WhatsApp</label>
-                        <input
-                          type="text"
-                          value={p.customWhatsappMsg || ''}
-                          onChange={(e) => handleUpdateProduct(idx, { customWhatsappMsg: e.target.value })}
-                          placeholder={`Olá! Vi o destaque "${p.title}" no Mini Site...`}
-                          className="w-full bg-emerald-50/50 border border-emerald-200 rounded-lg p-1.5 text-[10px] text-emerald-950 font-medium"
-                        />
-                      </div>
+                      <input
+                        type="text"
+                        value={p.description || ''}
+                        onChange={(e) => handleUpdateProduct(idx, { description: e.target.value })}
+                        placeholder="Descrição curta..."
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg p-1.5 text-[11px]"
+                      />
                     </div>
                   ))}
                 </div>
 
-                {/* Additional services if user wants more */}
-                <div className="pt-2 border-t border-emerald-200/70 space-y-2">
-                  <span className="text-[11px] font-bold text-emerald-950 block">
-                    Serviços Extras / Catálogo Completo (Aparecem abaixo dos 4 destaques):
+                {/* Add Extra Menu / Catalog Items */}
+                <div className="pt-3 border-t border-emerald-200 space-y-2">
+                  <span className="text-xs font-black text-emerald-950 block">
+                    + Adicionar Mais Itens ao Cardápio / Catálogo do Cliente:
                   </span>
-                  <div className="flex flex-col sm:flex-row gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     <input
                       type="text"
                       value={newServiceTitle}
                       onChange={(e) => setNewServiceTitle(e.target.value)}
-                      placeholder="Nome do serviço adicional..."
-                      className="flex-1 bg-white border border-slate-200 rounded-lg p-2 text-xs font-semibold"
+                      placeholder="Nome do Prato / Serviço..."
+                      className="bg-white border border-slate-200 rounded-lg p-2 text-xs font-semibold"
                     />
                     <input
                       type="text"
                       value={newServicePrice}
                       onChange={(e) => setNewServicePrice(e.target.value)}
-                      placeholder="Preço (ex: R$ 99)..."
-                      className="w-32 bg-white border border-slate-200 rounded-lg p-2 text-xs font-semibold"
+                      placeholder="Preço (ex: R$ 45,00)"
+                      className="bg-white border border-slate-200 rounded-lg p-2 text-xs font-semibold"
+                    />
+                    <input
+                      type="text"
+                      value={newServiceCategory}
+                      onChange={(e) => setNewServiceCategory(e.target.value)}
+                      placeholder="Categoria (ex: Bebidas, Combos)"
+                      className="bg-white border border-slate-200 rounded-lg p-2 text-xs font-semibold"
+                    />
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <input
+                      type="text"
+                      value={newServiceDesc}
+                      onChange={(e) => setNewServiceDesc(e.target.value)}
+                      placeholder="Descrição dos ingredientes ou detalhes..."
+                      className="flex-1 bg-white border border-slate-200 rounded-lg p-2 text-xs"
                     />
                     <button
                       type="button"
                       onClick={handleAddService}
-                      className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-lg flex items-center justify-center gap-1 cursor-pointer shrink-0"
+                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-lg flex items-center justify-center gap-1 cursor-pointer shrink-0"
                     >
                       <Plus className="w-3.5 h-3.5" />
-                      <span>Adicionar</span>
+                      <span>Adicionar ao Cardápio</span>
                     </button>
                   </div>
-
-                  {additionalServices.length > 0 && (
-                    <div className="space-y-1">
-                      {additionalServices.map((srv, idx) => (
-                        <div key={srv.id || idx} className="bg-white border border-emerald-200 rounded-lg p-2 flex items-center justify-between text-xs">
-                          <div>
-                            <strong>{srv.title}</strong> {srv.price && <span className="text-emerald-700">({srv.price})</span>}
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveService(4 + idx)}
-                            className="text-red-500 hover:text-red-700 p-1 cursor-pointer"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
                 </div>
               </div>
 
-              {/* Company Info */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-700 mb-1">Nome da Empresa</label>
-                  <input
-                    type="text"
-                    value={config.companyName}
-                    onChange={(e) => onChangeConfig && onChangeConfig({ ...config, companyName: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-xs font-semibold focus:outline-sky-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-700 mb-1">Nicho / Categoria</label>
-                  <input
-                    type="text"
-                    value={config.niche}
-                    onChange={(e) => onChangeConfig && onChangeConfig({ ...config, niche: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-xs font-semibold focus:outline-sky-500"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-700 mb-1">Cidade / UF</label>
-                  <input
-                    type="text"
-                    value={config.city}
-                    onChange={(e) => onChangeConfig && onChangeConfig({ ...config, city: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-xs font-semibold focus:outline-sky-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-700 mb-1">Horário de Funcionamento</label>
-                  <input
-                    type="text"
-                    value={config.openingHours || ''}
-                    onChange={(e) => onChangeConfig && onChangeConfig({ ...config, openingHours: e.target.value })}
-                    placeholder="Seg a Sáb: 08h às 19h"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-xs font-semibold focus:outline-sky-500"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-bold text-slate-700 mb-1">Slogan / Bio Curta</label>
-                <input
-                  type="text"
-                  value={config.tagline || ''}
-                  onChange={(e) => onChangeConfig && onChangeConfig({ ...config, tagline: e.target.value })}
-                  placeholder="Ex: O melhor atendimento da cidade"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-xs font-semibold focus:outline-sky-500"
-                />
-              </div>
-
-              {/* Endereço & Telefone */}
-              <div className="p-3 bg-rose-50/50 border border-rose-200 rounded-2xl space-y-2">
-                <span className="text-[11px] font-black uppercase text-rose-800 flex items-center gap-1.5">
-                  <MapPin className="w-3.5 h-3.5 text-rose-600" />
-                  Localização &amp; Telefone Comercial
-                </span>
-                <div className="space-y-2">
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-600">Endereço Completo (Gera botão de rota no Google Maps)</label>
-                    <input
-                      type="text"
-                      value={config.address || ''}
-                      onChange={(e) => onChangeConfig && onChangeConfig({ ...config, address: e.target.value })}
-                      placeholder="Av. Paulista, 1000 - Bela Vista"
-                      className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs font-semibold focus:outline-rose-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-600">Telefone Fixo / Comercial (Gera botão 'Ligar Direto')</label>
-                    <input
-                      type="text"
-                      value={config.phone || ''}
-                      onChange={(e) => onChangeConfig && onChangeConfig({ ...config, phone: e.target.value })}
-                      placeholder="(11) 3333-4444"
-                      className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs font-semibold focus:outline-rose-500"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* WhatsApp Config */}
-              <div className="p-3 bg-emerald-50/50 border border-emerald-200 rounded-2xl space-y-2">
-                <span className="text-[11px] font-black uppercase text-emerald-800 flex items-center gap-1.5">
-                  <Send className="w-3.5 h-3.5 text-emerald-600" />
-                  Botão WhatsApp Direto
-                </span>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-600">Número (com DDD)</label>
-                    <input
-                      type="text"
-                      value={config.whatsappNumber || config.phone || ''}
-                      onChange={(e) => onChangeConfig && onChangeConfig({ ...config, whatsappNumber: e.target.value })}
-                      placeholder="11999999999"
-                      className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs font-semibold focus:outline-emerald-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-600">Mensagem Inicial</label>
-                    <input
-                      type="text"
-                      value={config.whatsappMessage || ''}
-                      onChange={(e) => onChangeConfig && onChangeConfig({ ...config, whatsappMessage: e.target.value })}
-                      placeholder="Olá! Gostaria de informações."
-                      className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs font-semibold focus:outline-emerald-500"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Wi-Fi Config */}
-              <div className="p-3 bg-sky-50/50 border border-sky-200 rounded-2xl space-y-2">
-                <span className="text-[11px] font-black uppercase text-sky-800 flex items-center gap-1.5">
-                  <Wifi className="w-3.5 h-3.5 text-sky-600" />
-                  Botão Wi-Fi Instantâneo
-                </span>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-600">Nome da Rede (SSID)</label>
-                    <input
-                      type="text"
-                      value={config.wifiSsid || ''}
-                      onChange={(e) => onChangeConfig && onChangeConfig({ ...config, wifiSsid: e.target.value })}
-                      placeholder="Nome_Do_WiFi"
-                      className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs font-semibold focus:outline-sky-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-600">Senha do Wi-Fi</label>
-                    <input
-                      type="text"
-                      value={config.wifiPassword || ''}
-                      onChange={(e) => onChangeConfig && onChangeConfig({ ...config, wifiPassword: e.target.value })}
-                      placeholder="Senha123"
-                      className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs font-semibold font-mono focus:outline-sky-500"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Pix Config */}
-              <div className="p-3 bg-teal-50/50 border border-teal-200 rounded-2xl space-y-2">
-                <span className="text-[11px] font-black uppercase text-teal-800 flex items-center gap-1.5">
-                  <Zap className="w-3.5 h-3.5 text-teal-600" />
-                  Botão Pix Instantâneo
-                </span>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-600">Chave Pix</label>
-                    <input
-                      type="text"
-                      value={config.pixKey || ''}
-                      onChange={(e) => onChangeConfig && onChangeConfig({ ...config, pixKey: e.target.value })}
-                      placeholder="CNPJ, E-mail ou Celular"
-                      className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs font-semibold font-mono focus:outline-teal-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-600">Beneficiário / Nome</label>
-                    <input
-                      type="text"
-                      value={config.pixBeneficiary || ''}
-                      onChange={(e) => onChangeConfig && onChangeConfig({ ...config, pixBeneficiary: e.target.value })}
-                      placeholder="Nome da Empresa"
-                      className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs font-semibold focus:outline-teal-500"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Google Reviews Link Generator */}
-              <div className="space-y-2">
+              {/* 7. AVALIAÇÃO DO GOOGLE & PIX / WI-FI */}
+              <div className="space-y-3">
                 <GoogleReviewLinkGenerator
                   initialQuery={config.companyName}
                   initialCity={config.city}
                   currentUrl={config.googleReviewUrl}
                   compact={true}
                   onLinkGenerated={(generatedUrl) => {
-                    if (onChangeConfig) {
-                      onChangeConfig({ ...config, googleReviewUrl: generatedUrl });
-                    }
+                    updateAndPersist({ googleReviewUrl: generatedUrl });
                   }}
                 />
-              </div>
 
-              {/* Social Links */}
-              <div className="grid grid-cols-3 gap-2.5">
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-700 mb-1">Instagram (@ ou URL)</label>
-                  <input
-                    type="text"
-                    value={config.instagramUrl || ''}
-                    onChange={(e) => onChangeConfig && onChangeConfig({ ...config, instagramUrl: e.target.value })}
-                    placeholder="@empresa ou link"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-xs font-semibold focus:outline-sky-500"
-                  />
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-600 mb-1">
+                      Nota no Google (Ex: 5.0)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      min="1"
+                      max="5"
+                      value={config.rating || 5.0}
+                      onChange={(e) => updateAndPersist({ rating: parseFloat(e.target.value) || 5.0 })}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-xs font-bold"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-600 mb-1">
+                      Total de Avaliações no Google
+                    </label>
+                    <input
+                      type="number"
+                      value={config.reviewCount || 128}
+                      onChange={(e) =>
+                        updateAndPersist({ reviewCount: parseInt(e.target.value, 10) || 128 })
+                      }
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-xs font-bold"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-700 mb-1">Telegram (Opcional)</label>
-                  <input
-                    type="text"
-                    value={config.telegramUrl || ''}
-                    onChange={(e) => onChangeConfig && onChangeConfig({ ...config, telegramUrl: e.target.value })}
-                    placeholder="t.me/canal"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-xs font-semibold focus:outline-sky-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-700 mb-1">TikTok (Opcional)</label>
-                  <input
-                    type="text"
-                    value={config.tiktokUrl || ''}
-                    onChange={(e) => onChangeConfig && onChangeConfig({ ...config, tiktokUrl: e.target.value })}
-                    placeholder="@tiktok_perfil"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-xs font-semibold focus:outline-sky-500"
-                  />
+
+                {/* Pix & Wi-Fi */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="p-3 bg-teal-50/50 border border-teal-200 rounded-2xl space-y-2">
+                    <span className="text-[11px] font-black uppercase text-teal-800 block">
+                      ⚡ Chave Pix do Cliente
+                    </span>
+                    <input
+                      type="text"
+                      value={config.pixKey || ''}
+                      onChange={(e) => updateAndPersist({ pixKey: e.target.value })}
+                      placeholder="CNPJ, E-mail ou Celular"
+                      className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs font-mono"
+                    />
+                  </div>
+                  <div className="p-3 bg-sky-50/50 border border-sky-200 rounded-2xl space-y-2">
+                    <span className="text-[11px] font-black uppercase text-sky-800 block">
+                      📶 Wi-Fi (Rede e Senha)
+                    </span>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <input
+                        type="text"
+                        value={config.wifiSsid || ''}
+                        onChange={(e) => updateAndPersist({ wifiSsid: e.target.value })}
+                        placeholder="Nome Wi-Fi"
+                        className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs"
+                      />
+                      <input
+                        type="text"
+                        value={config.wifiPassword || ''}
+                        onChange={(e) => updateAndPersist({ wifiPassword: e.target.value })}
+                        placeholder="Senha"
+                        className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs font-mono"
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
-
             </div>
           )}
 
-          {/* TAB 3: VERCEL HOSTING MODEL FOR EACH CLIENT */}
+          {/* TAB 3: VERCEL HOSTING */}
           {activeTab === 'vercel' && (
             <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm space-y-5">
-              
-              {/* Vercel Header Card */}
               <div className="bg-linear-to-r from-slate-950 via-slate-900 to-blue-950 p-5 rounded-2xl text-white space-y-2 border border-slate-800">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
@@ -1992,7 +2472,9 @@ export const MiniSiteViewer: React.FC<MiniSiteViewerProps> = ({
                       ▲
                     </div>
                     <div>
-                      <h3 className="text-sm font-black text-white">Modelo de Link Vercel para {name}</h3>
+                      <h3 className="text-sm font-black text-white">
+                        Modelo de Link Vercel para {name}
+                      </h3>
                       <p className="text-[11px] text-slate-300">
                         {niche} • {city}
                       </p>
@@ -2002,649 +2484,287 @@ export const MiniSiteViewer: React.FC<MiniSiteViewerProps> = ({
                     Hospedagem 1-Clique
                   </span>
                 </div>
-                <p className="text-xs text-slate-300 leading-relaxed pt-1">
-                  Este modelo gera um link de carregamento ultrarrápido hospedado na Vercel para cada cliente cadastrado. O cliente pode utilizar este link exclusivo na bio do Instagram, no WhatsApp e em suas placas NFC.
-                </p>
               </div>
 
-              {/* Unique Client Link Configuration */}
               <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-black uppercase text-slate-500 tracking-wider">
-                    Link Exclusivo do Cliente na Vercel
-                  </span>
-                  <span className="text-[10px] font-bold text-slate-400">
-                    HTTPS Grátis • CDN Global
-                  </span>
-                </div>
-
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                  <div className="flex-1 bg-white border border-slate-300 rounded-xl px-3 py-2 flex items-center gap-2 focus-within:border-slate-900">
+                  <div className="flex-1 bg-white border border-slate-300 rounded-xl px-3 py-2 flex items-center gap-2">
                     <Globe className="w-4 h-4 text-slate-500 shrink-0" />
                     <input
                       type="text"
                       value={customVercelDomain || getClientVercelUrl(name)}
                       onChange={(e) => setCustomVercelDomain(e.target.value)}
-                      placeholder={`https://${cleanClientSlug(name)}.vercel.app`}
                       className="w-full text-xs font-mono font-bold text-slate-900 bg-transparent outline-none"
                     />
                   </div>
-
                   <button
                     type="button"
                     onClick={async () => {
                       const url = customVercelDomain || getClientVercelUrl(name);
                       await navigator.clipboard.writeText(url);
                       setCopiedVercelLink(true);
-                      showToast('Link da Vercel copiado com sucesso!');
+                      showToast('Link da Vercel copiado!');
                       setTimeout(() => setCopiedVercelLink(false), 2500);
                     }}
-                    className="px-4 py-2 bg-slate-950 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 shrink-0 cursor-pointer shadow-xs"
+                    className="px-4 py-2 bg-slate-950 text-white text-xs font-bold rounded-xl cursor-pointer"
                   >
-                    {copiedVercelLink ? (
-                      <>
-                        <Check className="w-3.5 h-3.5 text-emerald-400" />
-                        <span>Link Copiado!</span>
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="w-3.5 h-3.5" />
-                        <span>Copiar Link</span>
-                      </>
-                    )}
+                    {copiedVercelLink ? 'Copiado!' : 'Copiar Link'}
                   </button>
-
-                  <a
-                    href={customVercelDomain || getClientVercelUrl(name)}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="px-3 py-2 bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 shrink-0 cursor-pointer shadow-2xs"
-                  >
-                    <ExternalLink className="w-3.5 h-3.5 text-blue-600" />
-                    <span>Testar Link</span>
-                  </a>
-                </div>
-
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between text-[11px] text-slate-500 gap-1 pt-1">
-                  <span>Subdomínio Vercel: <strong>{cleanClientSlug(name)}.vercel.app</strong></span>
-                  {onLinkToNfc && (
-                    <button
-                      type="button"
-                      onClick={() => onLinkToNfc(customVercelDomain || getClientVercelUrl(name))}
-                      className="text-blue-600 hover:text-blue-700 font-bold hover:underline cursor-pointer"
-                    >
-                      Gravar este link na Placa NFC deste cliente ➔
-                    </button>
-                  )}
                 </div>
               </div>
 
-              {/* Action Buttons: ZIP Package and WhatsApp Pitch */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                
-                {/* 1. Download Vercel ZIP Bundle */}
-                <div className="bg-white border-2 border-slate-900 rounded-2xl p-4 flex flex-col justify-between space-y-3 shadow-xs">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono font-black text-sm text-slate-900">▲</span>
-                      <strong className="text-xs font-black text-slate-900">Baixar Pacote Vercel (ZIP)</strong>
-                    </div>
-                    <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
-                      Estruturado com <code className="text-slate-900 font-bold">vercel.json</code>, <code className="text-slate-900 font-bold">package.json</code>, <code className="text-slate-900 font-bold">index.html</code> e manual didático.
-                    </p>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      setIsZippingVercel(true);
-                      try {
-                        const targetUrl = customVercelDomain || getClientVercelUrl(name);
-                        await downloadVercelClientZip(config, targetUrl);
-                        showToast('Pacote Vercel baixado com sucesso!');
-                      } catch (err) {
-                        console.error(err);
-                        showToast('Erro ao baixar pacote Vercel.');
-                      } finally {
-                        setIsZippingVercel(false);
-                      }
-                    }}
-                    disabled={isZippingVercel}
-                    className="w-full py-2.5 bg-slate-950 hover:bg-slate-800 text-white rounded-xl text-xs font-black flex items-center justify-center gap-2 transition cursor-pointer shadow-md disabled:opacity-50"
-                  >
-                    {isZippingVercel ? (
-                      <span className="animate-pulse">Gerando ZIP Vercel...</span>
-                    ) : (
-                      <>
-                        <Download className="w-4 h-4 text-emerald-400" />
-                        <span>Baixar Pacote Vercel</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-
-                {/* 2. WhatsApp Delivery Pitch */}
-                <div className="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col justify-between space-y-3 shadow-xs">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <Send className="w-4 h-4 text-emerald-600" />
-                      <strong className="text-xs font-black text-slate-900">Mensagem de Entrega no WhatsApp</strong>
-                    </div>
-                    <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
-                      Texto formatado com o link da Vercel para você enviar no WhatsApp de <strong>{name}</strong>.
-                    </p>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={async () => {
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setIsZippingVercel(true);
+                    try {
                       const targetUrl = customVercelDomain || getClientVercelUrl(name);
-                      const pitch = generateVercelClientPitchWhatsapp(name, targetUrl, niche);
-                      await navigator.clipboard.writeText(pitch);
-                      setCopiedVercelPitch(true);
-                      showToast('Mensagem de WhatsApp copiada!');
-                      setTimeout(() => setCopiedVercelPitch(false), 2500);
-                    }}
-                    className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black flex items-center justify-center gap-2 transition cursor-pointer shadow-xs"
-                  >
-                    {copiedVercelPitch ? (
-                      <>
-                        <Check className="w-4 h-4" />
-                        <span>Mensagem Copiada!</span>
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="w-4 h-4" />
-                        <span>Copiar Mensagem WhatsApp</span>
-                      </>
-                    )}
-                  </button>
-                </div>
+                      await downloadVercelClientZip(config, targetUrl);
+                      showToast('Pacote Vercel baixado com sucesso!');
+                    } finally {
+                      setIsZippingVercel(false);
+                    }
+                  }}
+                  disabled={isZippingVercel}
+                  className="py-3 bg-slate-950 hover:bg-slate-800 text-white rounded-xl text-xs font-black flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <Download className="w-4 h-4 text-emerald-400" />
+                  <span>{isZippingVercel ? 'Gerando ZIP...' : 'Baixar Pacote Vercel (ZIP)'}</span>
+                </button>
 
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const targetUrl = customVercelDomain || getClientVercelUrl(name);
+                    const pitch = generateVercelClientPitchWhatsapp(name, targetUrl, niche);
+                    await navigator.clipboard.writeText(pitch);
+                    setCopiedVercelPitch(true);
+                    showToast('Mensagem de WhatsApp copiada!');
+                    setTimeout(() => setCopiedVercelPitch(false), 2500);
+                  }}
+                  className="py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <Send className="w-4 h-4" />
+                  <span>{copiedVercelPitch ? 'Copiada!' : 'Copiar Pitch WhatsApp'}</span>
+                </button>
               </div>
-
-              {/* Vercel CLI Box & Steps */}
-              <div className="space-y-2.5">
-                <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">
-                  Como Publicar na Vercel para Este Cliente (Passo a Passo)
-                </span>
-
-                <div className="p-3 bg-slate-900 text-slate-200 rounded-xl flex items-center justify-between text-xs font-mono">
-                  <div className="flex items-center gap-2 truncate">
-                    <span className="text-slate-500">$</span>
-                    <span className="text-emerald-400 font-bold">npx vercel --prod</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      await navigator.clipboard.writeText('npx vercel --prod');
-                      setCopiedVercelCli(true);
-                      showToast('Comando npx vercel --prod copiado!');
-                      setTimeout(() => setCopiedVercelCli(false), 2000);
-                    }}
-                    className="px-2.5 py-1 bg-white/10 hover:bg-white/20 text-white rounded-lg text-[10px] font-sans font-bold transition cursor-pointer"
-                  >
-                    {copiedVercelCli ? 'Copiado!' : 'Copiar'}
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
-                  <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
-                    <span className="w-5 h-5 rounded-full bg-slate-900 text-white font-black text-[10px] flex items-center justify-center">1</span>
-                    <strong className="block text-slate-900 font-bold">Descompacte o ZIP</strong>
-                    <p className="text-[11px] text-slate-500">Extraia a pasta do cliente no seu computador.</p>
-                  </div>
-
-                  <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
-                    <span className="w-5 h-5 rounded-full bg-slate-900 text-white font-black text-[10px] flex items-center justify-center">2</span>
-                    <strong className="block text-slate-900 font-bold">Execute o Comando</strong>
-                    <p className="text-[11px] text-slate-500">Digite <code>npx vercel --prod</code> ou suba no painel web da Vercel.</p>
-                  </div>
-
-                  <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
-                    <span className="w-5 h-5 rounded-full bg-slate-900 text-white font-black text-[10px] flex items-center justify-center">3</span>
-                    <strong className="block text-slate-900 font-bold">Entregue ao Cliente</strong>
-                    <p className="text-[11px] text-slate-500">Envie o link ou grave na Placa NFC física do cliente.</p>
-                  </div>
-                </div>
-              </div>
-
             </div>
           )}
 
           {/* TAB 4: EXPORT OPTIONS */}
           {activeTab === 'export' && (
             <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="text-xs font-black uppercase text-slate-700 tracking-wider">
-                    Exportação de Mini Site Independente
-                  </h4>
-                  <p className="text-[11px] text-slate-500 mt-0.5">
-                    Gera arquivos estáticos que o cliente pode hospedar em qualquer lugar para sempre.
-                  </p>
-                </div>
-                <span className="bg-emerald-100 text-emerald-800 text-[10px] font-black uppercase px-2 py-0.5 rounded-full">
-                  Sem Servidor
-                </span>
-              </div>
-
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                
-                {/* 1. Single HTML */}
-                <div className="border border-slate-200 rounded-2xl p-4 flex flex-col justify-between hover:border-emerald-400 transition bg-slate-50/50">
+                <div className="border border-slate-200 rounded-2xl p-4 flex flex-col justify-between bg-slate-50/50">
                   <div className="space-y-1.5 mb-3">
-                    <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center">
-                      <FileCode className="w-4 h-4" />
-                    </div>
-                    <strong className="text-sm text-slate-900 block font-black">index.html (Arquivo Único)</strong>
+                    <strong className="text-sm text-slate-900 block font-black">
+                      index.html 4K (Arquivo Único)
+                    </strong>
                     <p className="text-xs text-slate-500">
-                      Arquivo único com CSS, ícones e QR Codes base64 embutidos. 100% autônomo, funciona sem internet e sem dependências.
+                      Arquivo único com a foto 4K do Head, cor e fonte escolhidas, Como Chegar e Google Reviews.
                     </p>
                   </div>
                   <button
                     onClick={handleDownloadHtml}
                     disabled={isDownloadingHtml}
-                    className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition cursor-pointer"
+                    className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-black flex items-center justify-center gap-1.5 cursor-pointer"
                   >
                     <Download className="w-3.5 h-3.5" />
-                    <span>{isDownloadingHtml ? 'Gerando index.html...' : 'Baixar index.html'}</span>
+                    <span>{isDownloadingHtml ? 'Gerando...' : 'Baixar index.html'}</span>
                   </button>
                 </div>
 
-                {/* 2. Full ZIP */}
-                <div className="border border-blue-200 bg-blue-50/40 rounded-2xl p-4 flex flex-col justify-between hover:border-blue-400 transition">
+                <div className="border border-blue-200 bg-blue-50/40 rounded-2xl p-4 flex flex-col justify-between">
                   <div className="space-y-1.5 mb-3">
-                    <div className="w-8 h-8 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center">
-                      <FolderArchive className="w-4 h-4" />
-                    </div>
-                    <strong className="text-sm text-slate-900 block font-black">Pacote ZIP Completo</strong>
+                    <strong className="text-sm text-slate-900 block font-black">
+                      Pacote ZIP Completo
+                    </strong>
                     <p className="text-xs text-slate-500">
-                      Inclui index.html + manual de publicação em 30 segundos no Netlify Drop + backup JSON das configurações.
+                      Inclui index.html + manual de publicação em 30 segundos no Netlify Drop + backup JSON.
                     </p>
                   </div>
                   <button
                     onClick={handleDownloadZip}
                     disabled={isZipping}
-                    className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition cursor-pointer"
+                    className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black flex items-center justify-center gap-1.5 cursor-pointer"
                   >
                     <Download className="w-3.5 h-3.5" />
                     <span>{isZipping ? 'Compactando...' : 'Baixar Pacote ZIP'}</span>
                   </button>
                 </div>
-
               </div>
-
-              {/* Action Rows */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2">
-                <button
-                  onClick={handleCopyHtml}
-                  className="py-2.5 px-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer"
-                >
-                  <Copy className="w-3.5 h-3.5 text-sky-400" />
-                  <span>{copiedHtml ? 'HTML Copiado!' : 'Copiar Código HTML'}</span>
-                </button>
-
-                <button
-                  onClick={handleCopyClientMessage}
-                  className="py-2.5 px-3 bg-emerald-700 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer"
-                >
-                  <Send className="w-3.5 h-3.5 text-emerald-300" />
-                  <span>{copiedMessage ? 'Mensagem Copiada!' : 'Copiar Texto para WhatsApp'}</span>
-                </button>
-              </div>
-
-              {/* Hosting Guide Card */}
-              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-xs space-y-2">
-                <strong className="block font-black text-slate-800 text-xs">
-                  🚀 Como o cliente hospeda gratuitamente em 30 segundos:
-                </strong>
-                <ol className="list-decimal list-inside space-y-1 text-slate-600 text-[11px] leading-relaxed">
-                  <li>Acesse <strong>app.netlify.com/drop</strong> no navegador.</li>
-                  <li>Arraste o arquivo <strong>index.html</strong> ou o ZIP para a página.</li>
-                  <li>O site entra no ar na hora com SSL gratuito (https://) e link próprio!</li>
-                  <li>O cliente pode colar o link na bio do Instagram ou você grava na Placa NFC.</li>
-                </ol>
-              </div>
-
             </div>
           )}
-
         </div>
 
         {/* Right Column: Live Interactive Smartphone Simulator */}
         <div className="lg:col-span-6 flex flex-col items-center justify-center">
-          <div className="text-center mb-3">
-            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
-              Simulador em Tempo Real • Toque nos Botões
+          <div className="text-center mb-2.5 flex items-center gap-2">
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">
+              Simulador Interativo 4K • Navegue pelas Abas Internas
             </span>
           </div>
-          {renderPhoneSimulator()}
+          {renderPhoneSimulator(false)}
         </div>
-
       </div>
 
-      {/* DEDICATED EXPORT MODAL FOR OPERATOR */}
-      {isExportModalOpen && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="bg-slate-900 border border-slate-700 rounded-3xl max-w-2xl w-full p-6 md:p-8 text-white relative shadow-2xl max-h-[90vh] overflow-y-auto">
-            
-            {/* Close Button */}
-            <button
-              onClick={() => setIsExportModalOpen(false)}
-              className="absolute top-5 right-5 w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition cursor-pointer"
-            >
-              <X className="w-4 h-4" />
-            </button>
-
-            {/* Header */}
-            <div className="space-y-1.5 mb-6">
-              <div className="flex items-center gap-2">
-                <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-black uppercase tracking-wide">
-                  Exportador de Mini Site Independente
+      {/* ======================================================================
+          MODAL: BIBLIOTECA DE IMAGENS REALISTAS EM 4K POR SEGMENTO
+         ====================================================================== */}
+      {is4KLibraryOpen && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 w-full max-w-4xl rounded-3xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden text-white">
+            <div className="p-5 border-b border-slate-800 flex items-center justify-between bg-slate-950">
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-wider text-purple-400 block">
+                  Fotografia Ultra HD Realista
                 </span>
-                <span className="px-2.5 py-0.5 rounded-full bg-sky-500/20 text-sky-300 text-[10px] font-black uppercase tracking-wide">
-                  100% Autônomo
-                </span>
-              </div>
-              <h3 className="text-xl md:text-2xl font-black text-white">
-                Exportar Mini Site de {name}
-              </h3>
-              <p className="text-xs text-slate-300 leading-relaxed">
-                Gere um arquivo estático contendo todas as configurações da empresa (links, WhatsApp, Pix, Wi-Fi, Google Reviews, cores e logo) para que o cliente possa hospedar o mini-site independentemente em qualquer servidor ou abrir localmente.
-              </p>
-            </div>
-
-            {/* Configs summary checklist */}
-            <div className="bg-slate-950/60 border border-slate-800 rounded-2xl p-4 mb-6">
-              <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider block mb-2">
-                Configurações da Empresa Inclusas no Arquivo:
-              </span>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-[11px]">
-                <div className="flex items-center gap-1.5 text-slate-200">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                  <span className="truncate">🏢 {name}</span>
-                </div>
-                <div className="flex items-center gap-1.5 text-slate-200">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                  <span className="truncate">💬 WhatsApp 1-clique</span>
-                </div>
-                <div className="flex items-center gap-1.5 text-slate-200">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                  <span className="truncate">⭐ Google Reviews 5★</span>
-                </div>
-                <div className="flex items-center gap-1.5 text-slate-200">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                  <span className="truncate">⚡ Pix ({config.pixKeyType || 'Chave'})</span>
-                </div>
-                <div className="flex items-center gap-1.5 text-slate-200">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                  <span className="truncate">📶 Wi-Fi 1-clique</span>
-                </div>
-                <div className="flex items-center gap-1.5 text-slate-200">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                  <span className="truncate">📸 Instagram Oficial</span>
-                </div>
-                {config.address && (
-                  <div className="flex items-center gap-1.5 text-slate-200">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                    <span className="truncate">📍 Rota Google Maps</span>
-                  </div>
-                )}
-                {config.phone && (
-                  <div className="flex items-center gap-1.5 text-slate-200">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                    <span className="truncate">📞 Ligação Direta</span>
-                  </div>
-                )}
-                {config.openingHours && (
-                  <div className="flex items-center gap-1.5 text-slate-200">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                    <span className="truncate">🕒 Horário Cadastrado</span>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Action Download Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-              
-              {/* Option 1: Single index.html */}
-              <div className="bg-slate-800/80 border border-emerald-500/40 rounded-2xl p-4 flex flex-col justify-between hover:border-emerald-400 transition">
-                <div className="space-y-1.5 mb-4">
-                  <div className="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
-                    <FileCode className="w-5 h-5" />
-                  </div>
-                  <strong className="text-sm font-black text-white block">
-                    index.html (Arquivo Único)
-                  </strong>
-                  <p className="text-xs text-slate-300">
-                    Arquivo estático com CSS e QR codes Base64 já embutidos. É o padrão oficial para subir em qualquer hospedagem web ou abrir localmente.
-                  </p>
-                </div>
-                <button
-                  onClick={handleDownloadHtml}
-                  disabled={isDownloadingHtml}
-                  className="w-full py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs rounded-xl flex items-center justify-center gap-2 transition cursor-pointer shadow-lg shadow-emerald-500/20"
-                >
-                  <Download className="w-4 h-4 stroke-[2.5]" />
-                  <span>{isDownloadingHtml ? 'Gerando index.html...' : 'Baixar index.html'}</span>
-                </button>
-              </div>
-
-              {/* Option 2: Full ZIP Package */}
-              <div className="bg-slate-800/80 border border-blue-500/40 rounded-2xl p-4 flex flex-col justify-between hover:border-blue-400 transition">
-                <div className="space-y-1.5 mb-4">
-                  <div className="w-9 h-9 rounded-xl bg-blue-500/20 text-blue-400 flex items-center justify-center">
-                    <FolderArchive className="w-5 h-5" />
-                  </div>
-                  <strong className="text-sm font-black text-white block">
-                    Pacote ZIP de Hospedagem
-                  </strong>
-                  <p className="text-xs text-slate-300">
-                    Contém index.html + manual de publicação em 30 segundos no Netlify Drop + backup JSON completo de todas as configurações.
-                  </p>
-                </div>
-                <button
-                  onClick={handleDownloadZip}
-                  disabled={isZipping}
-                  className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-black text-xs rounded-xl flex items-center justify-center gap-2 transition cursor-pointer shadow-lg shadow-blue-500/20"
-                >
-                  <Download className="w-4 h-4" />
-                  <span>{isZipping ? 'Compactando...' : 'Baixar Pacote ZIP'}</span>
-                </button>
-              </div>
-
-            </div>
-
-            {/* Quick Secondary Actions */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mb-6">
-              <button
-                onClick={handleCopyHtml}
-                className="py-2.5 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer"
-              >
-                <Copy className="w-3.5 h-3.5 text-sky-400" />
-                <span>{copiedHtml ? 'Código Copiado!' : 'Copiar Código HTML'}</span>
-              </button>
-
-              <button
-                onClick={handleCopyClientMessage}
-                className="py-2.5 px-3 bg-emerald-950/40 hover:bg-emerald-900/50 text-emerald-300 border border-emerald-500/40 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer"
-              >
-                <Send className="w-3.5 h-3.5 text-emerald-400" />
-                <span>{copiedMessage ? 'Mensagem Copiada!' : 'Copiar Texto p/ WhatsApp'}</span>
-              </button>
-
-              <button
-                onClick={() => openMiniSiteLivePreview(config)}
-                className="py-2.5 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer"
-              >
-                <Eye className="w-3.5 h-3.5 text-amber-400" />
-                <span>Testar Arquivo em Nova Aba</span>
-              </button>
-            </div>
-
-            {/* 30-Second Hosting Instructions for Operator/Client */}
-            <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-4 text-xs space-y-2">
-              <div className="flex items-center gap-1.5">
-                <HelpCircle className="w-4 h-4 text-sky-400" />
-                <strong className="text-white font-bold">Instruções para o Cliente Hospedar:</strong>
-              </div>
-              <p className="text-slate-400 leading-relaxed text-[11px]">
-                <strong>Opção mais rápida (30 segundos):</strong> O cliente só precisa acessar <strong>app.netlify.com/drop</strong> e arrastar o arquivo <strong>index.html</strong> ou a pasta. O site ganha um link https com certificado de segurança gratuito. Ele também pode usar Vercel, GitHub Pages ou subir no gerenciador do cPanel da hospedagem própria.
-              </p>
-            </div>
-
-          </div>
-        </div>
-      )}
-
-      {/* MODAL: GALERIA DE MODELOS DE MOCKUP PRONTOS */}
-      {isTemplateModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-5">
-          <div className="bg-slate-900 border border-slate-800 w-full max-w-4xl rounded-3xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
-            
-            {/* Modal Header */}
-            <div className="p-4 sm:p-6 border-b border-slate-800 flex items-center justify-between bg-slate-950/60">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse"></span>
-                  <span className="text-[10px] uppercase font-black tracking-wider text-amber-400">
-                    Galeria de Modelos de Alta Conversão
-                  </span>
-                </div>
-                <h3 className="text-lg sm:text-xl font-black text-white">
-                  Escolha um Modelo de Mockup Pronto para Apresentar
+                <h3 className="text-lg font-black text-white">
+                  Biblioteca de Capas para o Head e Galeria 4K por Segmento
                 </h3>
-                <p className="text-xs text-slate-400">
-                  Cada modelo já vem com fotos reais, 4 produtos com preços, letreiro luminoso, avaliação 5 estrelas no Google e Pix configurado.
-                </p>
               </div>
-
               <button
-                type="button"
-                onClick={() => setIsTemplateModalOpen(false)}
-                className="w-9 h-9 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition cursor-pointer shrink-0"
+                onClick={() => setIs4KLibraryOpen(false)}
+                className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 flex items-center justify-center cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            {/* Model Cards Grid */}
-            <div className="p-4 sm:p-6 overflow-y-auto space-y-4 flex-1">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {READY_MINISITE_MOCKUPS.map((template) => {
-                  const isCurrent = config.companyName === template.config.companyName;
-                  return (
-                    <div
-                      key={template.id}
-                      className={`rounded-2xl border p-4 flex flex-col justify-between transition-all group ${
-                        isCurrent
-                          ? 'bg-amber-950/20 border-amber-400 ring-2 ring-amber-400/40 shadow-xl'
-                          : 'bg-slate-950/80 border-slate-800 hover:border-slate-700'
-                      }`}
+            <div className="p-5 overflow-y-auto space-y-6 flex-1">
+              {CURATED_4K_IMAGES_BY_SEGMENT.map((group) => (
+                <div key={group.segment} className="space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-black text-amber-300">{group.label}</h4>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        updateAndPersist({
+                          coverImageUrl: group.covers[0].url,
+                          galleryUrls: group.gallery
+                        });
+                        showToast(`Kit de fotos 4K de "${group.label}" aplicado!`);
+                        setIs4KLibraryOpen(false);
+                      }}
+                      className="px-3 py-1 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-[11px] font-black cursor-pointer"
                     >
-                      <div className="space-y-3">
-                        {/* Cover + Header */}
-                        <div className="relative h-36 rounded-xl overflow-hidden border border-slate-800">
+                      Aplicar Capa + Galeria 4K Deste Segmento
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    {group.covers.map((cov, idx) => (
+                      <div
+                        key={idx}
+                        className="bg-slate-950 border border-slate-800 rounded-2xl overflow-hidden flex flex-col justify-between group"
+                      >
+                        <div className="h-28 overflow-hidden relative">
                           <img
-                            src={template.coverImage}
-                            alt={template.title}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            src={cov.url}
+                            alt={cov.title}
+                            className="w-full h-full object-cover group-hover:scale-110 transition-transform"
                           />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
-                          
-                          <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5">
-                            <span className="text-base bg-slate-950/80 px-2 py-0.5 rounded-lg backdrop-blur-xs">
-                              {template.emoji}
-                            </span>
-                            <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-amber-500 text-slate-950 shadow-sm">
-                              {template.badge}
-                            </span>
-                          </div>
-
-                          <div className="absolute bottom-2.5 left-2.5 right-2.5">
-                            <h4 className="text-base font-black text-white leading-tight drop-shadow-md">
-                              {template.title}
-                            </h4>
-                            <span className="text-[11px] text-amber-300 font-bold">
-                              {template.category}
-                            </span>
-                          </div>
                         </div>
-
-                        {/* Tagline & Google Score */}
-                        <div className="flex items-center justify-between text-xs text-slate-300">
-                          <span className="text-[11px] text-slate-400 line-clamp-1 flex-1 pr-2">
-                            {template.tagline}
-                          </span>
-                          <span className="text-amber-400 font-bold shrink-0 flex items-center gap-1">
-                            <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                            <span>★ 5.0 Google</span>
-                          </span>
-                        </div>
-
-                        {/* 4 Products Preview List */}
-                        <div className="bg-slate-900/90 rounded-xl p-2.5 border border-slate-800/80 space-y-1.5">
-                          <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider block">
-                            4 Destaques Inclusos com Foto:
-                          </span>
-                          <div className="grid grid-cols-2 gap-1.5 text-[11px]">
-                            {template.config.services?.slice(0, 4).map((srv, idx) => (
-                              <div key={idx} className="flex items-center gap-1.5 text-slate-300 truncate">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0"></span>
-                                <span className="truncate">{srv.title}</span>
-                              </div>
-                            ))}
-                          </div>
+                        <div className="p-2.5 space-y-1.5">
+                          <p className="text-[11px] font-bold text-slate-200 line-clamp-1">
+                            {cov.title}
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              updateAndPersist({ coverImageUrl: cov.url });
+                              showToast(`Foto "${cov.title}" definida no Head!`);
+                              setIs4KLibraryOpen(false);
+                            }}
+                            className="w-full py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-[10px] rounded-lg cursor-pointer"
+                          >
+                            Usar no Head (Capa)
+                          </button>
                         </div>
                       </div>
-
-                      {/* Action buttons */}
-                      <div className="pt-3 mt-3 border-t border-slate-800/80 flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => handleApplyReadyMockup(template)}
-                          className={`flex-1 py-2.5 px-4 rounded-xl text-xs font-black transition active:scale-95 flex items-center justify-center gap-2 cursor-pointer ${
-                            isCurrent
-                              ? 'bg-emerald-600 text-white'
-                              : 'bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 shadow-md'
-                          }`}
-                        >
-                          <Check className="w-4 h-4 stroke-[3]" />
-                          <span>{isCurrent ? 'Modelo Atual Carregado' : 'Carregar Este Modelo'}</span>
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
-
-            {/* Modal Footer */}
-            <div className="p-4 border-t border-slate-800 bg-slate-950 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
-              <span className="text-slate-400">
-                💡 Após carregar, clique na aba <strong>&quot;2. Editar Textos, Logo &amp; Fotos&quot;</strong> para trocar o nome da empresa e o WhatsApp pelo do seu cliente.
-              </span>
-              <button
-                type="button"
-                onClick={() => setIsTemplateModalOpen(false)}
-                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-bold transition cursor-pointer"
-              >
-                Fechar Galeria
-              </button>
-            </div>
-
           </div>
         </div>
       )}
 
-      {/* MODAL: APRESENTAÇÃO MOCKUP EM TELA CHEIA PARA MOSTRAR AO CLIENTE */}
+      {/* ======================================================================
+          MODAL: GALERIA DE MODELOS DE MOCKUP PRONTOS
+         ====================================================================== */}
+      {isTemplateModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-5">
+          <div className="bg-slate-900 border border-slate-800 w-full max-w-4xl rounded-3xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
+            <div className="p-4 sm:p-6 border-b border-slate-800 flex items-center justify-between bg-slate-950/60">
+              <div className="space-y-1">
+                <h3 className="text-lg sm:text-xl font-black text-white">
+                  Escolha um Modelo 4K Pronto por Segmento
+                </h3>
+                <p className="text-xs text-slate-400">
+                  Já inclui foto no Head em 4K, horário, frase passando, Como Chegar, Google Reviews com depoimentos e cardápio/catálogo.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsTemplateModalOpen(false)}
+                className="w-9 h-9 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-4 sm:p-6 overflow-y-auto grid grid-cols-1 md:grid-cols-2 gap-4 flex-1">
+              {READY_MINISITE_MOCKUPS.map((template) => {
+                const isCurrent = config.companyName === template.config.companyName;
+                return (
+                  <div
+                    key={template.id}
+                    className={`rounded-2xl border p-4 flex flex-col justify-between transition-all ${
+                      isCurrent
+                        ? 'bg-amber-950/20 border-amber-400 ring-2 ring-amber-400/40'
+                        : 'bg-slate-950/80 border-slate-800 hover:border-slate-700'
+                    }`}
+                  >
+                    <div className="space-y-3">
+                      <div className="relative h-36 rounded-xl overflow-hidden border border-slate-800">
+                        <img
+                          src={template.coverImage}
+                          alt={template.title}
+                          className="w-full h-full object-cover"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
+                        <div className="absolute bottom-2.5 left-2.5 right-2.5">
+                          <h4 className="text-base font-black text-white">{template.title}</h4>
+                          <span className="text-[11px] text-amber-300 font-bold">
+                            {template.category}
+                          </span>
+                        </div>
+                      </div>
+                      <p className="text-xs text-slate-300">{template.tagline}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleApplyReadyMockup(template)}
+                      className="mt-3 w-full py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs rounded-xl cursor-pointer"
+                    >
+                      {isCurrent ? '✓ Modelo Ativo' : 'Carregar Modelo 4K'}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================================
+          MODAL: APRESENTAÇÃO MOCKUP EM TELA CHEIA PARA MOSTRAR AO CLIENTE
+         ====================================================================== */}
       {isClientPresentationOpen && (
-        <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-xl flex items-center justify-center p-2 sm:p-4 animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-xl flex items-center justify-center p-2 sm:p-4">
           <div className="bg-slate-950 border border-slate-800 w-full max-w-5xl rounded-3xl max-h-[96vh] flex flex-col shadow-2xl overflow-hidden">
-            
-            {/* Top Presentation Bar */}
             <div className="p-3.5 sm:p-4 bg-slate-900 border-b border-slate-800 flex items-center justify-between gap-3">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center font-black">
@@ -2652,127 +2772,148 @@ export const MiniSiteViewer: React.FC<MiniSiteViewerProps> = ({
                 </div>
                 <div>
                   <h3 className="text-sm sm:text-base font-black text-white">
-                    Modo Apresentação Mockup • {name}
+                    Apresentação Mockup 4K • {name}
                   </h3>
                   <span className="text-[11px] text-slate-400">
-                    Demonstração interativa ao vivo em simulador de celular para encantar o cliente
+                    Mostre ao cliente a foto no Head, horário, Como Chegar, Google Reviews e o personalizador de cor e fonte
                   </span>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => openMiniSiteLivePreview(config)}
-                  className="hidden sm:flex px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold items-center gap-1.5 border border-slate-700 transition cursor-pointer"
-                  title="Abrir em tela cheia no navegador"
-                >
-                  <ExternalLink className="w-3.5 h-3.5 text-sky-400" />
-                  <span>Ver em Nova Aba</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsClientPresentationOpen(false);
-                    setActiveTab('edit');
-                  }}
-                  className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-black flex items-center gap-1.5 shadow-sm transition cursor-pointer"
-                  title="Editar textos, logo e fotos deste modelo"
-                >
-                  <Layers className="w-3.5 h-3.5" />
-                  <span>Editar Este Modelo</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setIsClientPresentationOpen(false)}
-                  className="w-8 h-8 rounded-full bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center transition cursor-pointer"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => setIsClientPresentationOpen(false)}
+                className="w-8 h-8 rounded-full bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
 
-            {/* Presentation Body: Center Phone + Side Pitch Helper */}
-            <div className="p-4 sm:p-6 overflow-y-auto flex-1 flex flex-col lg:flex-row items-center justify-center gap-6 bg-radial from-slate-900 to-slate-950">
-              
-              {/* Phone Simulator Centerpiece */}
+            <div className="p-4 sm:p-6 overflow-y-auto flex-1 flex flex-col lg:flex-row items-center justify-center gap-6">
               <div className="shrink-0 flex items-center justify-center">
                 {renderPhoneSimulator(false)}
               </div>
 
-              {/* Side Pitch Cards for the Seller */}
+              {/* Live Client Color & Font Switcher right inside Presentation Mode! */}
               <div className="w-full max-w-md space-y-4 text-left">
-                <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 space-y-2">
-                  <div className="flex items-center gap-1.5 text-amber-400 font-bold text-xs uppercase tracking-wide">
-                    <Sparkles className="w-4 h-4" />
-                    <span>Dicas para Apresentar ao Cliente:</span>
+                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
+                  <span className="text-xs font-black uppercase text-amber-400 flex items-center gap-1.5">
+                    <Palette className="w-4 h-4" />
+                    Deixe o Cliente Escolher a Cor Ao Vivo:
+                  </span>
+                  <div className="flex flex-wrap gap-2">
+                    {COLOR_PALETTE_PRESETS.map((c) => (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => updateAndPersist({ primaryColor: c.hex })}
+                        style={{ backgroundColor: c.hex }}
+                        className={`w-8 h-8 rounded-full border-2 cursor-pointer transition hover:scale-110 ${
+                          primaryColor.toLowerCase() === c.hex.toLowerCase()
+                            ? 'border-white ring-2 ring-amber-400'
+                            : 'border-black/40'
+                        }`}
+                        title={c.name}
+                      />
+                    ))}
                   </div>
-                  <ul className="text-xs text-slate-300 space-y-2 leading-relaxed">
-                    <li className="flex items-start gap-2">
-                      <span className="text-emerald-400 font-bold">1.</span>
-                      <span>Toque nos <strong>4 produtos com foto</strong> no celular para mostrar como o cliente dele pede direto no WhatsApp.</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-emerald-400 font-bold">2.</span>
-                      <span>Clique no botão de <strong>Pix Instantâneo</strong> para demonstrar a cópia de chave e QR code.</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-emerald-400 font-bold">3.</span>
-                      <span>Mostre o selo <strong>5.0 no Google</strong> com 1-clique para deixar avaliação presencial.</span>
-                    </li>
-                  </ul>
+
+                  <span className="text-xs font-black uppercase text-sky-400 flex items-center gap-1.5 pt-2">
+                    <Type className="w-4 h-4" />
+                    Deixe o Cliente Escolher a Fonte:
+                  </span>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {FONT_FAMILY_OPTIONS.map((f) => (
+                      <button
+                        key={f.id}
+                        type="button"
+                        onClick={() => updateAndPersist({ fontFamily: f.id })}
+                        style={{ fontFamily: f.cssFamily }}
+                        className={`p-2 rounded-xl border text-xs font-bold text-left cursor-pointer ${
+                          activeFont.id === f.id
+                            ? 'bg-sky-500 text-slate-950 border-sky-400'
+                            : 'bg-slate-950 text-slate-300 border-slate-800'
+                        }`}
+                      >
+                        {f.name}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
-                <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 space-y-3">
-                  <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider block">
-                    Link de Demonstração para Enviar no Celular do Cliente:
-                  </span>
-                  <div className="flex items-center gap-2 bg-slate-950 p-2 rounded-xl border border-slate-800">
-                    <input
-                      type="text"
-                      readOnly
-                      value={shareableUrl}
-                      className="flex-1 bg-transparent text-xs font-mono text-slate-300 outline-none"
-                    />
-                    <button
-                      type="button"
-                      onClick={handleCopyShareLink}
-                      className="px-2.5 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer shrink-0"
-                    >
-                      {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-300" /> : <Copy className="w-3.5 h-3.5" />}
-                      <span>{copiedLink ? 'Copiado!' : 'Copiar'}</span>
-                    </button>
-                  </div>
+                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-2.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsClientPresentationOpen(false);
+                      setIs4KLibraryOpen(true);
+                    }}
+                    className="w-full py-2.5 bg-purple-600 hover:bg-purple-500 text-white font-black text-xs rounded-xl flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <ImageIcon className="w-4 h-4" />
+                    <span>Trocar Fotos em 4K com o Cliente</span>
+                  </button>
                   <button
                     type="button"
                     onClick={() => {
                       setIsClientPresentationOpen(false);
                       setActiveTab('edit');
                     }}
-                    className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-black text-xs rounded-xl flex items-center justify-center gap-2 cursor-pointer shadow-md"
+                    className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-black text-xs rounded-xl flex items-center justify-center gap-2 cursor-pointer"
                   >
                     <Layers className="w-4 h-4" />
-                    <span>Personalizar Dados deste Modelo (Nome, Fotos, Preços)</span>
+                    <span>Editar Horário, Endereço e Cardápio</span>
                   </button>
                 </div>
               </div>
-
             </div>
+          </div>
+        </div>
+      )}
 
+      {/* EXPORT MODAL */}
+      {isExportModalOpen && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-3xl max-w-xl w-full p-6 text-white relative shadow-2xl space-y-4">
+            <button
+              onClick={() => setIsExportModalOpen(false)}
+              className="absolute top-5 right-5 w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+            <h3 className="text-xl font-black">Exportar Mini Página 4K de {name}</h3>
+            <p className="text-xs text-slate-300">
+              O arquivo exportado já inclui a foto 4K do Head, cor e fonte personalizadas, horário, Como Chegar, Google Reviews e o Cardápio/Catálogo.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <button
+                onClick={handleDownloadHtml}
+                disabled={isDownloadingHtml}
+                className="py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs rounded-xl flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <Download className="w-4 h-4" />
+                <span>Baixar index.html</span>
+              </button>
+              <button
+                onClick={handleDownloadZip}
+                disabled={isZipping}
+                className="py-3 bg-blue-600 hover:bg-blue-500 text-white font-black text-xs rounded-xl flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <FolderArchive className="w-4 h-4" />
+                <span>Baixar Pacote ZIP</span>
+              </button>
+            </div>
           </div>
         </div>
       )}
 
       {/* Floating Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 bg-slate-950 text-white border border-slate-700 px-5 py-3 rounded-2xl font-bold text-xs shadow-2xl animate-in slide-in-from-bottom duration-200 z-50 flex items-center gap-2.5">
+        <div className="fixed bottom-6 right-6 bg-slate-950 text-white border border-slate-700 px-5 py-3 rounded-2xl font-bold text-xs shadow-2xl z-50 flex items-center gap-2.5">
           <Check className="w-4 h-4 text-emerald-400" />
           <span>{toastMessage}</span>
         </div>
       )}
-
     </div>
   );
 };

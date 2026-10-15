@@ -1,6 +1,35 @@
 import JSZip from 'jszip';
 import QRCode from 'qrcode';
 
+export type MiniSiteFontFamily = 'jakarta' | 'playfair' | 'montserrat' | 'poppins' | 'space';
+export type MiniSiteSegmentType =
+  | 'gastronomia'
+  | 'servicos_beleza'
+  | 'loja_moda'
+  | 'saude_clinica'
+  | 'automotivo_oficina'
+  | 'geral';
+
+export interface MiniSiteTestimonial {
+  id?: string;
+  author: string;
+  role?: string;
+  text: string;
+  rating?: number;
+  timeAgo?: string;
+}
+
+export interface MiniSiteServiceItem {
+  id?: string;
+  title: string;
+  description?: string;
+  price?: string;
+  imageUrl?: string;
+  customWhatsappMsg?: string;
+  category?: string;
+  badge?: string;
+}
+
 export interface MiniSiteConfig {
   id?: string;
   companyName: string;
@@ -9,9 +38,19 @@ export interface MiniSiteConfig {
   tagline?: string;
   bio?: string;
   logoUrl?: string;
+  coverImageUrl?: string;
   primaryColor?: string;
+  fontFamily?: MiniSiteFontFamily;
+  segmentType?: MiniSiteSegmentType;
+  showInteractiveMenu?: boolean;
   theme?: 'dark_neon' | 'glass_luxury' | 'sunset_purple' | 'emerald_pro' | 'cyber_blue';
-  
+
+  // Value-generating business details
+  aboutText?: string;
+  amenities?: string[];
+  galleryUrls?: string[];
+  testimonials?: MiniSiteTestimonial[];
+
   // 1-Click Action Buttons
   whatsappNumber?: string;
   whatsappMessage?: string;
@@ -21,17 +60,17 @@ export interface MiniSiteConfig {
   tiktokUrl?: string;
   websiteUrl?: string;
   googleReviewUrl?: string;
-  
+
   // 1-Click Pix
   pixKey?: string;
   pixKeyType?: 'cnpj' | 'cpf' | 'telefone' | 'email' | 'aleatoria';
   pixBeneficiary?: string;
-  
+
   // 1-Click Wi-Fi
   wifiSsid?: string;
   wifiPassword?: string;
   wifiSecurity?: 'WPA' | 'WEP' | 'nopass';
-  
+
   // Location, Contact & Details
   address?: string;
   phone?: string;
@@ -39,14 +78,695 @@ export interface MiniSiteConfig {
   rating?: number;
   reviewCount?: number;
   marqueeText?: string;
-  services?: Array<{
-    id?: string;
-    title: string;
-    description?: string;
-    price?: string;
-    imageUrl?: string;
-    customWhatsappMsg?: string;
-  }>;
+  services?: MiniSiteServiceItem[];
+}
+
+export interface FontOption {
+  id: MiniSiteFontFamily;
+  name: string;
+  subtitle: string;
+  cssFamily: string;
+  googleFontParam: string;
+}
+
+export const FONT_FAMILY_OPTIONS: FontOption[] = [
+  {
+    id: 'jakarta',
+    name: 'Plus Jakarta Sans',
+    subtitle: 'Moderna & Inovadora',
+    cssFamily: "'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif",
+    googleFontParam: 'Plus+Jakarta+Sans:wght@400;500;600;700;800;900'
+  },
+  {
+    id: 'playfair',
+    name: 'Playfair Display',
+    subtitle: 'Elegante & Luxo Editorial',
+    cssFamily: "'Playfair Display', Georgia, serif",
+    googleFontParam: 'Playfair+Display:ital,wght@0,600;0,700;0,800;0,900;1,600'
+  },
+  {
+    id: 'montserrat',
+    name: 'Montserrat',
+    subtitle: 'Forte & Comercial',
+    cssFamily: "'Montserrat', -apple-system, BlinkMacSystemFont, sans-serif",
+    googleFontParam: 'Montserrat:wght@400;500;600;700;800;900'
+  },
+  {
+    id: 'poppins',
+    name: 'Poppins',
+    subtitle: 'Gastronomia & Criativa',
+    cssFamily: "'Poppins', -apple-system, BlinkMacSystemFont, sans-serif",
+    googleFontParam: 'Poppins:wght@400;500;600;700;800;900'
+  },
+  {
+    id: 'space',
+    name: 'Space Grotesk',
+    subtitle: 'Tech & Contemporânea',
+    cssFamily: "'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif",
+    googleFontParam: 'Space+Grotesk:wght@400;500;600;700'
+  }
+];
+
+export interface ColorPalettePreset {
+  id: string;
+  name: string;
+  hex: string;
+  badge: string;
+}
+
+export const COLOR_PALETTE_PRESETS: ColorPalettePreset[] = [
+  { id: 'amber', name: 'Âmbar Brasa 4K', hex: '#f59e0b', badge: 'Gastronomia' },
+  { id: 'emerald', name: 'Esmeralda Prime', hex: '#10b981', badge: 'Alta Conversão' },
+  { id: 'ruby', name: 'Rubi Gourmet', hex: '#ef4444', badge: 'Pizzaria & Food' },
+  { id: 'sky', name: 'Azul Safira VIP', hex: '#0ea5e9', badge: 'Barbearia & Pro' },
+  { id: 'rose', name: 'Rose Gold Boutique', hex: '#ec4899', badge: 'Moda & Beleza' },
+  { id: 'violet', name: 'Roxo Imperial', hex: '#8b5cf6', badge: 'Premium' },
+  { id: 'gold', name: 'Ouro Clássico', hex: '#eab308', badge: 'VIP Luxo' },
+  { id: 'cyan', name: 'Ciano Detailer', hex: '#06b6d4', badge: 'Automotivo' }
+];
+
+export interface Curated4KImageSet {
+  segment: MiniSiteSegmentType;
+  label: string;
+  covers: Array<{ title: string; url: string }>;
+  gallery: string[];
+}
+
+export const CURATED_4K_IMAGES_BY_SEGMENT: Curated4KImageSet[] = [
+  {
+    segment: 'gastronomia',
+    label: '🍔 Gastronomia, Restaurantes, Hamburguerias & Cafés',
+    covers: [
+      {
+        title: 'Hambúrguer Artesanal na Brasa 4K',
+        url: 'https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=1600&q=90'
+      },
+      {
+        title: 'Pizzaria Forno a Lenha Napolitana 4K',
+        url: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=1600&q=90'
+      },
+      {
+        title: 'Restaurante & Alta Gastronomia 4K',
+        url: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1600&q=90'
+      },
+      {
+        title: 'Cafeteria & Confeitaria Especial 4K',
+        url: 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=1600&q=90'
+      }
+    ],
+    gallery: [
+      'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=1200&q=85',
+      'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=1200&q=85',
+      'https://images.unsplash.com/photo-1574071318508-1cdbab80d002?auto=format&fit=crop&w=1200&q=85',
+      'https://images.unsplash.com/photo-1551024709-8f23befc6f87?auto=format&fit=crop&w=1200&q=85'
+    ]
+  },
+  {
+    segment: 'servicos_beleza',
+    label: '💈 Barbearia, Salão de Beleza & Studio VIP',
+    covers: [
+      {
+        title: 'Barbearia Clássica & VIP 4K',
+        url: 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&w=1600&q=90'
+      },
+      {
+        title: 'Salão de Beleza & Hair Studio 4K',
+        url: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=1600&q=90'
+      },
+      {
+        title: 'Corte & Navalha Profissional 4K',
+        url: 'https://images.unsplash.com/photo-1585747860715-2ba37e788b70?auto=format&fit=crop&w=1600&q=90'
+      }
+    ],
+    gallery: [
+      'https://images.unsplash.com/photo-1622286342621-4bd786c2447c?auto=format&fit=crop&w=1200&q=85',
+      'https://images.unsplash.com/photo-1599351431202-1e0f0137899a?auto=format&fit=crop&w=1200&q=85',
+      'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=1200&q=85',
+      'https://images.unsplash.com/photo-1517832606299-7ae9b720a186?auto=format&fit=crop&w=1200&q=85'
+    ]
+  },
+  {
+    segment: 'saude_clinica',
+    label: '💆‍♀️ Clínica de Estética, Odontologia, Saúde & Spa',
+    covers: [
+      {
+        title: 'Clínica de Estética & Spa Relax 4K',
+        url: 'https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?auto=format&fit=crop&w=1600&q=90'
+      },
+      {
+        title: 'Consultório Odontológico & Saúde 4K',
+        url: 'https://images.unsplash.com/photo-1629909613654-28e377c37b09?auto=format&fit=crop&w=1600&q=90'
+      },
+      {
+        title: 'Massagem & Bem-Estar 4K',
+        url: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?auto=format&fit=crop&w=1600&q=90'
+      }
+    ],
+    gallery: [
+      'https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?auto=format&fit=crop&w=1200&q=85',
+      'https://images.unsplash.com/photo-1512290900672-1f41d243c22b?auto=format&fit=crop&w=1200&q=85',
+      'https://images.unsplash.com/photo-1588776814546-1ffcf47267a5?auto=format&fit=crop&w=1200&q=85',
+      'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?auto=format&fit=crop&w=1200&q=85'
+    ]
+  },
+  {
+    segment: 'loja_moda',
+    label: '👗 Boutique, Moda, Calçados & Loja',
+    covers: [
+      {
+        title: 'Boutique de Moda & Alta Costura 4K',
+        url: 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&w=1600&q=90'
+      },
+      {
+        title: 'Showroom & Loja Conceito 4K',
+        url: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=1600&q=90'
+      },
+      {
+        title: 'Acessórios & Bolsas de Luxo 4K',
+        url: 'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?auto=format&fit=crop&w=1600&q=90'
+      }
+    ],
+    gallery: [
+      'https://images.unsplash.com/photo-1496747611176-843222e1e57c?auto=format&fit=crop&w=1200&q=85',
+      'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=1200&q=85',
+      'https://images.unsplash.com/photo-1543163521-1bf539c55dd2?auto=format&fit=crop&w=1200&q=85',
+      'https://images.unsplash.com/photo-1598554747436-c9293d6a588f?auto=format&fit=crop&w=1200&q=85'
+    ]
+  },
+  {
+    segment: 'automotivo_oficina',
+    label: '🚗 Estética Automotiva, Oficina & Detailer',
+    covers: [
+      {
+        title: 'Estética Automotiva & Vitrificação 4K',
+        url: 'https://images.unsplash.com/photo-1520340356584-f9917d1eea6f?auto=format&fit=crop&w=1600&q=90'
+      },
+      {
+        title: 'Superesportivo Polimento Espelhado 4K',
+        url: 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1600&q=90'
+      },
+      {
+        title: 'Centro Automotivo & Mecânica Premium 4K',
+        url: 'https://images.unsplash.com/photo-1486006920555-c77dce18193b?auto=format&fit=crop&w=1600&q=90'
+      }
+    ],
+    gallery: [
+      'https://images.unsplash.com/photo-1601362840469-51e4d8d58785?auto=format&fit=crop&w=1200&q=85',
+      'https://images.unsplash.com/photo-1607860108855-64acf2078ed9?auto=format&fit=crop&w=1200&q=85',
+      'https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1200&q=85',
+      'https://images.unsplash.com/photo-1542282088-72c9c27ed0cd?auto=format&fit=crop&w=1200&q=85'
+    ]
+  }
+];
+
+export function detectSegmentFromNiche(
+  niche: string = '',
+  explicitSegment?: MiniSiteSegmentType
+): MiniSiteSegmentType {
+  if (explicitSegment) return explicitSegment;
+  const n = (niche || '').toLowerCase();
+  if (
+    n.includes('restaur') ||
+    n.includes('pizz') ||
+    n.includes('hamburg') ||
+    n.includes('burger') ||
+    n.includes('bar ') ||
+    n.includes('lanche') ||
+    n.includes('caf') ||
+    n.includes('bistr') ||
+    n.includes('doc') ||
+    n.includes('confeit') ||
+    n.includes('gastronom') ||
+    n.includes('sushi') ||
+    n.includes('açaí') ||
+    n.includes('acai') ||
+    n.includes('padaria') ||
+    n.includes('aliment')
+  ) {
+    return 'gastronomia';
+  }
+  if (
+    n.includes('barbear') ||
+    n.includes('barber') ||
+    n.includes('salão') ||
+    n.includes('salao') ||
+    n.includes('cabel') ||
+    n.includes('unha') ||
+    n.includes('manicur') ||
+    n.includes('maquiag')
+  ) {
+    return 'servicos_beleza';
+  }
+  if (
+    n.includes('estét') ||
+    n.includes('estet') ||
+    n.includes('clínic') ||
+    n.includes('clinic') ||
+    n.includes('spa') ||
+    n.includes('dent') ||
+    n.includes('odont') ||
+    n.includes('médic') ||
+    n.includes('medic') ||
+    n.includes('saúde') ||
+    n.includes('saude') ||
+    n.includes('fisio')
+  ) {
+    return 'saude_clinica';
+  }
+  if (
+    n.includes('moda') ||
+    n.includes('roupa') ||
+    n.includes('vestu') ||
+    n.includes('boutique') ||
+    n.includes('loja') ||
+    n.includes('calç') ||
+    n.includes('calc') ||
+    n.includes('acessór') ||
+    n.includes('otica') ||
+    n.includes('óptica') ||
+    n.includes('joia')
+  ) {
+    return 'loja_moda';
+  }
+  if (
+    n.includes('auto') ||
+    n.includes('carro') ||
+    n.includes('oficina') ||
+    n.includes('mecan') ||
+    n.includes('lava') ||
+    n.includes('detail') ||
+    n.includes('pneu') ||
+    n.includes('moto')
+  ) {
+    return 'automotivo_oficina';
+  }
+  return 'geral';
+}
+
+export interface SegmentSmartMetadata {
+  segment: MiniSiteSegmentType;
+  coverImageUrl: string;
+  primaryColor: string;
+  fontFamily: MiniSiteFontFamily;
+  featuredTitle: string;
+  featuredBadge: string;
+  menuTabLabel: string;
+  ctaLabel: string;
+  aboutText: string;
+  amenities: string[];
+  galleryUrls: string[];
+  testimonials: MiniSiteTestimonial[];
+  extraCatalogItems: MiniSiteServiceItem[];
+}
+
+export function getSegmentSmartMetadata(
+  niche: string = '',
+  companyName: string = 'Sua Empresa',
+  city: string = 'Brasil',
+  explicitSegment?: MiniSiteSegmentType
+): SegmentSmartMetadata {
+  const seg = detectSegmentFromNiche(niche, explicitSegment);
+
+  if (seg === 'gastronomia') {
+    const isPizza = niche.toLowerCase().includes('pizz');
+    const isCafe = niche.toLowerCase().includes('caf') || niche.toLowerCase().includes('doc') || niche.toLowerCase().includes('confeit');
+    return {
+      segment: 'gastronomia',
+      coverImageUrl: isPizza
+        ? 'https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=1600&q=90'
+        : isCafe
+        ? 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=1600&q=90'
+        : 'https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=1600&q=90',
+      primaryColor: isPizza ? '#ef4444' : '#f59e0b',
+      fontFamily: 'poppins',
+      featuredTitle: 'Destaques do Chef & Mais Pedidos',
+      featuredBadge: 'Cardápio 4K',
+      menuTabLabel: '🍽️ Cardápio Digital',
+      ctaLabel: 'Pedir no WhatsApp',
+      aboutText: `Na ${companyName}, selecionamos ingredientes frescos todos os dias para proporcionar uma experiência gastronômica inesquecível em ${city}. Peça pelo nosso Cardápio Digital com atendimento direto no WhatsApp ou venha conhecer nosso espaço!`,
+      amenities: [
+        '🔥 Ingredientes Frescos Selecionados',
+        '🛵 Delivery Rápido & Retirada',
+        '❄️ Ambiente Climatizado & Familiar',
+        '⚡ Aceitamos Pix, Cartão & VR',
+        '📶 Wi-Fi Liberado para Clientes'
+      ],
+      galleryUrls: [
+        'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=1200&q=85',
+        'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=1200&q=85',
+        'https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=1200&q=85',
+        'https://images.unsplash.com/photo-1551024709-8f23befc6f87?auto=format&fit=crop&w=1200&q=85'
+      ],
+      testimonials: [
+        {
+          id: 't1',
+          author: 'Ricardo Almeida',
+          role: 'Local Guide • Google',
+          text: `Simplesmente sensacional! O sabor é impecável, chegou super rápido e quentinho. Melhor de ${city}!`,
+          rating: 5,
+          timeAgo: 'há 2 dias'
+        },
+        {
+          id: 't2',
+          author: 'Fernanda Costa',
+          role: 'Cliente Verificada • Google',
+          text: `Ambiente acolhedor, atendimento nota 1000 e qualidade surreal dos ingredientes. Recomendo de olhos fechados!`,
+          rating: 5,
+          timeAgo: 'há 5 dias'
+        }
+      ],
+      extraCatalogItems: [
+        {
+          id: 'cat_g1',
+          title: 'Combo Casal Especial + 2 Bebidas',
+          price: 'R$ 79,90',
+          category: 'Combos & Promoções',
+          description: '2 pratos/lanches principais acompanhados de porção crocante e 2 bebidas geladas.',
+          imageUrl: 'https://images.unsplash.com/photo-1561758033-d89a9ad46330?auto=format&fit=crop&w=800&q=80'
+        },
+        {
+          id: 'cat_g2',
+          title: 'Porção Especial da Casa para Compartilhar',
+          price: 'R$ 36,90',
+          category: 'Entradas & Porções',
+          description: 'Porção generosa finalizada com tempero especial da casa e molho artesanal.',
+          imageUrl: 'https://images.unsplash.com/photo-1573080496219-bb080dd4f877?auto=format&fit=crop&w=800&q=80'
+        },
+        {
+          id: 'cat_g3',
+          title: 'Suco Natural / Refrigerante Lata Gelado',
+          price: 'R$ 8,90',
+          category: 'Bebidas',
+          description: 'Bebidas trincando de geladas para acompanhar seu pedido.',
+          imageUrl: 'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=800&q=80'
+        },
+        {
+          id: 'cat_g4',
+          title: 'Sobremesa Gourmet Artesanal',
+          price: 'R$ 22,90',
+          category: 'Sobremesas',
+          description: 'Receita exclusiva preparada diariamente para fechar sua refeição com chave de ouro.',
+          imageUrl: 'https://images.unsplash.com/photo-1551024709-8f23befc6f87?auto=format&fit=crop&w=800&q=80'
+        }
+      ]
+    };
+  }
+
+  if (seg === 'servicos_beleza') {
+    return {
+      segment: 'servicos_beleza',
+      coverImageUrl: 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&w=1600&q=90',
+      primaryColor: '#0ea5e9',
+      fontFamily: 'montserrat',
+      featuredTitle: 'Serviços Mais Agendados',
+      featuredBadge: 'Agendamento 1-Clique',
+      menuTabLabel: '💈 Tabela de Serviços',
+      ctaLabel: 'Agendar Horário',
+      aboutText: `A ${companyName} é referência em estilo, cuidado pessoal e visagismo em ${city}. Trabalhamos com produtos de linha profissional, toalha quente, ambiente climatizado e hora marcada para sua total comodidade.`,
+      amenities: [
+        '✂️ Profissionais Especialistas',
+        '❄️ Ambiente Climatizado & Confortável',
+        '☕ Café Expresso & Bebida Cortesia',
+        '📅 Agendamento Rápido sem Fila',
+        '📶 Wi-Fi VIP & Estacionamento Fácil'
+      ],
+      galleryUrls: [
+        'https://images.unsplash.com/photo-1622286342621-4bd786c2447c?auto=format&fit=crop&w=1200&q=85',
+        'https://images.unsplash.com/photo-1599351431202-1e0f0137899a?auto=format&fit=crop&w=1200&q=85',
+        'https://images.unsplash.com/photo-1517832606299-7ae9b720a186?auto=format&fit=crop&w=1200&q=85',
+        'https://images.unsplash.com/photo-1585747860715-2ba37e788b70?auto=format&fit=crop&w=1200&q=85'
+      ],
+      testimonials: [
+        {
+          id: 't1',
+          author: 'Lucas Mendonça',
+          role: 'Local Guide • Google',
+          text: 'Atendimento impecável do início ao fim! Ambiente top, pontualidade no horário e o melhor corte da cidade.',
+          rating: 5,
+          timeAgo: 'há 3 dias'
+        },
+        {
+          id: 't2',
+          author: 'Matheus Oliveira',
+          role: 'Cliente Verificado • Google',
+          text: 'Experiência diferenciada! Toalha quente, resenha boa e profissionais que realmente entendem do que fazem.',
+          rating: 5,
+          timeAgo: 'há 1 semana'
+        }
+      ],
+      extraCatalogItems: [
+        {
+          id: 'cat_b1',
+          title: 'Hidratação Profunda & Reconstrução Capilar',
+          price: 'R$ 55,00',
+          category: 'Tratamentos',
+          description: 'Nutrição intensa dos fios com produtos importados de alta performance.',
+          imageUrl: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=800&q=80'
+        },
+        {
+          id: 'cat_b2',
+          title: 'Design de Sobrancelha na Pinça / Navalha',
+          price: 'R$ 25,00',
+          category: 'Acabamentos',
+          description: 'Alinhamento simétrico que valoriza o olhar com acabamento natural.',
+          imageUrl: 'https://images.unsplash.com/photo-1621605815971-fbc98d665033?auto=format&fit=crop&w=800&q=80'
+        },
+        {
+          id: 'cat_b3',
+          title: 'Plano Assinatura Mensal VIP (Cortes Ilimitados)',
+          price: 'R$ 149,90/mês',
+          category: 'Planos VIP',
+          description: 'Mantenha o visual impecável toda semana com prioridade na agenda.',
+          imageUrl: 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&w=800&q=80'
+        }
+      ]
+    };
+  }
+
+  if (seg === 'saude_clinica') {
+    return {
+      segment: 'saude_clinica',
+      coverImageUrl: 'https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?auto=format&fit=crop&w=1600&q=90',
+      primaryColor: '#10b981',
+      fontFamily: 'playfair',
+      featuredTitle: 'Procedimentos & Especialidades',
+      featuredBadge: 'Avaliação Especializada',
+      menuTabLabel: '✨ Protocolos & Tratamentos',
+      ctaLabel: 'Agendar Avaliação',
+      aboutText: `Na ${companyName}, unimos tecnologia de ponta, biossegurança rigorosa e atendimento humanizado em ${city}. Nossos protocolos são personalizados para entregar resultados reais com naturalidade e bem-estar.`,
+      amenities: [
+        '🩺 Especialistas Certificados',
+        '🔬 Equipamentos de Última Geração',
+        '🛡️ Biossegurança Padrão Ouro',
+        '💳 Parcelamento Facilitado & Pix',
+        '📍 Localização Privilegiada'
+      ],
+      galleryUrls: [
+        'https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?auto=format&fit=crop&w=1200&q=85',
+        'https://images.unsplash.com/photo-1512290900672-1f41d243c22b?auto=format&fit=crop&w=1200&q=85',
+        'https://images.unsplash.com/photo-1629909613654-28e377c37b09?auto=format&fit=crop&w=1200&q=85',
+        'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?auto=format&fit=crop&w=1200&q=85'
+      ],
+      testimonials: [
+        {
+          id: 't1',
+          author: 'Camila Vasconcelos',
+          role: 'Local Guide • Google',
+          text: 'Clínica maravilhosa! Desde a recepção até o procedimento me senti super segura. Resultado ficou super natural!',
+          rating: 5,
+          timeAgo: 'há 4 dias'
+        },
+        {
+          id: 't2',
+          author: 'Patrícia Nogueira',
+          role: 'Paciente Verificada • Google',
+          text: 'Ambiente impecável, cheiroso e profissionais extremamente atenciosos. Indico para todas as minhas amigas!',
+          rating: 5,
+          timeAgo: 'há 1 semana'
+        }
+      ],
+      extraCatalogItems: [
+        {
+          id: 'cat_s1',
+          title: 'Consulta de Avaliação Personalizada',
+          price: 'Agendar',
+          category: 'Consultas',
+          description: 'Análise detalhada e montagem do seu plano de tratamento individualizado.',
+          imageUrl: 'https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?auto=format&fit=crop&w=800&q=80'
+        },
+        {
+          id: 'cat_s2',
+          title: 'Protocolo Rejuvenescimento & Colágeno',
+          price: 'Sob Consulta',
+          category: 'Facial',
+          description: 'Estímulo profundo de colágeno para firmeza, viço e rejuvenescimento.',
+          imageUrl: 'https://images.unsplash.com/photo-1512290900672-1f41d243c22b?auto=format&fit=crop&w=800&q=80'
+        }
+      ]
+    };
+  }
+
+  if (seg === 'loja_moda') {
+    return {
+      segment: 'loja_moda',
+      coverImageUrl: 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&w=1600&q=90',
+      primaryColor: '#ec4899',
+      fontFamily: 'playfair',
+      featuredTitle: 'Lançamentos & Coleção em Destaque',
+      featuredBadge: 'Vitrine 4K',
+      menuTabLabel: '🛍️ Catálogo da Loja',
+      ctaLabel: 'Comprar no WhatsApp',
+      aboutText: `A ${companyName} traz curadoria exclusiva de peças que unem elegância, caimento impecável e conforto em ${city}. Atendemos presencialmente e enviamos com rapidez através do nosso atendimento personalizado no WhatsApp!`,
+      amenities: [
+        '👗 Lançamentos Toda Semana',
+        '📦 Entrega Expressa & Envio Rápido',
+        '💳 Parcelamento sem Juros & Pix OFF',
+        '✨ Consultoria de Estilo no WhatsApp',
+        '🔄 Troca Fácil & Garantida'
+      ],
+      galleryUrls: [
+        'https://images.unsplash.com/photo-1496747611176-843222e1e57c?auto=format&fit=crop&w=1200&q=85',
+        'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=1200&q=85',
+        'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?auto=format&fit=crop&w=1200&q=85',
+        'https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=1200&q=85'
+      ],
+      testimonials: [
+        {
+          id: 't1',
+          author: 'Juliana Martins',
+          role: 'Local Guide • Google',
+          text: 'Peças de altíssima qualidade e acabamento perfeito! Comprei pelo WhatsApp e chegou no mesmo dia.',
+          rating: 5,
+          timeAgo: 'há 2 dias'
+        },
+        {
+          id: 't2',
+          author: 'Beatriz Ribeiro',
+          role: 'Cliente Verificada • Google',
+          text: 'A loja é linda e o atendimento das meninas faz toda a diferença. Sempre encontro looks maravilhosos!',
+          rating: 5,
+          timeAgo: 'há 6 dias'
+        }
+      ],
+      extraCatalogItems: [
+        {
+          id: 'cat_m1',
+          title: 'Look Completo Consultoria VIP',
+          price: 'Condição Especial',
+          category: 'Looks Completos',
+          description: 'Combinação exclusiva montada por nossas consultoras para sua ocasião.',
+          imageUrl: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=800&q=80'
+        },
+        {
+          id: 'cat_m2',
+          title: 'Linha de Acessórios & Bolsas Premium',
+          price: 'A partir de R$ 129,90',
+          category: 'Acessórios',
+          description: 'Complementos sofisticados para elevar qualquer produção.',
+          imageUrl: 'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?auto=format&fit=crop&w=800&q=80'
+        }
+      ]
+    };
+  }
+
+  if (seg === 'automotivo_oficina') {
+    return {
+      segment: 'automotivo_oficina',
+      coverImageUrl: 'https://images.unsplash.com/photo-1520340356584-f9917d1eea6f?auto=format&fit=crop&w=1600&q=90',
+      primaryColor: '#06b6d4',
+      fontFamily: 'space',
+      featuredTitle: 'Serviços & Soluções Automotivas',
+      featuredBadge: 'Padrão Premium',
+      menuTabLabel: '🚗 Tabela de Serviços',
+      ctaLabel: 'Orçamento no WhatsApp',
+      aboutText: `A ${companyName} é especialista em cuidado, estética e manutenção automotiva de alto padrão em ${city}. Utilizamos equipamentos homologados, produtos de linha internacional e garantia total em cada serviço.`,
+      amenities: [
+        '🛡️ Garantia em Todos os Serviços',
+        '🚗 Leva e Traz / Box Exclusivo',
+        '💎 Produtos Importados Homologados',
+        '☕ Sala de Espera Climatizada c/ Wi-Fi',
+        '💳 Pix c/ Desconto & Cartão em até 10x'
+      ],
+      galleryUrls: [
+        'https://images.unsplash.com/photo-1601362840469-51e4d8d58785?auto=format&fit=crop&w=1200&q=85',
+        'https://images.unsplash.com/photo-1607860108855-64acf2078ed9?auto=format&fit=crop&w=1200&q=85',
+        'https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1200&q=85',
+        'https://images.unsplash.com/photo-1542282088-72c9c27ed0cd?auto=format&fit=crop&w=1200&q=85'
+      ],
+      testimonials: [
+        {
+          id: 't1',
+          author: 'Carlos Eduardo Silva',
+          role: 'Local Guide • Google',
+          text: 'Meu carro saiu parecendo zero km de concessionária! Honestidade, transparência e serviço impecável.',
+          rating: 5,
+          timeAgo: 'há 3 dias'
+        },
+        {
+          id: 't2',
+          author: 'Rodrigo Tavares',
+          role: 'Cliente Verificado • Google',
+          text: 'Melhor atendimento automotivo da região. Cumprem o prazo certinho e o acabamento é nota 10!',
+          rating: 5,
+          timeAgo: 'há 1 semana'
+        }
+      ],
+      extraCatalogItems: [
+        {
+          id: 'cat_a1',
+          title: 'Impermeabilização de Bancos & Couro',
+          price: 'R$ 290,00',
+          category: 'Proteção Interna',
+          description: 'Hidratação profunda de bancos em couro ou impermeabilização contra líquidos.',
+          imageUrl: 'https://images.unsplash.com/photo-1542282088-72c9c27ed0cd?auto=format&fit=crop&w=800&q=80'
+        }
+      ]
+    };
+  }
+
+  return {
+    segment: 'geral',
+    coverImageUrl: 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1600&q=90',
+    primaryColor: '#f59e0b',
+    fontFamily: 'jakarta',
+    featuredTitle: 'Principais Destaques & Soluções',
+    featuredBadge: 'Catálogo 1-Clique',
+    menuTabLabel: '📋 Catálogo Completo',
+    ctaLabel: 'Chamar no WhatsApp',
+    aboutText: `Bem-vindo à página oficial da ${companyName}! Somos referência em ${niche || 'atendimento de excelência'} em ${city}, oferecendo qualidade comprovada, agilidade e atendimento personalizado diretamente pelo WhatsApp.`,
+    amenities: [
+      '⭐ Empresa Verificada 5 Estrelas',
+      '⚡ Atendimento Rápido pelo WhatsApp',
+      '💳 Pagamento Fácil via Pix & Cartão',
+      '📶 Wi-Fi Liberado no Local',
+      '📍 Localização de Fácil Acesso'
+    ],
+    galleryUrls: [
+      'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1200&q=85',
+      'https://images.unsplash.com/photo-1556742049-0a67e55722c6?auto=format&fit=crop&w=1200&q=85',
+      'https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=1200&q=85',
+      'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=1200&q=85'
+    ],
+    testimonials: [
+      {
+        id: 't1',
+        author: 'Marcelo Santana',
+        role: 'Local Guide • Google',
+        text: `Atendimento nota 10 da ${companyName}! Resolveram tudo com muita rapidez, educação e preço justo.`,
+        rating: 5,
+        timeAgo: 'há 2 dias'
+      },
+      {
+        id: 't2',
+        author: 'Ana Paula Ferreira',
+        role: 'Cliente Verificada • Google',
+        text: 'Empresa séria e de total confiança. Recomendo a todos que buscam qualidade de verdade!',
+        rating: 5,
+        timeAgo: 'há 5 dias'
+      }
+    ],
+    extraCatalogItems: []
+  };
 }
 
 export function getDefaultFourProducts(niche: string = '', companyName: string = 'Sua Empresa'): Array<{
@@ -56,79 +776,88 @@ export function getDefaultFourProducts(niche: string = '', companyName: string =
   price: string;
   imageUrl: string;
   customWhatsappMsg?: string;
+  category?: string;
 }> {
   const n = (niche || '').toLowerCase();
-  
-  if (n.includes('moda') || n.includes('roupa') || n.includes('vestu') || n.includes('loja') || n.includes('calc') || n.includes('acessorio') || n.includes('infantil') || n.includes('feminina')) {
+
+  if (n.includes('moda') || n.includes('roupa') || n.includes('vestu') || n.includes('loja') || n.includes('calc') || n.includes('acessorio') || n.includes('infantil') || n.includes('feminina') || n.includes('boutique')) {
     return [
       {
         id: 'p1',
-        title: 'Moda Infantil',
-        description: 'Looks confortáveis, alegres e estilosos para os pequenos.',
-        price: 'Novidades',
-        imageUrl: 'https://images.unsplash.com/photo-1518831959646-742c3a14ebf7?auto=format&fit=crop&w=600&q=80',
-        customWhatsappMsg: `Olá! Vi no Mini Site da ${companyName} os lançamentos de Moda Infantil e quero ver fotos e tamanhos!`
+        title: 'Coleção Nova & Lançamentos',
+        category: 'Destaques',
+        description: 'Looks exclusivos, tecidos nobres e caimento impecável para você.',
+        price: 'Novidade 4K',
+        imageUrl: 'https://images.unsplash.com/photo-1496747611176-843222e1e57c?auto=format&fit=crop&w=900&q=85',
+        customWhatsappMsg: `Olá! Vi os lançamentos no Mini Site da ${companyName} e quero ver fotos e tamanhos!`
       },
       {
         id: 'p2',
-        title: 'Moda Modesta & Casual',
-        description: 'Vestidos, saias e conjuntos elegantes para todas as ocasiões.',
-        price: 'Destaque VIP',
-        imageUrl: 'https://images.unsplash.com/photo-1496747611176-843222e1e57c?auto=format&fit=crop&w=600&q=80',
-        customWhatsappMsg: `Olá! Gostei muito das peças de Moda Modesta/Casual no Mini Site da ${companyName}. Como posso fazer o pedido?`
+        title: 'Alfaiataria & Conjuntos VIP',
+        category: 'Alfaiataria',
+        description: 'Vestidos, blazers e conjuntos elegantes para todas as ocasiões.',
+        price: 'Mais Vendido',
+        imageUrl: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=900&q=85',
+        customWhatsappMsg: `Olá! Gostei muito das peças de Alfaiataria/Conjuntos no Mini Site da ${companyName}. Como posso pedir?`
       },
       {
         id: 'p3',
-        title: 'Calçados & Acessórios',
-        description: 'Bolsas, calçados e complementos que valorizam o seu estilo.',
+        title: 'Calçados & Bolsas Premium',
+        category: 'Acessórios',
+        description: 'Bolsas em couro, calçados e complementos que valorizam o seu estilo.',
         price: 'Tendência',
-        imageUrl: 'https://images.unsplash.com/photo-1543163521-1bf539c55dd2?auto=format&fit=crop&w=600&q=80',
-        customWhatsappMsg: `Olá! Vim pelo Mini Site da ${companyName} e gostaria de conhecer as opções de calçados e acessórios!`
+        imageUrl: 'https://images.unsplash.com/photo-1543163521-1bf539c55dd2?auto=format&fit=crop&w=900&q=85',
+        customWhatsappMsg: `Olá! Vim pelo Mini Site da ${companyName} e gostaria de conhecer as opções de calçados e bolsas!`
       },
       {
         id: 'p4',
-        title: 'Cama, Mesa & Banho',
-        description: 'Conforto, beleza e durabilidade para renovar o seu lar.',
-        price: 'Exclusivo',
-        imageUrl: 'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?auto=format&fit=crop&w=600&q=80',
-        customWhatsappMsg: `Olá! Vi os itens de Cama, Mesa e Banho no Mini Site da ${companyName}. Quais são as cores e modelos disponíveis?`
+        title: 'Atendimento & Consultoria VIP',
+        category: 'Consultoria',
+        description: 'Montamos seu look ideal e enviamos com rapidez para seu endereço.',
+        price: 'Frete Rápido',
+        imageUrl: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=900&q=85',
+        customWhatsappMsg: `Olá! Vim pelo Mini Site da ${companyName} e quero atendimento personalizado!`
       }
     ];
   }
-  
-  if (n.includes('restaur') || n.includes('pizz') || n.includes('hamburg') || n.includes('bar') || n.includes('lanche') || n.includes('caf') || n.includes('gastronom')) {
+
+  if (n.includes('restaur') || n.includes('pizz') || n.includes('hamburg') || n.includes('burger') || n.includes('bar') || n.includes('lanche') || n.includes('caf') || n.includes('gastronom')) {
     return [
       {
         id: 'p1',
-        title: 'Prato Especial da Casa',
-        description: 'Receita artesanal exclusiva com ingredientes frescos e selecionados.',
-        price: 'Mais Pedido',
-        imageUrl: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=600&q=80',
-        customWhatsappMsg: `Olá! Vi o Prato Especial no Mini Site de ${companyName} e gostaria de fazer um pedido!`
+        title: 'Especialidade Principal da Casa',
+        category: 'Mais Pedidos',
+        description: 'Receita artesanal exclusiva preparada na hora com ingredientes selecionados.',
+        price: 'R$ 38,90',
+        imageUrl: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=900&q=85',
+        customWhatsappMsg: `Olá! Vi a Especialidade da Casa no Mini Site de ${companyName} e gostaria de fazer um pedido!`
       },
       {
         id: 'p2',
-        title: 'Combo Família / VIP',
-        description: 'Porção farta para compartilhar com acompanhamentos e bebida gelada.',
-        price: 'Combo do Dia',
-        imageUrl: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=600&q=80',
-        customWhatsappMsg: `Olá! Gostaria de pedir o Combo Família anunciado no Mini Site da ${companyName}!`
+        title: 'Combo Família / Casal VIP',
+        category: 'Combos',
+        description: 'Combo completo para compartilhar com acompanhamentos e bebida gelada.',
+        price: 'R$ 69,90',
+        imageUrl: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=900&q=85',
+        customWhatsappMsg: `Olá! Gostaria de pedir o Combo Família/Casal anunciado no Mini Site da ${companyName}!`
       },
       {
         id: 'p3',
-        title: 'Porções & Petiscos',
-        description: 'Crocância e sabor perfeitos para momentos inesquecíveis.',
-        price: 'Favorito',
-        imageUrl: 'https://images.unsplash.com/photo-1541592106381-b31e9677c0e5?auto=format&fit=crop&w=600&q=80',
-        customWhatsappMsg: `Olá! Quais porções e petiscos estão disponíveis hoje na ${companyName}?`
+        title: 'Porções & Entradas Crocantes',
+        category: 'Porções',
+        description: 'Crocância e sabor incomparáveis com molhos artesanais da casa.',
+        price: 'R$ 29,90',
+        imageUrl: 'https://images.unsplash.com/photo-1573080496219-bb080dd4f877?auto=format&fit=crop&w=900&q=85',
+        customWhatsappMsg: `Olá! Quais porções e entradas estão disponíveis hoje na ${companyName}?`
       },
       {
         id: 'p4',
-        title: 'Sobremesas Artesanais',
-        description: 'Doces artesanais irresistíveis para fechar com chave de ouro.',
-        price: 'Sob Consulta',
-        imageUrl: 'https://images.unsplash.com/photo-1551024709-8f23befc6f87?auto=format&fit=crop&w=600&q=80',
-        customWhatsappMsg: `Olá! Gostaria de saber as opções de sobremesas disponíveis na ${companyName}!`
+        title: 'Sobremesas & Bebidas Especiais',
+        category: 'Sobremesas',
+        description: 'Doces artesanais e bebidas refrescantes para fechar com chave de ouro.',
+        price: 'R$ 22,90',
+        imageUrl: 'https://images.unsplash.com/photo-1551024709-8f23befc6f87?auto=format&fit=crop&w=900&q=85',
+        customWhatsappMsg: `Olá! Gostaria de ver as opções de sobremesas e bebidas da ${companyName}!`
       }
     ];
   }
@@ -138,33 +867,37 @@ export function getDefaultFourProducts(niche: string = '', companyName: string =
       {
         id: 'p1',
         title: 'Procedimentos & Glow Facial',
+        category: 'Estética',
         description: 'Limpeza profunda, hidratação celular e cuidados personalizados.',
         price: 'Procedimento VIP',
-        imageUrl: 'https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?auto=format&fit=crop&w=600&q=80',
+        imageUrl: 'https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?auto=format&fit=crop&w=900&q=85',
         customWhatsappMsg: `Olá! Vi no Mini Site o Glow Facial da ${companyName} e quero agendar meu horário!`
       },
       {
         id: 'p2',
         title: 'Corte & Visagismo Exclusivo',
+        category: 'Cabelo & Barba',
         description: 'Harmonização de corte e acabamento impecável com hora marcada.',
         price: 'Agendar',
-        imageUrl: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=600&q=80',
+        imageUrl: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=900&q=85',
         customWhatsappMsg: `Olá! Gostaria de agendar um horário para Corte & Visagismo na ${companyName}!`
       },
       {
         id: 'p3',
         title: 'Massagens Relaxantes & SPA',
+        category: 'Bem-Estar',
         description: 'Alívio do estresse, relaxamento muscular e bem-estar profundo.',
         price: 'Experiência SPA',
-        imageUrl: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?auto=format&fit=crop&w=600&q=80',
+        imageUrl: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?auto=format&fit=crop&w=900&q=85',
         customWhatsappMsg: `Olá! Gostaria de agendar uma sessão de massagem/SPA na ${companyName}!`
       },
       {
         id: 'p4',
         title: 'Combo Beleza Completa',
+        category: 'Combos VIP',
         description: 'Pacote integrado para transformar seu visual com máxima elegância.',
         price: 'Condição Especial',
-        imageUrl: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=600&q=80',
+        imageUrl: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=900&q=85',
         customWhatsappMsg: `Olá! Vim pelo Mini Site e quero saber mais sobre o Combo Beleza da ${companyName}!`
       }
     ];
@@ -174,108 +907,78 @@ export function getDefaultFourProducts(niche: string = '', companyName: string =
     return [
       {
         id: 'p1',
-        title: 'Revisão Preventiva & Óleo',
-        description: 'Checklist de 30 itens de segurança e troca de óleo homologado.',
+        title: 'Revisão Preventiva & Estética',
+        category: 'Destaque',
+        description: 'Checklist completo de segurança e acabamento automotivo premium.',
         price: 'Checklist VIP',
-        imageUrl: 'https://images.unsplash.com/photo-1486006920555-c77dce18193b?auto=format&fit=crop&w=600&q=80',
+        imageUrl: 'https://images.unsplash.com/photo-1486006920555-c77dce18193b?auto=format&fit=crop&w=900&q=85',
         customWhatsappMsg: `Olá! Vi no Mini Site da ${companyName} a Revisão Preventiva e quero agendar para meu veículo!`
       },
       {
         id: 'p2',
-        title: 'Freios, Suspensão & Pneus',
-        description: 'Troca de pastilhas, amortecedores e alinhamento computadorizado.',
-        price: 'Segurança Máxima',
-        imageUrl: 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=600&q=80',
-        customWhatsappMsg: `Olá! Gostaria de fazer um orçamento de freios e suspensão na ${companyName}!`
+        title: 'Polimento & Vitrificação 9H',
+        category: 'Estética',
+        description: 'Brilho espelhado de zero km e proteção cerâmica de longa duração.',
+        price: 'Brilho 4K',
+        imageUrl: 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=900&q=85',
+        customWhatsappMsg: `Olá! Gostaria de fazer um orçamento de Polimento/Vitrificação na ${companyName}!`
       },
       {
         id: 'p3',
-        title: 'Scanner & Injeção Eletrônica',
-        description: 'Diagnóstico computadorizado de ponta para identificar falhas com exatidão.',
+        title: 'Scanner & Diagnóstico Digital',
+        category: 'Tecnologia',
+        description: 'Diagnóstico computadorizado de ponta para identificar tudo com precisão.',
         price: 'Diagnóstico 3D',
-        imageUrl: 'https://images.unsplash.com/photo-1487754180451-c456f719a1fc?auto=format&fit=crop&w=600&q=80',
-        customWhatsappMsg: `Olá! Meu carro está com a luz de injeção acesa. Posso levar para passar o scanner na ${companyName}?`
+        imageUrl: 'https://images.unsplash.com/photo-1487754180451-c456f719a1fc?auto=format&fit=crop&w=900&q=85',
+        customWhatsappMsg: `Olá! Gostaria de agendar um diagnóstico para meu veículo na ${companyName}!`
       },
       {
         id: 'p4',
-        title: 'Ar Condicionado & Higienização',
-        description: 'Eliminação de bactérias, troca de filtro e recarga de gás.',
+        title: 'Higienização Interna & Ozônio',
+        category: 'Higienização',
+        description: 'Limpeza profunda de bancos, teto e ar-condicionado com eliminação de odores.',
         price: 'Ar Puro',
-        imageUrl: 'https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?auto=format&fit=crop&w=600&q=80',
-        customWhatsappMsg: `Olá! Gostaria de fazer a higienização do ar condicionado na ${companyName}!`
+        imageUrl: 'https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?auto=format&fit=crop&w=900&q=85',
+        customWhatsappMsg: `Olá! Gostaria de fazer a higienização interna na ${companyName}!`
       }
     ];
   }
 
-  if (n.includes('dent') || n.includes('odont') || n.includes('clinic') || n.includes('saude') || n.includes('médic')) {
-    return [
-      {
-        id: 'p1',
-        title: 'Avaliação & Check-up Digital',
-        description: 'Diagnóstico preventivo com câmera intraoral e tecnologia moderna.',
-        price: 'Agendar',
-        imageUrl: 'https://images.unsplash.com/photo-1588776814546-1ffcf47267a5?auto=format&fit=crop&w=600&q=80',
-        customWhatsappMsg: `Olá! Vi no Mini Site da ${companyName} e gostaria de agendar uma avaliação odontológica!`
-      },
-      {
-        id: 'p2',
-        title: 'Clareamento Dental a Laser',
-        description: 'Dentes brancos e sorriso iluminado com máxima segurança e conforto.',
-        price: 'Sorriso VIP',
-        imageUrl: 'https://images.unsplash.com/photo-1606811841689-23dfddce3e95?auto=format&fit=crop&w=600&q=80',
-        customWhatsappMsg: `Olá! Gostaria de saber como funciona o clareamento dental na ${companyName}!`
-      },
-      {
-        id: 'p3',
-        title: 'Alinhadores Invisíveis & Aparelho',
-        description: 'Alinhamento dentário estético, discreto e de rápida adaptação.',
-        price: 'Tecnologia 3D',
-        imageUrl: 'https://images.unsplash.com/photo-1598256989800-fe5f95da9787?auto=format&fit=crop&w=600&q=80',
-        customWhatsappMsg: `Olá! Gostaria de saber sobre os alinhadores invisíveis na ${companyName}!`
-      },
-      {
-        id: 'p4',
-        title: 'Implantes & Próteses Fixas',
-        description: 'Recupere sua mastigação e confiança com especialistas renomados.',
-        price: 'Condição Especial',
-        imageUrl: 'https://images.unsplash.com/photo-1629909613654-28e377c37b09?auto=format&fit=crop&w=600&q=80',
-        customWhatsappMsg: `Olá! Gostaria de informações sobre implantes dentários na ${companyName}!`
-      }
-    ];
-  }
-
-  // Padrão Geral / Comércio / Serviços
   return [
     {
       id: 'p1',
       title: 'Atendimento Personalizado VIP',
+      category: 'Destaques',
       description: 'Consultoria e atendimento ágil diretamente pelo WhatsApp.',
       price: '1-Clique',
-      imageUrl: 'https://images.unsplash.com/photo-1556742049-0a67e55722c6?auto=format&fit=crop&w=600&q=80',
+      imageUrl: 'https://images.unsplash.com/photo-1556742049-0a67e55722c6?auto=format&fit=crop&w=900&q=85',
       customWhatsappMsg: `Olá! Vim pelo Mini Site de ${companyName} e gostaria de atendimento!`
     },
     {
       id: 'p2',
       title: 'Produtos & Soluções Mais Pedidas',
+      category: 'Mais Vendidos',
       description: 'Nossa linha de maior destaque e satisfação comprovada por clientes.',
       price: 'Mais Vendido',
-      imageUrl: 'https://images.unsplash.com/photo-1472851294608-062f824d29cc?auto=format&fit=crop&w=600&q=80',
+      imageUrl: 'https://images.unsplash.com/photo-1472851294608-062f824d29cc?auto=format&fit=crop&w=900&q=85',
       customWhatsappMsg: `Olá! Gostaria de conhecer os produtos mais pedidos de ${companyName}!`
     },
     {
       id: 'p3',
       title: 'Condição & Pacote Promocional',
+      category: 'Promoções',
       description: 'Ofertas exclusivas para quem entra em contato pelo Mini Site.',
       price: 'Condição Especial',
-      imageUrl: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=600&q=80',
+      imageUrl: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=900&q=85',
       customWhatsappMsg: `Olá! Vi o pacote promocional no Mini Site da ${companyName} e quero aproveitar!`
     },
     {
       id: 'p4',
       title: 'Orçamento Rápido e Sem Burocracia',
+      category: 'Orçamento',
       description: 'Envie sua dúvida ou pedido e receba retorno em minutos.',
       price: 'Orçamento Grátis',
-      imageUrl: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=600&q=80',
+      imageUrl: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=900&q=85',
       customWhatsappMsg: `Olá! Gostaria de solicitar um orçamento rápido na ${companyName}!`
     }
   ];
@@ -310,41 +1013,55 @@ export interface QrCodeOverrides {
 
 /**
  * Generates standalone static HTML string for the Mini Site.
- * Can be called synchronously with fallback online QR codes,
- * or with pre-generated embedded Base64 data URLs.
+ * Includes 4K Hero Cover Banner, Opening Hours in Header, Dynamic Marquee,
+ * Segment-Aware Value Proposition, 4 Featured Highlights + Interactive Catalog,
+ * 4K Photo Gallery, Dedicated "Como Chegar" Map Card, and Real Google Reviews Card.
  */
 export function generateMiniSiteHtml(config: MiniSiteConfig, qrOverrides?: QrCodeOverrides): string {
   const name = (config.companyName || 'Sua Empresa').trim();
   const niche = (config.niche || 'Atendimento Exclusivo').trim();
   const city = (config.city || 'Brasil').trim();
+  const smartMeta = getSegmentSmartMetadata(niche, name, city, config.segmentType);
   const tagline = config.tagline || `${niche} de excelência em ${city}`;
   const initial = (name.charAt(0) || 'A').toUpperCase();
-  
+
+  const coverImage = (config.coverImageUrl && config.coverImageUrl.trim()) || smartMeta.coverImageUrl;
+  const primaryColor = (config.primaryColor && config.primaryColor.trim()) || smartMeta.primaryColor;
+  const selectedFont = FONT_FAMILY_OPTIONS.find((f) => f.id === (config.fontFamily || smartMeta.fontFamily)) || FONT_FAMILY_OPTIONS[0];
+
   const whatsappUrl = buildMiniSiteWhatsappUrl(
     config.whatsappNumber || config.phone || '5511999999999',
     config.whatsappMessage || `Olá! Vim através do Mini Site de ${name}. Gostaria de mais informações!`
   );
-  
+
   const instaHandle = sanitizeMiniSiteHandle(config.instagramUrl || '', '@');
   const instaUrl = config.instagramUrl
-    ? (config.instagramUrl.startsWith('http') ? config.instagramUrl : `https://instagram.com/${config.instagramUrl.replace(/^@/, '')}`)
+    ? config.instagramUrl.startsWith('http')
+      ? config.instagramUrl
+      : `https://instagram.com/${config.instagramUrl.replace(/^@/, '')}`
     : 'https://instagram.com';
 
   const telegramUrl = config.telegramUrl
-    ? (config.telegramUrl.startsWith('http') ? config.telegramUrl : `https://t.me/${config.telegramUrl.replace(/^@/, '')}`)
+    ? config.telegramUrl.startsWith('http')
+      ? config.telegramUrl
+      : `https://t.me/${config.telegramUrl.replace(/^@/, '')}`
     : '';
 
   const tiktokHandle = sanitizeMiniSiteHandle(config.tiktokUrl || '', '@');
   const tiktokUrl = config.tiktokUrl
-    ? (config.tiktokUrl.startsWith('http') ? config.tiktokUrl : `https://tiktok.com/@${config.tiktokUrl.replace(/^@/, '')}`)
+    ? config.tiktokUrl.startsWith('http')
+      ? config.tiktokUrl
+      : `https://tiktok.com/@${config.tiktokUrl.replace(/^@/, '')}`
     : '';
 
   const siteUrl = config.websiteUrl
-    ? (config.websiteUrl.startsWith('http') ? config.websiteUrl : `https://${config.websiteUrl}`)
+    ? config.websiteUrl.startsWith('http')
+      ? config.websiteUrl
+      : `https://${config.websiteUrl}`
     : '';
 
   const reviewUrl = config.googleReviewUrl || 'https://maps.google.com';
-  
+
   const pixKey = config.pixKey || 'pix@empresa.com.br';
   const pixBeneficiary = config.pixBeneficiary || name;
   const pixType = (config.pixKeyType || 'Chave Pix').toUpperCase();
@@ -354,1393 +1071,755 @@ export function generateMiniSiteHtml(config: MiniSiteConfig, qrOverrides?: QrCod
   const wifiSec = config.wifiSecurity || 'WPA';
   const wifiQrData = `WIFI:T:${wifiSec};S:${wifiSsid};P:${wifiPass};;`;
 
-  // Use embedded Base64 QR code if supplied, otherwise fallback to fast URL
-  const wifiQrUrl = qrOverrides?.wifiQrUrl || `https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=10&data=${encodeURIComponent(wifiQrData)}`;
-  const pixQrUrl = qrOverrides?.pixQrUrl || `https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=10&data=${encodeURIComponent(pixKey)}`;
+  const wifiQrUrl =
+    qrOverrides?.wifiQrUrl ||
+    `https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=10&data=${encodeURIComponent(wifiQrData)}`;
+  const pixQrUrl =
+    qrOverrides?.pixQrUrl ||
+    `https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=10&data=${encodeURIComponent(pixKey)}`;
 
-  // Address & Google Maps route URL
-  const addressText = config.address ? config.address.trim() : '';
-  const mapsSearchUrl = addressText ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addressText + ' ' + city)}` : '';
+  const addressText = (config.address && config.address.trim()) || `Centro, ${city}`;
+  const mapsSearchUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addressText + ' ' + city)}`;
+  const wazeUrl = `https://waze.com/ul?q=${encodeURIComponent(addressText + ' ' + city)}&navigate=yes`;
 
-  // Phone direct call
   const phoneDigits = config.phone ? config.phone.replace(/\D/g, '') : '';
   const phoneCallUrl = phoneDigits ? `tel:${phoneDigits}` : '';
-
-  // Theme palettes
-  const theme = config.theme || 'dark_neon';
-  let bgGradient = 'linear-gradient(135deg, #090d16 0%, #0f172a 50%, #030712 100%)';
-  let accentColor = '#38bdf8';
-  let cardBg = 'rgba(255, 255, 255, 0.04)';
-  let cardBorder = 'rgba(255, 255, 255, 0.1)';
-  let glowColor = 'rgba(56, 189, 248, 0.25)';
-
-  if (theme === 'glass_luxury') {
-    bgGradient = 'linear-gradient(135deg, #111827 0%, #1e1b4b 50%, #0f172a 100%)';
-    accentColor = '#818cf8';
-    glowColor = 'rgba(129, 140, 248, 0.3)';
-  } else if (theme === 'sunset_purple') {
-    bgGradient = 'linear-gradient(135deg, #18052e 0%, #2e1065 50%, #090214 100%)';
-    accentColor = '#e879f9';
-    glowColor = 'rgba(232, 121, 249, 0.3)';
-  } else if (theme === 'emerald_pro') {
-    bgGradient = 'linear-gradient(135deg, #021a10 0%, #064e3b 50%, #02140d 100%)';
-    accentColor = '#34d399';
-    glowColor = 'rgba(52, 211, 153, 0.3)';
-  } else if (theme === 'cyber_blue') {
-    bgGradient = 'linear-gradient(135deg, #031b33 0%, #0c4a6e 50%, #021324 100%)';
-    accentColor = '#38bdf8';
-    glowColor = 'rgba(56, 189, 248, 0.35)';
-  }
+  const openingHours = (config.openingHours && config.openingHours.trim()) || 'Seg a Sáb: 09h às 20h';
 
   const exportDate = new Date().toLocaleDateString('pt-BR');
+  const marqueeText =
+    config.marqueeText ||
+    '🔥 ATENDIMENTO VIP • QUALIDADE 4K COMPROVADA • PEÇA OU AGENDE PELO WHATSAPP • AVALIAÇÃO 5 ESTRELAS NO GOOGLE 🔥';
 
-  // Dynamic Marquee Banner
-  const marqueeText = config.marqueeText || '🔥 NOVIDADES TODA SEMANA • VISITE NOSSA LOJA • ATENDIMENTO VIP • COMPRE PELO WHATSAPP • QUALIDADE GARANTIDA 🔥';
-
-  // 4 Main Featured Products (Model inspired by photo: 2x2 grid with photo & WhatsApp CTA)
   const userServices = Array.isArray(config.services) ? config.services : [];
   const defaultServices = getDefaultFourProducts(niche, name);
-  const featuredProducts = userServices.length >= 4
-    ? userServices.slice(0, 4)
-    : [
-        ...userServices,
-        ...defaultServices.slice(userServices.length, 4)
-      ];
-  const additionalServices = userServices.length > 4 ? userServices.slice(4) : [];
+  const featuredProducts =
+    userServices.length >= 4
+      ? userServices.slice(0, 4)
+      : [...userServices, ...defaultServices.slice(userServices.length, 4)];
+  const additionalServices =
+    userServices.length > 4 ? userServices.slice(4) : smartMeta.extraCatalogItems;
+
+  const aboutText = (config.aboutText && config.aboutText.trim()) || smartMeta.aboutText;
+  const amenities =
+    Array.isArray(config.amenities) && config.amenities.length > 0
+      ? config.amenities
+      : smartMeta.amenities;
+  const galleryUrls =
+    Array.isArray(config.galleryUrls) && config.galleryUrls.length > 0
+      ? config.galleryUrls
+      : smartMeta.galleryUrls;
+  const testimonials =
+    Array.isArray(config.testimonials) && config.testimonials.length > 0
+      ? config.testimonials
+      : smartMeta.testimonials;
 
   return `<!DOCTYPE html>
 <html lang="pt-BR">
 <!-- 
-  ==========================================================================
-  MINI SITE ESTÁTICO AUTÔNOMO - ${name}
-  Gerado por ALF Automação / Hub NFC & Link-in-Bio
-  Data de Geração: ${exportDate}
-  
-  ESTE É UM ARQUIVO 100% ESTÁTICO E INDEPENDENTE:
-  - Não requer banco de dados ou servidor back-end.
-  - Pode ser hospedado gratuitamente no Netlify, Vercel, GitHub Pages, Firebase
-    ou em qualquer hospedagem cPanel/Apache/NGINX como 'index.html'.
-  - Funciona até mesmo offline abrindo diretamente com 2 cliques no navegador!
-  ==========================================================================
+  MINI PÁGINA INOVADORA 4K - ${name}
+  Gerado em: ${exportDate}
 -->
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>${name} - Conexão Inteligente &amp; Links</title>
-  <meta name="description" content="Mini Site oficial de ${name}. Acesse WhatsApp, Instagram, Pix, Wi-Fi e avaliações com 1 clique.">
-  <meta name="theme-color" content="#0f172a">
-
-  <!-- OpenGraph Social Share -->
+  <title>${name} - Mini Site Oficial 4K</title>
+  <meta name="description" content="${tagline}">
+  <meta name="theme-color" content="#090d16">
   <meta property="og:title" content="${name} - Mini Site Oficial">
   <meta property="og:description" content="${tagline}">
+  <meta property="og:image" content="${coverImage}">
   <meta property="og:type" content="website">
-
-  <!-- Fonts with fallback to system fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  
+  <link href="https://fonts.googleapis.com/css2?family=${selectedFont.googleFontParam}&display=swap" rel="stylesheet">
   <style>
+    :root {
+      --primary: ${primaryColor};
+    }
     * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
       -webkit-tap-highlight-color: transparent;
-      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      font-family: ${selectedFont.cssFamily};
     }
-
+    html {
+      scroll-behavior: smooth;
+    }
     body {
-      background: ${bgGradient};
+      background: radial-gradient(circle at top, #111827 0%, #090d16 55%, #030712 100%);
       color: #f8fafc;
       min-height: 100vh;
       display: flex;
       justify-content: center;
-      align-items: flex-start;
-      padding: 24px 16px 48px;
+      padding: 0 0 48px;
       overflow-x: hidden;
-      position: relative;
     }
-
-    /* Ambient dynamic glows */
-    .ambient-glow {
-      position: fixed;
-      width: 380px;
-      height: 380px;
-      border-radius: 50%;
-      background: ${glowColor};
-      filter: blur(100px);
-      pointer-events: none;
-      z-index: 0;
-      opacity: 0.6;
-      animation: float 12s ease-in-out infinite alternate;
-    }
-    .ambient-glow-top { top: -100px; left: 50%; transform: translateX(-50%); }
-    .ambient-glow-bottom { bottom: -120px; right: 10%; background: ${glowColor}; }
-
-    @keyframes float {
-      0% { transform: translate(-50%, 0) scale(1); }
-      100% { transform: translate(-45%, 40px) scale(1.15); }
-    }
-
-    .container {
+    .page-shell {
       width: 100%;
-      max-width: 440px;
-      z-index: 1;
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
+      max-width: 460px;
+      background: #090d16;
+      min-height: 100vh;
+      box-shadow: 0 25px 60px rgba(0,0,0,0.75);
+      border-left: 1px solid rgba(255,255,255,0.06);
+      border-right: 1px solid rgba(255,255,255,0.06);
       position: relative;
-    }
-
-    /* Header Profile Card */
-    .profile-card {
-      background: ${cardBg};
-      border: 1px solid ${cardBorder};
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      border-radius: 28px;
-      padding: 28px 20px 22px;
-      text-align: center;
-      position: relative;
-      box-shadow: 0 20px 40px -15px rgba(0,0,0,0.5);
-    }
-
-    .avatar-wrapper {
-      position: relative;
-      width: 88px;
-      height: 88px;
-      margin: 0 auto 16px;
-    }
-
-    .avatar {
-      width: 100%;
-      height: 100%;
-      border-radius: 26px;
-      background: linear-gradient(135deg, ${accentColor}, #2563eb);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 38px;
-      font-weight: 900;
-      color: #ffffff;
-      box-shadow: 0 10px 25px -5px ${glowColor};
       overflow: hidden;
-      border: 2px solid rgba(255, 255, 255, 0.2);
     }
-
-    .avatar img {
+    /* 1. HERO COVER 4K */
+    .hero-head {
+      position: relative;
+      width: 100%;
+      height: 230px;
+      overflow: hidden;
+      background: #0f172a;
+    }
+    .hero-head img.cover-img {
       width: 100%;
       height: 100%;
       object-fit: cover;
+      filter: contrast(1.06) saturate(1.1);
     }
-
-    .verified-badge {
+    .hero-overlay {
       position: absolute;
-      bottom: -4px;
-      right: -4px;
-      background: #3b82f6;
-      color: white;
-      width: 26px;
-      height: 26px;
-      border-radius: 50%;
+      inset: 0;
+      background: linear-gradient(180deg, rgba(9,13,22,0.25) 0%, rgba(9,13,22,0.55) 55%, #090d16 100%);
+    }
+    .hero-top-bar {
+      position: absolute;
+      top: 14px;
+      left: 14px;
+      right: 14px;
       display: flex;
       align-items: center;
-      justify-content: center;
-      border: 2px solid #0f172a;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+      justify-content: space-between;
+      gap: 8px;
+      z-index: 5;
     }
-
-    .company-title {
-      font-size: 22px;
-      font-weight: 800;
-      letter-spacing: -0.02em;
-      color: #ffffff;
-      margin-bottom: 4px;
-    }
-
-    .niche-badge {
+    .open-badge {
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      font-size: 11px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      padding: 4px 12px;
-      border-radius: 20px;
-      background: rgba(255, 255, 255, 0.08);
-      color: ${accentColor};
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      margin-bottom: 8px;
-    }
-
-    .bio-text {
-      font-size: 13px;
-      color: #94a3b8;
-      line-height: 1.5;
-      max-width: 320px;
-      margin: 0 auto;
-    }
-
-    .status-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 11px;
-      font-weight: 600;
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: rgba(9, 13, 22, 0.82);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(52, 211, 153, 0.45);
       color: #34d399;
-      background: rgba(52, 211, 153, 0.1);
-      border: 1px solid rgba(52, 211, 153, 0.25);
-      padding: 4px 12px;
-      border-radius: 12px;
-      margin-top: 10px;
+      font-size: 11px;
+      font-weight: 800;
     }
-
-    .status-dot {
+    .open-dot {
       width: 7px;
       height: 7px;
       border-radius: 50%;
       background: #34d399;
       box-shadow: 0 0 8px #34d399;
-      animation: pulse 2s infinite;
     }
-
-    .hours-badge {
+    .rating-top-pill {
       display: inline-flex;
       align-items: center;
-      gap: 4px;
-      font-size: 11px;
-      color: #cbd5e1;
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      padding: 3px 10px;
-      border-radius: 8px;
-      margin-top: 6px;
-    }
-
-    @keyframes pulse {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.5; transform: scale(0.85); }
-    }
-
-    /* Action Buttons List */
-    .buttons-group {
-      display: flex;
-      flex-direction: column;
-      gap: 11px;
-    }
-
-    .action-btn {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 15px 18px;
-      border-radius: 22px;
-      background: ${cardBg};
-      border: 1px solid ${cardBorder};
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      text-decoration: none;
-      color: #f8fafc;
-      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-      box-shadow: 0 8px 20px -8px rgba(0,0,0,0.3);
-      cursor: pointer;
-      position: relative;
-      overflow: hidden;
-      width: 100%;
-      text-align: left;
-    }
-
-    .action-btn:hover {
-      transform: translateY(-2px);
-      background: rgba(255, 255, 255, 0.08);
-      border-color: rgba(255, 255, 255, 0.22);
-      box-shadow: 0 14px 28px -10px rgba(0,0,0,0.5);
-    }
-
-    .action-btn:active {
-      transform: scale(0.98);
-    }
-
-    .btn-left {
-      display: flex;
-      align-items: center;
-      gap: 13px;
-      min-width: 0;
-      flex: 1;
-    }
-
-    .btn-icon {
-      width: 44px;
-      height: 44px;
-      border-radius: 14px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.25);
-    }
-
-    .btn-icon svg {
-      width: 22px;
-      height: 22px;
-    }
-
-    .btn-info {
-      text-align: left;
-      min-width: 0;
-      flex: 1;
-    }
-
-    .btn-title {
-      font-size: 15px;
-      font-weight: 700;
-      color: #ffffff;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      flex-wrap: wrap;
-    }
-
-    .btn-subtitle {
-      font-size: 11px;
-      color: #94a3b8;
-      font-weight: 500;
-      margin-top: 2px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .btn-badge {
-      font-size: 9px;
-      font-weight: 800;
-      text-transform: uppercase;
-      padding: 2px 7px;
-      border-radius: 8px;
-      letter-spacing: 0.05em;
-    }
-
-    .btn-arrow {
-      color: #64748b;
-      transition: transform 0.2s ease;
-      flex-shrink: 0;
-      margin-left: 8px;
-    }
-
-    .action-btn:hover .btn-arrow {
-      color: #f8fafc;
-      transform: translateX(3px);
-    }
-
-    /* Button Specific Themes */
-    .btn-google .btn-icon {
-      background: linear-gradient(135deg, #4285F4, #34A853);
-      color: white;
-    }
-    .btn-google {
-      background: linear-gradient(135deg, rgba(66, 133, 244, 0.12), rgba(251, 188, 4, 0.08));
-      border-color: rgba(251, 188, 4, 0.35);
-    }
-    .btn-google:hover {
-      border-color: rgba(251, 188, 4, 0.65);
-      box-shadow: 0 12px 25px -8px rgba(251, 188, 4, 0.25);
-    }
-
-    .btn-whatsapp .btn-icon {
-      background: linear-gradient(135deg, #25D366, #128C7E);
-      color: white;
-    }
-    .btn-whatsapp {
-      border-color: rgba(37, 211, 102, 0.28);
-    }
-    .btn-whatsapp:hover {
-      border-color: rgba(37, 211, 102, 0.55);
-      box-shadow: 0 12px 25px -8px rgba(37, 211, 102, 0.3);
-    }
-
-    .btn-wifi .btn-icon {
-      background: linear-gradient(135deg, #0ea5e9, #3b82f6);
-      color: white;
-    }
-    .btn-wifi {
-      border-color: rgba(14, 165, 233, 0.3);
-    }
-    .btn-wifi:hover {
-      border-color: rgba(14, 165, 233, 0.6);
-      box-shadow: 0 12px 25px -8px rgba(14, 165, 233, 0.25);
-    }
-
-    .btn-pix .btn-icon {
-      background: linear-gradient(135deg, #32BCAD, #16887B);
-      color: white;
-    }
-    .btn-pix {
-      border-color: rgba(50, 188, 173, 0.3);
-    }
-    .btn-pix:hover {
-      border-color: rgba(50, 188, 173, 0.6);
-      box-shadow: 0 12px 25px -8px rgba(50, 188, 173, 0.25);
-    }
-
-    .btn-instagram .btn-icon {
-      background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
-      color: white;
-    }
-    .btn-instagram {
-      border-color: rgba(225, 48, 108, 0.25);
-    }
-    .btn-instagram:hover {
-      border-color: rgba(225, 48, 108, 0.55);
-      box-shadow: 0 12px 25px -8px rgba(225, 48, 108, 0.3);
-    }
-
-    .btn-maps .btn-icon {
-      background: linear-gradient(135deg, #ea4335, #fbbc04);
-      color: white;
-    }
-    .btn-maps {
-      border-color: rgba(234, 67, 53, 0.28);
-    }
-    .btn-maps:hover {
-      border-color: rgba(234, 67, 53, 0.55);
-      box-shadow: 0 12px 25px -8px rgba(234, 67, 53, 0.3);
-    }
-
-    .btn-phone .btn-icon {
-      background: linear-gradient(135deg, #3b82f6, #1d4ed8);
-      color: white;
-    }
-    .btn-phone {
-      border-color: rgba(59, 130, 246, 0.3);
-    }
-
-    .btn-site .btn-icon {
-      background: linear-gradient(135deg, #6366f1, #4f46e5);
-      color: white;
-    }
-
-    .btn-telegram .btn-icon {
-      background: linear-gradient(135deg, #2AABEE, #229ED9);
-      color: white;
-    }
-
-    .btn-tiktok .btn-icon {
-      background: linear-gradient(135deg, #000000, #1f1f1f);
-      border: 1px solid #fe2c55;
-      color: white;
-    }
-
-    /* Modal dialog styles (Pix & Wi-Fi) */
-    .modal-overlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(3, 7, 18, 0.85);
+      gap: 5px;
+      padding: 6px 11px;
+      border-radius: 999px;
+      background: rgba(9, 13, 22, 0.82);
       backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      z-index: 100;
-      display: none;
-      align-items: center;
-      justify-content: center;
-      padding: 20px;
-    }
-    .modal-overlay.active {
-      display: flex;
-      animation: modalFade 0.2s ease-out;
-    }
-
-    @keyframes modalFade {
-      from { opacity: 0; transform: scale(0.96); }
-      to { opacity: 1; transform: scale(1); }
-    }
-
-    .modal-content {
-      background: #0f172a;
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      border-radius: 28px;
-      padding: 28px 24px;
-      max-width: 360px;
-      width: 100%;
-      text-align: center;
-      position: relative;
-      box-shadow: 0 25px 50px -12px rgba(0,0,0,0.7);
-    }
-
-    .modal-close {
-      position: absolute;
-      top: 16px;
-      right: 16px;
-      width: 32px;
-      height: 32px;
-      border-radius: 50%;
-      background: rgba(255, 255, 255, 0.08);
-      border: none;
-      color: #94a3b8;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 16px;
-      transition: all 0.15s ease;
-    }
-    .modal-close:hover {
-      background: rgba(255, 255, 255, 0.18);
-      color: #ffffff;
-    }
-
-    .qr-container {
-      background: white;
-      border-radius: 20px;
-      padding: 12px;
-      width: 200px;
-      height: 200px;
-      margin: 16px auto;
-      box-shadow: 0 10px 25px -5px rgba(0,0,0,0.4);
-    }
-    .qr-container img {
-      width: 100%;
-      height: 100%;
-      display: block;
-      border-radius: 12px;
-      object-fit: contain;
-    }
-
-    .modal-btn {
-      width: 100%;
-      padding: 14px;
-      border-radius: 16px;
-      font-size: 14px;
-      font-weight: 700;
-      border: none;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      transition: all 0.2s ease;
-      margin-top: 12px;
-    }
-    .modal-btn:active {
-      transform: scale(0.98);
-    }
-
-    /* Toast Notification */
-    .toast {
-      position: fixed;
-      bottom: 24px;
-      left: 50%;
-      transform: translateX(-50%) translateY(100px);
-      background: #10b981;
-      color: white;
-      padding: 12px 24px;
-      border-radius: 50px;
-      font-size: 13px;
-      font-weight: 800;
-      box-shadow: 0 10px 25px rgba(16, 185, 129, 0.4);
-      z-index: 200;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      opacity: 0;
-      transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-      pointer-events: none;
-    }
-    .toast.show {
-      transform: translateX(-50%) translateY(0);
-      opacity: 1;
-    }
-
-    /* Footer Branding */
-    .footer {
-      text-align: center;
-      padding-top: 16px;
+      border: 1px solid rgba(251, 191, 36, 0.45);
+      color: #fbbf24;
       font-size: 11px;
-      color: #64748b;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 6px;
-    }
-    .footer strong {
-      color: #94a3b8;
-    }
-    .footer-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      font-size: 10px;
-      padding: 2px 8px;
-      border-radius: 8px;
-      background: rgba(255, 255, 255, 0.04);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      color: #94a3b8;
-    }
-
-    /* Golden Marquee Ticker Banner */
-    .marquee-wrapper {
-      width: 100%;
-      overflow: hidden;
-      background: linear-gradient(90deg, #f59e0b 0%, #d97706 50%, #f59e0b 100%);
-      color: #0f172a;
-      padding: 8px 0;
-      border-radius: 16px;
       font-weight: 800;
-      font-size: 11px;
-      letter-spacing: 0.05em;
-      text-transform: uppercase;
-      box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
-      white-space: nowrap;
+      text-decoration: none;
+    }
+    /* Profile Identity overlapping hero */
+    .identity-wrap {
+      padding: 0 18px;
+      margin-top: -54px;
+      position: relative;
+      z-index: 10;
+    }
+    .identity-row {
+      display: flex;
+      align-items: flex-end;
+      gap: 14px;
+    }
+    .logo-box {
+      width: 84px;
+      height: 84px;
+      border-radius: 24px;
+      background: linear-gradient(135deg, var(--primary), #1e293b);
+      border: 3px solid #090d16;
+      box-shadow: 0 12px 28px rgba(0,0,0,0.6), 0 0 0 2px var(--primary);
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      font-weight: 900;
+      color: #fff;
+      flex-shrink: 0;
       position: relative;
     }
-    .marquee-content {
-      display: inline-block;
-      white-space: nowrap;
-      animation: marqueeScroll 18s linear infinite;
-    }
-    @keyframes marqueeScroll {
-      0% { transform: translateX(0%); }
-      100% { transform: translateX(-50%); }
-    }
-
-    /* 4 Featured Products 2x2 Grid (Based on Bio Site Model) */
-    .products-section {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      margin-top: 2px;
-    }
-    .products-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0 4px;
-    }
-    .products-title {
-      font-size: 13px;
-      font-weight: 800;
-      letter-spacing: -0.01em;
-      color: #ffffff;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .products-badge {
-      font-size: 10px;
-      font-weight: 800;
-      color: #38bdf8;
-      background: rgba(56, 189, 248, 0.15);
-      border: 1px solid rgba(56, 189, 248, 0.3);
-      padding: 2px 8px;
-      border-radius: 12px;
-    }
-    .products-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 10px;
-    }
-    .product-card {
-      background: rgba(255, 255, 255, 0.04);
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      border-radius: 20px;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      backdrop-filter: blur(14px);
-      -webkit-backdrop-filter: blur(14px);
-      transition: all 0.25s ease;
-      box-shadow: 0 8px 20px -8px rgba(0,0,0,0.4);
-    }
-    .product-card:hover {
-      transform: translateY(-3px);
-      border-color: rgba(37, 211, 102, 0.5);
-      box-shadow: 0 12px 25px -8px rgba(37, 211, 102, 0.25);
-    }
-    .product-img-wrapper {
-      position: relative;
-      width: 100%;
-      height: 110px;
-      overflow: hidden;
-      background: #1e293b;
-    }
-    .product-img {
+    .logo-box img {
       width: 100%;
       height: 100%;
       object-fit: cover;
-      transition: transform 0.4s ease;
     }
-    .product-card:hover .product-img {
-      transform: scale(1.06);
+    .identity-titles {
+      flex: 1;
+      min-width: 0;
+      padding-bottom: 2px;
     }
-    .product-tag {
-      position: absolute;
-      top: 6px;
-      right: 6px;
-      background: rgba(15, 23, 42, 0.85);
-      backdrop-filter: blur(6px);
-      -webkit-backdrop-filter: blur(6px);
-      color: #34d399;
-      font-size: 9px;
+    .company-name {
+      font-size: 21px;
+      font-weight: 900;
+      color: #ffffff;
+      line-height: 1.15;
+      letter-spacing: -0.02em;
+    }
+    .company-sub {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--primary);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-top: 3px;
+    }
+    .tagline-box {
+      margin-top: 10px;
+      font-size: 12.5px;
+      color: #cbd5e1;
+      line-height: 1.45;
+    }
+    /* Opening hours bar in header */
+    .header-hours-bar {
+      margin-top: 12px;
+      padding: 10px 13px;
+      border-radius: 16px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.1);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      font-size: 11.5px;
+      color: #e2e8f0;
+    }
+    .header-hours-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 700;
+    }
+    /* Marquee */
+    .marquee-bar {
+      margin: 14px 16px 0;
+      overflow: hidden;
+      background: linear-gradient(90deg, var(--primary), #fbbf24, var(--primary));
+      color: #090d16;
+      padding: 8px 0;
+      border-radius: 14px;
+      font-weight: 900;
+      font-size: 11px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      box-shadow: 0 6px 20px -4px rgba(0,0,0,0.5);
+      white-space: nowrap;
+    }
+    .marquee-track {
+      display: inline-block;
+      white-space: nowrap;
+      animation: marqueeMove 18s linear infinite;
+    }
+    @keyframes marqueeMove {
+      0% { transform: translateX(0%); }
+      100% { transform: translateX(-50%); }
+    }
+    /* Quick Nav */
+    .quick-nav {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      padding: 14px 16px 4px;
+      scrollbar-width: none;
+    }
+    .quick-nav::-webkit-scrollbar { display: none; }
+    .quick-nav a {
+      padding: 7px 12px;
+      border-radius: 12px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      color: #e2e8f0;
+      font-size: 11px;
       font-weight: 800;
-      padding: 2px 7px;
-      border-radius: 8px;
-      border: 1px solid rgba(52, 211, 153, 0.3);
+      text-decoration: none;
+      white-space: nowrap;
     }
-    .product-body {
+    .main-stack {
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+    .section-card {
+      background: rgba(15, 23, 42, 0.72);
+      border: 1px solid rgba(255, 255, 255, 0.09);
+      border-radius: 22px;
+      padding: 16px;
+    }
+    .section-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      gap: 8px;
+    }
+    .section-title {
+      font-size: 14px;
+      font-weight: 900;
+      color: #ffffff;
+    }
+    .section-tag {
+      font-size: 10px;
+      font-weight: 800;
+      padding: 3px 9px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.08);
+      color: var(--primary);
+      border: 1px solid rgba(255,255,255,0.12);
+    }
+    /* Products 2x2 Grid */
+    .products-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 11px;
+    }
+    .product-card {
+      background: rgba(9, 13, 22, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 18px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .product-img-box {
+      position: relative;
+      height: 118px;
+      background: #0f172a;
+      overflow: hidden;
+    }
+    .product-img-box img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .product-price-tag {
+      position: absolute;
+      top: 7px;
+      right: 7px;
+      padding: 3px 8px;
+      border-radius: 8px;
+      background: rgba(9, 13, 22, 0.9);
+      color: #34d399;
+      font-size: 10px;
+      font-weight: 900;
+      border: 1px solid rgba(52, 211, 153, 0.35);
+    }
+    .product-info {
       padding: 10px;
       display: flex;
       flex-direction: column;
+      gap: 8px;
       flex: 1;
       justify-content: space-between;
-      gap: 8px;
     }
-    .product-name {
-      font-size: 13px;
+    .product-title {
+      font-size: 12.5px;
       font-weight: 800;
-      color: #ffffff;
+      color: #fff;
       line-height: 1.25;
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
     }
     .product-desc {
-      font-size: 10px;
+      font-size: 10.5px;
       color: #94a3b8;
-      line-height: 1.3;
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
+      line-height: 1.35;
+      margin-top: 3px;
     }
-    .product-whatsapp-btn {
+    .product-cta {
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 5px;
-      background: linear-gradient(135deg, #25D366 0%, #128C7E 100%);
-      color: #ffffff;
-      font-size: 11px;
+      padding: 8px;
+      border-radius: 11px;
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: #fff;
+      font-size: 10.5px;
       font-weight: 800;
-      padding: 8px 8px;
-      border-radius: 12px;
       text-decoration: none;
-      box-shadow: 0 4px 12px rgba(37, 211, 102, 0.3);
-      transition: all 0.2s ease;
     }
-    .product-whatsapp-btn:hover {
-      filter: brightness(1.1);
-      transform: scale(1.02);
-    }
-
-    /* Google Reviews Featured Block */
-    .google-card {
-      background: linear-gradient(135deg, rgba(66, 133, 244, 0.12) 0%, rgba(251, 188, 4, 0.12) 100%);
-      border: 1.5px solid rgba(251, 188, 4, 0.4);
-      border-radius: 24px;
-      padding: 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      box-shadow: 0 10px 25px -8px rgba(251, 188, 4, 0.25);
-    }
-    .google-card-header {
+    /* Catalog list */
+    .catalog-item {
       display: flex;
       align-items: center;
-      justify-content: space-between;
+      gap: 11px;
+      padding: 10px;
+      border-radius: 16px;
+      background: rgba(9, 13, 22, 0.7);
+      border: 1px solid rgba(255,255,255,0.08);
+      text-decoration: none;
+      color: #fff;
+      margin-top: 8px;
     }
-    .google-stars {
-      color: #fbbf24;
-      font-size: 15px;
-      letter-spacing: 2px;
+    .catalog-item img {
+      width: 56px;
+      height: 56px;
+      border-radius: 12px;
+      object-fit: cover;
+      flex-shrink: 0;
     }
-    .google-score-badge {
-      font-size: 11px;
-      font-weight: 800;
-      padding: 3px 8px;
+    /* Amenities */
+    .amenities-wrap {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      margin-top: 10px;
+    }
+    .amenity-chip {
+      font-size: 10.5px;
+      font-weight: 700;
+      color: #e2e8f0;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      padding: 5px 10px;
       border-radius: 10px;
-      background: rgba(251, 188, 4, 0.2);
-      color: #fef08a;
-      border: 1px solid rgba(251, 188, 4, 0.35);
     }
-    .google-card-title {
-      font-size: 14px;
-      font-weight: 800;
-      color: #ffffff;
+    /* Gallery 4K */
+    .gallery-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
     }
-    .google-card-sub {
-      font-size: 11px;
-      color: #cbd5e1;
-      line-height: 1.35;
+    .gallery-grid img {
+      width: 100%;
+      height: 110px;
+      object-fit: cover;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,0.1);
     }
-    .google-cta-btn {
+    /* Como Chegar Map Card */
+    .map-visual-banner {
+      position: relative;
+      height: 115px;
+      border-radius: 16px;
+      background:
+        linear-gradient(135deg, rgba(15,23,42,0.85), rgba(30,41,59,0.75)),
+        repeating-linear-gradient(0deg, rgba(255,255,255,0.04) 0px, rgba(255,255,255,0.04) 1px, transparent 1px, transparent 22px),
+        repeating-linear-gradient(90deg, rgba(255,255,255,0.04) 0px, rgba(255,255,255,0.04) 1px, transparent 1px, transparent 22px);
+      border: 1px solid rgba(244, 63, 94, 0.35);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 12px;
+      margin-bottom: 12px;
+      overflow: hidden;
+    }
+    .map-pin-circle {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: #f43f5e;
+      color: #fff;
       display: flex;
       align-items: center;
       justify-content: center;
+      box-shadow: 0 0 0 8px rgba(244, 63, 94, 0.2);
+      margin-bottom: 6px;
+    }
+    .route-btns {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
       gap: 8px;
-      background: linear-gradient(135deg, #4285F4 0%, #34A853 100%);
-      color: #ffffff;
-      font-size: 12px;
+      margin-top: 10px;
+    }
+    .route-btn {
+      padding: 10px;
+      border-radius: 12px;
+      font-size: 11.5px;
       font-weight: 800;
-      padding: 11px 16px;
-      border-radius: 14px;
+      text-align: center;
       text-decoration: none;
-      box-shadow: 0 6px 18px rgba(66, 133, 244, 0.35);
-      transition: all 0.2s ease;
-    }
-    .google-cta-btn:hover {
-      filter: brightness(1.08);
-      transform: translateY(-1px);
-    }
-
-    /* Pix Featured Block */
-    .pix-card {
-      background: linear-gradient(135deg, rgba(50, 188, 173, 0.12) 0%, rgba(16, 185, 129, 0.08) 100%);
-      border: 1.5px solid rgba(50, 188, 173, 0.35);
-      border-radius: 22px;
-      padding: 15px;
       display: flex;
-      flex-direction: column;
-      gap: 10px;
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      box-shadow: 0 10px 25px -8px rgba(50, 188, 173, 0.2);
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    /* Google Review Print Style Card */
+    .google-print-card {
+      background: linear-gradient(145deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.95));
+      border: 1.5px solid rgba(251, 191, 36, 0.45);
+      border-radius: 22px;
+      padding: 16px;
+    }
+    .review-snippet {
+      background: rgba(9, 13, 22, 0.65);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 14px;
+      padding: 10px 12px;
+      margin-top: 8px;
+    }
+    .footer {
+      text-align: center;
+      padding: 20px 16px 8px;
+      font-size: 11px;
+      color: #64748b;
     }
   </style>
 </head>
 <body>
+  <div class="page-shell">
+    <!-- 1. FOTO NO HEAD (HERO COVER 4K) + HORÁRIO + STATUS -->
+    <div class="hero-head">
+      <img src="${coverImage}" alt="${name}" class="cover-img" onerror="this.src='https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=1600&q=90'" />
+      <div class="hero-overlay"></div>
+      <div class="hero-top-bar">
+        <div class="open-badge">
+          <span class="open-dot"></span>
+          <span>Aberto Agora • Online</span>
+        </div>
+        <a href="#avaliacoes" class="rating-top-pill">
+          <span>★ ${(config.rating && config.rating > 0 ? config.rating : 5.0).toFixed(1)}</span>
+          <span style="color:#cbd5e1;font-weight:600;">(${config.reviewCount || 128})</span>
+        </a>
+      </div>
+    </div>
 
-  <div class="ambient-glow ambient-glow-top"></div>
-  <div class="ambient-glow ambient-glow-bottom"></div>
-
-  <main class="container">
-    
-    <!-- 1. Profile Header Card -->
-    <header class="profile-card">
-      <div class="avatar-wrapper">
-        <div class="avatar">
+    <!-- 2. IDENTIDADE + HORÁRIO DE ATENDIMENTO NO HEAD -->
+    <div class="identity-wrap">
+      <div class="identity-row">
+        <div class="logo-box">
           ${config.logoUrl ? `<img src="${config.logoUrl}" alt="${name}" onerror="this.style.display='none'">` : initial}
         </div>
-        <div class="verified-badge" title="Empresa Verificada">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="20 6 9 17 4 12"></polyline>
-          </svg>
+        <div class="identity-titles">
+          <h1 class="company-name">${name}</h1>
+          <div class="company-sub">${niche} • ${city}</div>
         </div>
       </div>
+      <p class="tagline-box">${tagline}</p>
 
-      <h1 class="company-title">${name}</h1>
-      <div class="niche-badge">${niche} • ${city}</div>
-      <p class="bio-text">${tagline}</p>
-
-      ${config.openingHours ? `
-      <div class="hours-badge">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-        <span>${config.openingHours}</span>
-      </div>
-      ` : ''}
-
-      <div class="status-pill">
-        <span class="status-dot"></span>
-        <span>Aberto agora • Atendimento Online</span>
-      </div>
-    </header>
-
-    <!-- 2. Faixa Dourada Rolante (Marquee Ribbon Banner) -->
-    <div class="marquee-wrapper">
-      <div class="marquee-content">
-        <span>${marqueeText} &nbsp;&nbsp;&nbsp;&nbsp; ${marqueeText}</span>
+      <div class="header-hours-bar">
+        <div class="header-hours-left">
+          <span style="color:var(--primary);">🕒 Horário:</span>
+          <span>${openingHours}</span>
+        </div>
+        <a href="#como-chegar" style="color:var(--primary);font-weight:800;text-decoration:none;font-size:11px;">Como Chegar ➔</a>
       </div>
     </div>
 
-    <!-- 3. 4 Produtos Principais (Grade 2x2 com Chamar no WhatsApp) -->
-    <section class="products-section">
-      <div class="products-header">
-        <div class="products-title">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-          <span>4 Principais Destaques</span>
-        </div>
-        <span class="products-badge">Catálogo 1-Clique</span>
+    <!-- 3. FRASE DE DESTAQUE PASSANDO (LETREIRO DINÂMICO) -->
+    <div class="marquee-bar">
+      <div class="marquee-track">
+        <span>${marqueeText} &nbsp;&nbsp;•&nbsp;&nbsp; ${marqueeText}</span>
       </div>
-      <div class="products-grid">
-        ${featuredProducts.slice(0, 4).map((p) => {
-          const pWaMsg = p.customWhatsappMsg || `Olá! Vi no Mini Site de ${name} o destaque "${p.title}"${p.price ? ` (${p.price})` : ''} e gostaria de mais informações!`;
-          const pWaUrl = buildMiniSiteWhatsappUrl(config.whatsappNumber || config.phone || '5511999999999', pWaMsg);
-          return `
-          <div class="product-card">
-            <div class="product-img-wrapper">
-              <img src="${p.imageUrl || 'https://images.unsplash.com/photo-1556742049-0a67e55722c6?auto=format&fit=crop&w=600&q=80'}" alt="${p.title}" class="product-img" loading="lazy" onerror="this.src='https://images.unsplash.com/photo-1556742049-0a67e55722c6?auto=format&fit=crop&w=600&q=80'">
-              <span class="product-tag">${p.price || 'Destaque'}</span>
-            </div>
-            <div class="product-body">
-              <div>
-                <h4 class="product-name">${p.title}</h4>
-                <p class="product-desc">${p.description || 'Disponível para pedido imediato via WhatsApp.'}</p>
+    </div>
+
+    <!-- 4. NAVEGAÇÃO RÁPIDA DO MINI SITE -->
+    <nav class="quick-nav">
+      <a href="#destaques">✨ Destaques</a>
+      <a href="#catalogo">${smartMeta.menuTabLabel}</a>
+      <a href="#sobre">💎 Diferenciais</a>
+      <a href="#como-chegar">📍 Como Chegar</a>
+      <a href="#avaliacoes">⭐ Google (${(config.rating && config.rating > 0 ? config.rating : 5.0).toFixed(1)})</a>
+      <a href="#pix-wifi">⚡ Pix &amp; Wi-Fi</a>
+    </nav>
+
+    <div class="main-stack">
+      <!-- 5. DESTAQUES PRINCIPAIS EM 4K -->
+      <section id="destaques" class="section-card">
+        <div class="section-head">
+          <span class="section-title">✨ ${smartMeta.featuredTitle}</span>
+          <span class="section-tag">${smartMeta.featuredBadge}</span>
+        </div>
+        <div class="products-grid">
+          ${featuredProducts.slice(0, 4).map((p) => {
+            const pWaMsg = p.customWhatsappMsg || `Olá! Vi no Mini Site de ${name} o item "${p.title}"${p.price ? ` (${p.price})` : ''} e gostaria de pedir/agendar!`;
+            const pWaUrl = buildMiniSiteWhatsappUrl(config.whatsappNumber || config.phone || '5511999999999', pWaMsg);
+            return `
+            <div class="product-card">
+              <div class="product-img-box">
+                <img src="${p.imageUrl || 'https://images.unsplash.com/photo-1556742049-0a67e55722c6?auto=format&fit=crop&w=800&q=80'}" alt="${p.title}" loading="lazy" />
+                <span class="product-price-tag">${p.price || 'Destaque'}</span>
               </div>
-              <a href="${pWaUrl}" target="_blank" rel="noopener noreferrer" class="product-whatsapp-btn">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981z"/>
-                </svg>
-                <span>Chamar no WhatsApp</span>
-              </a>
-            </div>
-          </div>
-          `;
-        }).join('')}
-      </div>
-    </section>
-
-    <!-- 4. Card Avaliação no Google (Google Reviews) -->
-    <div class="google-card">
-      <div class="google-card-header">
-        <div style="display:flex;align-items:center;gap:10px;">
-          <div style="width:34px;height:34px;border-radius:10px;background:#ffffff;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.18);">
-            <svg width="20" height="20" viewBox="0 0 24 24">
-              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
-              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
-            </svg>
-          </div>
-          <div>
-            <div class="google-card-title">Avaliação no Google</div>
-            <div class="google-stars">★★★★★ <span style="font-size:10px;color:#94a3b8;margin-left:4px;">(${config.reviewCount || 128} avaliações)</span></div>
-          </div>
-        </div>
-        <span class="google-score-badge">★ ${(config.rating && config.rating > 0) ? config.rating.toFixed(1) : '5.0'} no Google</span>
-      </div>
-      <p class="google-card-sub">Sua opinião é fundamental para nossa empresa! Avalie nosso atendimento no Google em menos de 5 segundos.</p>
-      <a href="${reviewUrl}" target="_blank" rel="noopener noreferrer" class="google-cta-btn">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-        <span>Deixar Avaliação no Google (1-Clique)</span>
-      </a>
-    </div>
-
-    <!-- 5. Card Pagamento PIX (Copia & Cola + QR Code) -->
-    <div class="pix-card">
-      <div style="display:flex;align-items:center;justify-content:space-between;">
-        <div style="display:flex;align-items:center;gap:10px;">
-          <div style="width:36px;height:36px;border-radius:10px;background:#32BCAD;display:flex;align-items:center;justify-content:center;color:white;box-shadow:0 3px 8px rgba(50,188,173,0.3);">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M14.654 6.786l-2.654 2.654-2.654-2.654 2.654-2.654 2.654 2.654zm-2.654 7.786l2.654-2.654 2.654 2.654-2.654 2.654-2.654-2.654zm7.786-2.654l2.654-2.654-2.654-2.654-2.654 2.654 2.654 2.654zm-15.572 0l-2.654-2.654 2.654-2.654 2.654 2.654-2.654 2.654z"/></svg>
-          </div>
-          <div>
-            <div style="font-size:13px;font-weight:800;color:white;">Pagamento via Pix</div>
-            <div style="font-size:10px;color:#94a3b8;">Favorecido: ${pixBeneficiary}</div>
-          </div>
-        </div>
-        <span style="font-size:10px;font-weight:800;padding:2px 8px;border-radius:10px;background:rgba(50,188,173,0.2);color:#5eead4;">1-Toque</span>
-      </div>
-      <div style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:8px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;">
-        <span style="font-family:monospace;font-size:11px;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${pixKey}</span>
-        <span style="font-size:9px;color:#94a3b8;font-weight:700;text-transform:uppercase;">${pixType}</span>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-        <button type="button" onclick="handlePixClick()" style="padding:9px 12px;border-radius:12px;background:#32BCAD;color:#042f2e;font-weight:800;font-size:11px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
-          <span id="pixBtnText">Copiar Chave</span>
-        </button>
-        <button type="button" onclick="openPixModalOnly()" style="padding:9px 12px;border-radius:12px;background:rgba(255,255,255,0.08);color:white;font-weight:700;font-size:11px;border:1px solid rgba(255,255,255,0.15);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect width="5" height="5" x="3" y="3" rx="1"/><rect width="5" height="5" x="16" y="3" rx="1"/><rect width="5" height="5" x="3" y="16" rx="1"/><path d="M21 16h-3a2 2 0 0 0-2 2v3"/><path d="M21 21v.01"/><path d="M12 7v3a2 2 0 0 1-2 2H7"/></svg>
-          <span>Ver QR Code</span>
-        </button>
-      </div>
-    </div>
-
-    <!-- 6. Outros Links & Canais Oficiais -->
-    <div class="buttons-group">
-
-      <!-- Wi-Fi 1-Clique -->
-      <button type="button" onclick="openWifiModal()" class="action-btn btn-wifi">
-        <div class="btn-left">
-          <div class="btn-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M5 12.55a11 11 0 0 1 14.08 0"></path>
-              <path d="M1.42 9a16 16 0 0 1 21.16 0"></path>
-              <path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path>
-              <line x1="12" y1="20" x2="12.01" y2="20"></line>
-            </svg>
-          </div>
-          <div class="btn-info">
-            <div class="btn-title">
-              <span>Conectar ao Wi-Fi</span>
-              <span class="btn-badge" style="background:#e0f2fe;color:#0369a1;">Grátis</span>
-            </div>
-            <div class="btn-subtitle">Conexão instantânea sem digitar senha</div>
-          </div>
-        </div>
-        <div class="btn-arrow">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
-        </div>
-      </button>
-
-      <!-- WhatsApp Geral / Atendimento -->
-      <a href="${whatsappUrl}" target="_blank" rel="noopener noreferrer" class="action-btn btn-whatsapp">
-        <div class="btn-left">
-          <div class="btn-icon">
-            <svg viewBox="0 0 24 24" fill="currentColor">
-              <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981z"/>
-            </svg>
-          </div>
-          <div class="btn-info">
-            <div class="btn-title">
-              <span>WhatsApp Direto</span>
-              <span class="btn-badge" style="background:#dcfce7;color:#166534;">1-Clique</span>
-            </div>
-            <div class="btn-subtitle">Fale com nossa equipe sobre outras dúvidas</div>
-          </div>
-        </div>
-        <div class="btn-arrow">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
-        </div>
-      </a>
-
-      <!-- Instagram Oficial -->
-      <a href="${instaUrl}" target="_blank" rel="noopener noreferrer" class="action-btn btn-instagram">
-        <div class="btn-left">
-          <div class="btn-icon">
-            <svg viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
-            </svg>
-          </div>
-          <div class="btn-info">
-            <div class="btn-title">
-              <span>Instagram Oficial</span>
-              ${instaHandle ? `<span style="font-size:11px;color:#f472b6;">${instaHandle}</span>` : ''}
-            </div>
-            <div class="btn-subtitle">Siga nossas novidades, fotos e stories</div>
-          </div>
-        </div>
-        <div class="btn-arrow">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
-        </div>
-      </a>
-
-      <!-- Endereço & Rota Maps -->
-      ${addressText ? `
-      <a href="${mapsSearchUrl}" target="_blank" rel="noopener noreferrer" class="action-btn btn-maps">
-        <div class="btn-left">
-          <div class="btn-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-              <circle cx="12" cy="10" r="3"></circle>
-            </svg>
-          </div>
-          <div class="btn-info">
-            <div class="btn-title">
-              <span>Como Chegar / Endereço</span>
-              <span class="btn-badge" style="background:#fee2e2;color:#991b1b;">Maps</span>
-            </div>
-            <div class="btn-subtitle">${addressText}</div>
-          </div>
-        </div>
-        <div class="btn-arrow">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
-        </div>
-      </a>
-      ` : ''}
-
-      <!-- Ligar Direto -->
-      ${phoneCallUrl ? `
-      <a href="${phoneCallUrl}" class="action-btn btn-phone">
-        <div class="btn-left">
-          <div class="btn-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
-            </svg>
-          </div>
-          <div class="btn-info">
-            <div class="btn-title">
-              <span>Ligar no Telefone</span>
-              <span class="btn-badge" style="background:#dbeafe;color:#1e40af;">Ligação</span>
-            </div>
-            <div class="btn-subtitle">${config.phone || 'Atendimento comercial direto'}</div>
-          </div>
-        </div>
-        <div class="btn-arrow">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
-        </div>
-      </a>
-      ` : ''}
-
-      <!-- Site Oficial -->
-      ${siteUrl ? `
-      <a href="${siteUrl}" target="_blank" rel="noopener noreferrer" class="action-btn btn-site">
-        <div class="btn-left">
-          <div class="btn-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="10"></circle>
-              <line x1="2" y1="12" x2="22" y2="12"></line>
-              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
-            </svg>
-          </div>
-          <div class="btn-info">
-            <div class="btn-title">
-              <span>Nosso Site Oficial</span>
-              <span class="btn-badge" style="background:#e0e7ff;color:#3730a3;">Web</span>
-            </div>
-            <div class="btn-subtitle">Cardápio, portfólio e serviços completos</div>
-          </div>
-        </div>
-        <div class="btn-arrow">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
-        </div>
-      </a>
-      ` : ''}
-
-      <!-- Telegram -->
-      ${telegramUrl ? `
-      <a href="${telegramUrl}" target="_blank" rel="noopener noreferrer" class="action-btn btn-telegram">
-        <div class="btn-left">
-          <div class="btn-icon">
-            <svg viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.446 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.121l-6.871 4.326-2.962-.924c-.643-.204-.657-.643.136-.953l11.57-4.46c.536-.196 1.006.128.832.945z"/>
-            </svg>
-          </div>
-          <div class="btn-info">
-            <div class="btn-title"><span>Canal no Telegram</span></div>
-            <div class="btn-subtitle">Avisos e promoções exclusivas</div>
-          </div>
-        </div>
-        <div class="btn-arrow">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
-        </div>
-      </a>
-      ` : ''}
-
-      <!-- TikTok -->
-      ${tiktokUrl ? `
-      <a href="${tiktokUrl}" target="_blank" rel="noopener noreferrer" class="action-btn btn-tiktok">
-        <div class="btn-left">
-          <div class="btn-icon">
-            <svg viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.24 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/>
-            </svg>
-          </div>
-          <div class="btn-info">
-            <div class="btn-title"><span>TikTok</span></div>
-            <div class="btn-subtitle">${tiktokHandle || 'Vídeos e novidades'}</div>
-          </div>
-        </div>
-        <div class="btn-arrow">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
-        </div>
-      </a>
-      ` : ''}
-
-    </div>
-
-    <!-- Catálogo Adicional de Serviços (se cadastrado mais de 4 itens) -->
-    ${additionalServices.length > 0 ? `
-    <div style="margin-top: 14px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.1); text-align: left;">
-      <div style="font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: #38bdf8; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
-        <span>✨ Mais Serviços &amp; Especialidades</span>
-      </div>
-      <div style="display: flex; flex-direction: column; gap: 8px;">
-        ${additionalServices.map((srv) => {
-          const srvWaUrl = buildMiniSiteWhatsappUrl(
-            config.whatsappNumber || config.phone || '5511999999999',
-            `Olá! Vi no Mini Site de ${name} o serviço "${srv.title}"${srv.price ? ` (${srv.price})` : ''} e gostaria de mais informações!`
-          );
-          return `
-          <a href="${srvWaUrl}" target="_blank" rel="noopener noreferrer" style="display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border-radius: 16px; background: rgba(15, 23, 42, 0.75); border: 1px solid rgba(56, 189, 248, 0.25); text-decoration: none; color: white;">
-            <div style="min-width: 0; flex: 1;">
-              <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                <strong style="font-size: 13px; color: #ffffff;">${srv.title}</strong>
-                ${srv.price ? `<span style="font-size: 10px; font-weight: 800; padding: 2px 7px; border-radius: 8px; background: rgba(16, 185, 129, 0.2); color: #34d399;">${srv.price}</span>` : ''}
+              <div class="product-info">
+                <div>
+                  <div class="product-title">${p.title}</div>
+                  <div class="product-desc">${p.description || 'Atendimento imediato via WhatsApp.'}</div>
+                </div>
+                <a href="${pWaUrl}" target="_blank" rel="noopener noreferrer" class="product-cta">
+                  <span>${smartMeta.ctaLabel}</span>
+                </a>
               </div>
-              ${srv.description ? `<p style="font-size: 11px; color: #94a3b8; margin: 3px 0 0 0; line-height: 1.35;">${srv.description}</p>` : ''}
-            </div>
-            <span style="font-size: 10px; font-weight: 800; padding: 6px 10px; border-radius: 10px; background: #10b981; color: #022c22; white-space: nowrap;">Pedir</span>
+            </div>`;
+          }).join('')}
+        </div>
+      </section>
+
+      <!-- 6. CARDÁPIO DIGITAL / CATÁLOGO DO SEGMENTO -->
+      ${additionalServices.length > 0 ? `
+      <section id="catalogo" class="section-card">
+        <div class="section-head">
+          <span class="section-title">${smartMeta.menuTabLabel}</span>
+          <span class="section-tag">Pedido Rápido</span>
+        </div>
+        <div>
+          ${additionalServices.map((srv) => {
+            const srvWaUrl = buildMiniSiteWhatsappUrl(
+              config.whatsappNumber || config.phone || '5511999999999',
+              `Olá! Vi no Mini Site de ${name} o item "${srv.title}"${srv.price ? ` (${srv.price})` : ''} e quero mais informações!`
+            );
+            return `
+            <a href="${srvWaUrl}" target="_blank" rel="noopener noreferrer" class="catalog-item">
+              ${srv.imageUrl ? `<img src="${srv.imageUrl}" alt="${srv.title}" loading="lazy" />` : ''}
+              <div style="flex:1;min-width:0;">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">
+                  <strong style="font-size:12.5px;color:#fff;">${srv.title}</strong>
+                  ${srv.price ? `<span style="font-size:11px;font-weight:900;color:#34d399;">${srv.price}</span>` : ''}
+                </div>
+                ${srv.description ? `<p style="font-size:10.5px;color:#94a3b8;margin-top:2px;">${srv.description}</p>` : ''}
+              </div>
+            </a>`;
+          }).join('')}
+        </div>
+      </section>
+      ` : ''}
+
+      <!-- 7. SOBRE A EMPRESA & DIFERENCIAIS DE VALOR -->
+      <section id="sobre" class="section-card">
+        <div class="section-head">
+          <span class="section-title">💎 Sobre &amp; Diferenciais</span>
+          <span class="section-tag">Experiência VIP</span>
+        </div>
+        <p style="font-size:12px;color:#cbd5e1;line-height:1.55;">${aboutText}</p>
+        <div class="amenities-wrap">
+          ${amenities.map((am) => `<span class="amenity-chip">${am}</span>`).join('')}
+        </div>
+      </section>
+
+      <!-- 8. GALERIA DE FOTOS REALISTAS EM 4K -->
+      <section class="section-card">
+        <div class="section-head">
+          <span class="section-title">📸 Galeria Realista 4K</span>
+          <span class="section-tag">Ultra HD</span>
+        </div>
+        <div class="gallery-grid">
+          ${galleryUrls.slice(0, 4).map((gUrl) => `<img src="${gUrl}" alt="${name}" loading="lazy" />`).join('')}
+        </div>
+      </section>
+
+      <!-- 9. TELA COMO CHEGAR & LOCALIZAÇÃO GPS -->
+      <section id="como-chegar" class="section-card">
+        <div class="section-head">
+          <span class="section-title">📍 Como Chegar &amp; Horários</span>
+          <span class="section-tag">Rota GPS 1-Clique</span>
+        </div>
+        <div class="map-visual-banner">
+          <div class="map-pin-circle">📍</div>
+          <strong style="font-size:13px;color:#fff;">${name}</strong>
+          <span style="font-size:11px;color:#cbd5e1;margin-top:2px;">${addressText}</span>
+        </div>
+        <div style="font-size:11.5px;color:#cbd5e1;background:rgba(255,255,255,0.04);padding:10px 12px;border-radius:12px;border:1px solid rgba(255,255,255,0.08);">
+          <div><strong>🕒 Atendimento:</strong> ${openingHours}</div>
+          ${config.phone ? `<div style="margin-top:4px;"><strong>📞 Telefone:</strong> ${config.phone}</div>` : ''}
+        </div>
+        <div class="route-btns">
+          <a href="${mapsSearchUrl}" target="_blank" rel="noopener noreferrer" class="route-btn" style="background:#ef4444;color:#fff;">
+            <span>🗺️ Google Maps</span>
           </a>
-          `;
-        }).join('')}
-      </div>
-    </div>
-    ` : ''}
+          <a href="${wazeUrl}" target="_blank" rel="noopener noreferrer" class="route-btn" style="background:#0ea5e9;color:#082f49;">
+            <span>🚗 Abrir no Waze</span>
+          </a>
+        </div>
+      </section>
 
+      <!-- 10. AVALIAÇÃO DO GOOGLE ESTILO PRINT REAL -->
+      <section id="avaliacoes" class="google-print-card">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div style="width:40px;height:40px;border-radius:12px;background:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(0,0,0,0.3);">
+              <svg width="22" height="22" viewBox="0 0 24 24">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+              </svg>
+            </div>
+            <div>
+              <div style="font-size:14px;font-weight:900;color:#fff;">Avaliações no Google</div>
+              <div style="color:#fbbf24;font-size:14px;font-weight:900;">
+                ${(config.rating && config.rating > 0 ? config.rating : 5.0).toFixed(1)} ★★★★★
+                <span style="font-size:11px;color:#cbd5e1;font-weight:600;">(${config.reviewCount || 128} avaliações)</span>
+              </div>
+            </div>
+          </div>
+          <span style="font-size:10px;font-weight:900;padding:4px 9px;border-radius:999px;background:rgba(251,191,36,0.2);color:#fde68a;border:1px solid rgba(251,191,36,0.4);"> Verificado</span>
+        </div>
+
+        <div style="margin:10px 0;">
+          ${testimonials.slice(0, 2).map((t) => `
+          <div class="review-snippet">
+            <div style="display:flex;align-items:center;justify-content:space-between;font-size:11px;">
+              <strong style="color:#fff;">${t.author}</strong>
+              <span style="color:#fbbf24;">★★★★★ <span style="color:#64748b;font-size:10px;">${t.timeAgo || 'recente'}</span></span>
+            </div>
+            <p style="font-size:11px;color:#cbd5e1;margin-top:4px;line-height:1.4;">"${t.text}"</p>
+          </div>
+          `).join('')}
+        </div>
+
+        <a href="${reviewUrl}" target="_blank" rel="noopener noreferrer" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;border-radius:14px;background:linear-gradient(135deg,#4285F4,#34A853);color:#fff;font-size:12.5px;font-weight:900;text-decoration:none;margin-top:10px;">
+          <span>⭐ Avaliar Nossa Empresa no Google (1-Clique)</span>
+        </a>
+      </section>
+
+      <!-- 11. PIX, WI-FI E CANAIS RÁPIDOS -->
+      <section id="pix-wifi" class="section-card">
+        <div class="section-head">
+          <span class="section-title">⚡ Central Rápida: Pix, Wi-Fi &amp; Redes</span>
+          <span class="section-tag">1-Toque</span>
+        </div>
+        <div style="background:rgba(20,184,166,0.12);border:1px solid rgba(20,184,166,0.35);border-radius:16px;padding:12px;margin-bottom:10px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+            <strong style="font-size:12.5px;color:#fff;">💠 Chave Pix (${pixType})</strong>
+            <span style="font-size:10px;color:#5eead4;">${pixBeneficiary}</span>
+          </div>
+          <div style="font-family:monospace;font-size:11.5px;color:#e2e8f0;background:rgba(0,0,0,0.35);padding:8px 10px;border-radius:10px;margin-bottom:8px;overflow:hidden;text-overflow:ellipsis;">${pixKey}</div>
+          <button type="button" onclick="navigator.clipboard.writeText('${pixKey.replace(/'/g, "\\'")}');this.innerText='✅ Chave Pix Copiada!';" style="width:100%;padding:10px;border-radius:10px;background:#14b8a6;color:#042f2e;font-weight:900;font-size:11.5px;border:none;cursor:pointer;">
+            Copiar Chave Pix Agora
+          </button>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <a href="${whatsappUrl}" target="_blank" rel="noopener noreferrer" style="padding:11px;border-radius:14px;background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.4);color:#fff;text-decoration:none;font-size:11.5px;font-weight:800;text-align:center;">
+            💬 WhatsApp Geral
+          </a>
+          <a href="${instaUrl}" target="_blank" rel="noopener noreferrer" style="padding:11px;border-radius:14px;background:rgba(236,72,153,0.15);border:1px solid rgba(236,72,153,0.4);color:#fff;text-decoration:none;font-size:11.5px;font-weight:800;text-align:center;">
+            📸 Instagram ${instaHandle}
+          </a>
+        </div>
+      </section>
     </div>
 
-    <!-- Footer -->
     <footer class="footer">
-      <div class="footer-badge">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
-        <span>Mini Site NFC Integrado</span>
-      </div>
-      <p>&copy; ${new Date().getFullYear()} <strong>${name}</strong>. Todos os direitos reservados.</p>
+      <p>&copy; ${new Date().getFullYear()} <strong>${name}</strong> • Mini Página Oficial 4K</p>
     </footer>
-
-  </main>
-
-  <!-- PIX MODAL -->
-  <div id="pixModal" class="modal-overlay">
-    <div class="modal-content">
-      <button class="modal-close" onclick="closePixModal()">✕</button>
-      <div style="width:48px;height:48px;border-radius:14px;background:#32BCAD;color:white;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M14.654 6.786l-2.654 2.654-2.654-2.654 2.654-2.654 2.654 2.654zm-2.654 7.786l2.654-2.654 2.654 2.654-2.654 2.654-2.654-2.654zm7.786-2.654l2.654-2.654-2.654-2.654-2.654 2.654 2.654 2.654zm-15.572 0l-2.654-2.654 2.654-2.654 2.654 2.654-2.654 2.654z"/>
-        </svg>
-      </div>
-      <h3 style="font-size:18px;font-weight:800;color:white;margin-bottom:4px;">Chave Pix Instantânea</h3>
-      <p style="font-size:12px;color:#94a3b8;margin-bottom:12px;">Escaneie o QR Code ou copie a chave abaixo:</p>
-      
-      <div class="qr-container">
-        <img src="${pixQrUrl}" alt="QR Code Pix" onerror="this.src='https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(pixKey)}'">
-      </div>
-
-      <div style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:10px 14px;text-align:left;margin-bottom:12px;">
-        <span style="font-size:10px;text-transform:uppercase;font-weight:700;color:#94a3b8;display:block;">${pixType}:</span>
-        <span id="pixKeyText" style="font-size:13px;font-family:monospace;font-weight:700;color:#38bdf8;word-break:break-all;">${pixKey}</span>
-        <span style="font-size:11px;color:#cbd5e1;display:block;margin-top:2px;">Favorecido: <strong>${pixBeneficiary}</strong></span>
-      </div>
-
-      <button type="button" class="modal-btn" style="background:#32BCAD;color:#042f2e;" onclick="copyPixFromModal()">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-        <span>Copiar Chave Pix</span>
-      </button>
-    </div>
   </div>
-
-  <!-- WI-FI MODAL -->
-  <div id="wifiModal" class="modal-overlay">
-    <div class="modal-content">
-      <button class="modal-close" onclick="closeWifiModal()">✕</button>
-      <div style="width:48px;height:48px;border-radius:14px;background:#0ea5e9;color:white;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M5 12.55a11 11 0 0 1 14.08 0"></path>
-          <path d="M1.42 9a16 16 0 0 1 21.16 0"></path>
-          <path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path>
-          <line x1="12" y1="20" x2="12.01" y2="20"></line>
-        </svg>
-      </div>
-      <h3 style="font-size:18px;font-weight:800;color:white;margin-bottom:4px;">Conectar ao Wi-Fi</h3>
-      <p style="font-size:12px;color:#94a3b8;margin-bottom:12px;">Aponte a câmera do seu celular para o QR Code para conectar na hora:</p>
-      
-      <div class="qr-container">
-        <img src="${wifiQrUrl}" alt="QR Code Wi-Fi" onerror="this.src='https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(wifiQrData)}'">
-      </div>
-
-      <div style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:10px 14px;text-align:left;margin-bottom:12px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-          <span style="font-size:10px;text-transform:uppercase;font-weight:700;color:#94a3b8;">Rede (SSID):</span>
-          <strong style="font-size:12px;color:white;">${wifiSsid}</strong>
-        </div>
-        <div style="display:flex;justify-content:space-between;align-items:center;">
-          <span style="font-size:10px;text-transform:uppercase;font-weight:700;color:#94a3b8;">Senha:</span>
-          <strong id="wifiPassText" style="font-size:12px;font-family:monospace;color:#38bdf8;">${wifiPass}</strong>
-        </div>
-      </div>
-
-      <button type="button" class="modal-btn" style="background:#0ea5e9;color:#082f49;" onclick="copyWifiPassword()">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-        <span>Copiar Senha do Wi-Fi</span>
-      </button>
-    </div>
-  </div>
-
-  <!-- TOAST NOTIFICATION -->
-  <div id="toast" class="toast">
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
-    <span id="toastMsg">Chave Pix copiada com sucesso!</span>
-  </div>
-
-  <script>
-    const PIX_KEY = "${pixKey.replace(/"/g, '\\"')}";
-    const WIFI_PASS = "${wifiPass.replace(/"/g, '\\"')}";
-
-    function showToast(msg) {
-      const toast = document.getElementById('toast');
-      const toastMsg = document.getElementById('toastMsg');
-      toastMsg.innerText = msg;
-      toast.classList.add('show');
-      setTimeout(() => toast.classList.remove('show'), 2500);
-    }
-
-    function handlePixClick() {
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(PIX_KEY).then(() => {
-          showToast("Chave Pix copiada com sucesso!");
-        }).catch(() => {});
-      }
-      openPixModal();
-    }
-
-    function openPixModal() {
-      document.getElementById('pixModal').classList.add('active');
-    }
-
-    function openPixModalOnly() {
-      document.getElementById('pixModal').classList.add('active');
-    }
-
-    function closePixModal() {
-      document.getElementById('pixModal').classList.remove('active');
-    }
-
-    function copyPixFromModal() {
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(PIX_KEY).then(() => {
-          showToast("Chave Pix copiada com sucesso!");
-        }).catch(() => fallbackCopy(PIX_KEY, "Chave Pix copiada!"));
-      } else {
-        fallbackCopy(PIX_KEY, "Chave Pix copiada!");
-      }
-    }
-
-    function openWifiModal() {
-      document.getElementById('wifiModal').classList.add('active');
-    }
-
-    function closeWifiModal() {
-      document.getElementById('wifiModal').classList.remove('active');
-    }
-
-    function copyWifiPassword() {
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(WIFI_PASS).then(() => {
-          showToast("Senha do Wi-Fi copiada!");
-        }).catch(() => fallbackCopy(WIFI_PASS, "Senha do Wi-Fi copiada!"));
-      } else {
-        fallbackCopy(WIFI_PASS, "Senha do Wi-Fi copiada!");
-      }
-    }
-
-    function fallbackCopy(text, msg) {
-      const textarea = document.createElement("textarea");
-      textarea.value = text;
-      textarea.style.position = "fixed";
-      textarea.style.opacity = "0";
-      document.body.appendChild(textarea);
-      textarea.select();
-      try {
-        document.execCommand("copy");
-        showToast(msg);
-      } catch (e) {}
-      document.body.removeChild(textarea);
-    }
-
-    // Close modal on background click
-    window.addEventListener('click', function(e) {
-      if (e.target.classList.contains('modal-overlay')) {
-        e.target.classList.remove('active');
-      }
-    });
-
-    // Close on Escape key
-    window.addEventListener('keydown', function(e) {
-      if (e.key === 'Escape') {
-        closePixModal();
-        closeWifiModal();
-      }
-    });
-  </script>
 </body>
 </html>`;
 }
 
-/**
- * Generates 100% self-contained standalone HTML with Base64-inlined QR Codes.
- * Runs asynchronously to compile the QR images directly into the HTML markup.
- */
 export async function generateMiniSiteStandaloneHtml(config: MiniSiteConfig): Promise<string> {
   const pixKey = config.pixKey || 'pix@empresa.com.br';
   const name = config.companyName || 'Sua Empresa';
@@ -1777,15 +1856,11 @@ export async function generateMiniSiteStandaloneHtml(config: MiniSiteConfig): Pr
   return generateMiniSiteHtml(config, { pixQrUrl, wifiQrUrl });
 }
 
-/**
- * Downloads single standalone HTML file (`index.html` by default, ideal for hosting roots).
- */
 export async function downloadMiniSiteHtml(config: MiniSiteConfig, filename?: string): Promise<void> {
   const htmlContent = await generateMiniSiteStandaloneHtml(config);
   const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  const safeName = (config.companyName || 'minisite').toLowerCase().replace(/[^a-z0-9]/g, '_');
   a.href = url;
   a.download = filename || `index.html`;
   document.body.appendChild(a);
@@ -1794,117 +1869,21 @@ export async function downloadMiniSiteHtml(config: MiniSiteConfig, filename?: st
   URL.revokeObjectURL(url);
 }
 
-/**
- * Downloads complete ZIP package with:
- * 1. `index.html`: Fully self-contained static mini-site with embedded Base64 QR codes.
- * 2. `README.txt`: 30-second hosting instructions for Netlify Drop, Vercel, GitHub Pages, or cPanel.
- * 3. `configuracao_empresa.json`: Complete backup of all company links, colors, and parameters.
- * 4. `INSTRUCOES_DE_PUBLICACAO.html`: Interactive visual guide for the client.
- */
 export async function downloadMiniSiteZip(config: MiniSiteConfig, filename?: string): Promise<void> {
   const zip = new JSZip();
   const htmlContent = await generateMiniSiteStandaloneHtml(config);
   const safeName = (config.companyName || 'minisite').toLowerCase().replace(/[^a-z0-9]/g, '_');
 
-  // Main standalone static page
   zip.file('index.html', htmlContent);
+  zip.file('configuracao_empresa.json', JSON.stringify(config, null, 2));
 
-  // Backup configuration JSON
-  const configJson = JSON.stringify(config, null, 2);
-  zip.file('configuracao_empresa.json', configJson);
-
-  // README with instant hosting manual
   const readmeContent = `========================================================================
-MINI SITE ESTÁTICO AUTÔNOMO - ${config.companyName || 'Sua Empresa'}
-Tecnologia de Conexão Inteligente & NFC Hub por ALF Automação
+MINI SITE ESTÁTICO AUTÔNOMO 4K - ${config.companyName || 'Sua Empresa'}
 ========================================================================
-
-Parabéns! Este pacote contém o Mini Site Oficial da sua empresa 100% pronto,
-autônomo e sem dependências de nenhuma mensalidade externa.
-
-------------------------------------------------------------------------
-CONTEÚDO DO PACOTE:
-------------------------------------------------------------------------
-1. [index.html] -> O arquivo principal do Mini Site. Abre com 2 cliques em
-   qualquer navegador e está pronto para ser hospedado em qualquer servidor.
-2. [configuracao_empresa.json] -> Cópia de segurança com todos os seus dados
-   (WhatsApp, Pix, Wi-Fi, links, endereço e cores).
-3. [INSTRUCOES_DE_PUBLICACAO.html] -> Guia visual passo a passo para colocar
-   no ar em 30 segundos.
-
-------------------------------------------------------------------------
-COMO COLOCAR NO AR EM 30 SEGUNDOS (GRÁTIS E COM SSL / HTTPS):
-------------------------------------------------------------------------
-OPÇÃO 1: Netlify Drop (Mais Fácil - Recomendado)
-1. Acesse no navegador: https://app.netlify.com/drop
-2. Arraste este arquivo ZIP ou a pasta descompactada para a página.
-3. Seu site estará no ar na mesma hora com um link próprio e seguro!
-4. Você pode vincular seu próprio domínio (ex: links.suaempresa.com.br).
-
-OPÇÃO 2: Vercel ou Cloudflare Pages
-1. Acesse https://vercel.com ou https://pages.cloudflare.com
-2. Importe ou arraste a pasta com o arquivo index.html.
-
-OPÇÃO 3: Hospedagem Própria (cPanel, Hostinger, Locaweb, Apache, NGINX)
-1. Acesse o Gerenciador de Arquivos do seu cPanel.
-2. Abra a pasta 'public_html' (ou subdomínio desejado).
-3. Faça o upload do arquivo 'index.html'.
-
-------------------------------------------------------------------------
-ONDE DIVULGAR SEU MINI SITE:
-------------------------------------------------------------------------
-- Na bio do seu perfil no Instagram
-- No botão de link dos Stories
-- Na mensagem de saudação automática do WhatsApp Business
-- Gravado no chip da sua Placa ou Totem NFC físico
-- No QR Code impresso no balcão, mesas ou cartões de visita
-
-Suporte e Atualizações: ALF Automação Comercial
+1. Acesse https://app.netlify.com/drop
+2. Arraste este arquivo ZIP ou o index.html para publicar gratuitamente!
 `;
   zip.file('README.txt', readmeContent);
-
-  // Visual Quick Guide HTML for the client
-  const visualGuideHtml = `<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8">
-  <title>Instruções de Publicação - ${config.companyName}</title>
-  <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: #f8fafc; padding: 32px 16px; display: flex; justify-content: center; }
-    .card { max-width: 600px; width: 100%; background: #1e293b; border-radius: 20px; padding: 32px; box-shadow: 0 20px 40px rgba(0,0,0,0.5); }
-    h1 { font-size: 24px; color: #38bdf8; margin-bottom: 8px; }
-    p { color: #94a3b8; font-size: 14px; line-height: 1.6; margin-bottom: 20px; }
-    .step { background: rgba(255,255,255,0.04); border-left: 4px solid #38bdf8; border-radius: 10px; padding: 14px 18px; margin-bottom: 14px; }
-    .step strong { color: #ffffff; display: block; font-size: 15px; margin-bottom: 4px; }
-    .btn { display: inline-block; background: #0284c7; color: white; padding: 12px 24px; border-radius: 12px; text-decoration: none; font-weight: bold; margin-top: 10px; }
-    .btn:hover { background: #0369a1; }
-  </style>
-</head>
-<body>
-  <div class="card">
-    <h1>Como Publicar seu Mini Site</h1>
-    <p>O arquivo <strong>index.html</strong> que acompanha este pacote é 100% autônomo e já está com todos os seus botões e QR codes prontos.</p>
-    
-    <div class="step">
-      <strong>Passo 1: Acesse o Netlify Drop</strong>
-      <span>Abra <a href="https://app.netlify.com/drop" target="_blank" style="color:#38bdf8;">app.netlify.com/drop</a> no seu computador.</span>
-    </div>
-
-    <div class="step">
-      <strong>Passo 2: Arraste a pasta ou ZIP</strong>
-      <span>Basta arrastar a pasta descompactada para o centro da tela.</span>
-    </div>
-
-    <div class="step">
-      <strong>Passo 3: Pronto! Seu link está online</strong>
-      <span>Copie o link gerado e coloque na bio do Instagram ou envie para seus clientes.</span>
-    </div>
-
-    <a href="index.html" class="btn">Abrir Meu Mini Site Agora ➔</a>
-  </div>
-</body>
-</html>`;
-  zip.file('INSTRUCOES_DE_PUBLICACAO.html', visualGuideHtml);
 
   const blob = await zip.generateAsync({ type: 'blob' });
   const url = URL.createObjectURL(blob);
@@ -1917,9 +1896,6 @@ Suporte e Atualizações: ALF Automação Comercial
   URL.revokeObjectURL(url);
 }
 
-/**
- * Open live preview in a new browser tab with standalone HTML.
- */
 export async function openMiniSiteLivePreview(config: MiniSiteConfig): Promise<void> {
   const htmlContent = await generateMiniSiteStandaloneHtml(config);
   const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
@@ -1927,9 +1903,6 @@ export async function openMiniSiteLivePreview(config: MiniSiteConfig): Promise<v
   window.open(url, '_blank');
 }
 
-/**
- * Copy complete standalone HTML code to clipboard.
- */
 export async function copyMiniSiteHtmlToClipboard(config: MiniSiteConfig): Promise<boolean> {
   try {
     const htmlContent = await generateMiniSiteStandaloneHtml(config);
@@ -1937,42 +1910,27 @@ export async function copyMiniSiteHtmlToClipboard(config: MiniSiteConfig): Promi
       await navigator.clipboard.writeText(htmlContent);
       return true;
     }
-    const textarea = document.createElement('textarea');
-    textarea.value = htmlContent;
-    textarea.style.position = 'fixed';
-    textarea.style.opacity = '0';
-    document.body.appendChild(textarea);
-    textarea.select();
-    const success = document.execCommand('copy');
-    document.body.removeChild(textarea);
-    return success;
+    return false;
   } catch (e) {
     console.error('Failed to copy HTML:', e);
     return false;
   }
 }
 
-/**
- * Generates pre-formatted WhatsApp message for the operator to send to the client.
- */
 export function generateClientShareMessage(config: MiniSiteConfig, hostingUrl?: string): string {
   const name = config.companyName || 'Sua Empresa';
   const url = hostingUrl || 'https://seumini-site.com';
   return `Olá, tudo bem? 🚀
 
-Aqui está o *Mini Site Exclusivo* de *${name}*!
+Aqui está a nova *Mini Página Inovadora 4K* de *${name}*!
 
-✨ *O que está incluso:*
-⭐ Botão direto para Avaliação 5 Estrelas no Google
-💬 WhatsApp 1-clique para seus clientes falarem direto com você
-📶 Conexão Wi-Fi Instantânea por QR Code (sem precisar digitar senha)
-⚡ Pagamento via Pix com 1 toque (Copia e Cola + QR Code)
-📸 Instagram Oficial
-📍 Endereço e Rota pelo Google Maps
-
-📂 *Como hospedar:*
-O arquivo *index.html* anexado é 100% seu e autônomo, sem nenhuma mensalidade.
-Basta arrastar para o Netlify (app.netlify.com/drop) ou subir na sua hospedagem!
+✨ *O que está incluso na sua página:*
+🖼️ Capa Hero em 4K + Logotipo + Horário de Atendimento em destaque
+🔥 Letreiro dinâmico com frase de destaque passando
+🍽️ Vitrine de Destaques & Cardápio/Catálogo do seu segmento
+📍 Tela "Como Chegar" com rota 1-clique no Google Maps e Waze
+⭐ Avaliação 5 Estrelas no Google com depoimentos reais
+⚡ Pagamento via Pix e Wi-Fi com QR Code
 
 ${hostingUrl ? `🔗 Acesse a demonstração online: ${url}\n` : ''}Qualquer dúvida estamos à disposição!`;
 }
