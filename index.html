@@ -60,10 +60,27 @@
       (function() {
         try {
           if (window.self !== window.top) return; // Prevent breaking preview iframes
+          var h = window.location.hostname || '';
           var p = window.location.pathname || '';
+          var s = window.location.search || '';
+          var isDevOrRunApp = h.indexOf('.run.app') !== -1 || h.indexOf('ais-dev-') !== -1 || h.indexOf('ais-pre-') !== -1;
+
+          // If a smartphone scanned an NFC tag pointing to Google Cloud Run dev container (.run.app),
+          // immediately redirect to the official production server on Render:
+          if (isDevOrRunApp) {
+            if (/^\/(r|redirect|nfc|tag)\//i.test(p) || s.indexOf('minisite=') !== -1 || s.indexOf('leadId=') !== -1 || s.indexOf('view=mini') !== -1) {
+              window.location.replace('https://automacaonfc.onrender.com' + p + s);
+              return;
+            }
+          }
+
           if (/^\/(r|redirect|nfc|tag)\//i.test(p)) {
             var cleanId = p.replace(/^\/(r|redirect|nfc|tag)\//i, '').replace(/[^a-zA-Z0-9_\-]/g, '').toLowerCase().split('/')[0].split('?')[0];
             if (cleanId) {
+              if (cleanId.indexOf('japa') !== -1 || cleanId.indexOf('assado') !== -1) {
+                window.location.replace('https://automacaonfc.onrender.com/?minisite=assadosdojapa');
+                return;
+              }
               if (cleanId.indexOf('bella') !== -1 || cleanId.indexOf('mesa') !== -1 || cleanId.indexOf('rio') !== -1) {
                 window.location.replace('https://search.google.com/local/writereview?placeid=ChIJTTKzQz_Xv5QRjyhnE6zQpyI');
                 return;

@@ -875,6 +875,19 @@ const handleDynamicRedirect = async (req: express.Request, res: express.Response
     return res.redirect(302, '/');
   }
 
+  // CRITICAL BOUNCE: If a physical plate was previously encoded with the temporary Google AI Studio dev URL (.run.app),
+  // immediately bounce it to the official Render domain so real customers never see "O aplicativo está iniciando..."!
+  const reqHost = req.get('host') || '';
+  if (reqHost.includes('.run.app') || reqHost.includes('ais-dev-') || reqHost.includes('ais-pre-')) {
+    const fullQuery = req.url.includes('?') ? req.url.substring(req.url.indexOf('?')) : '';
+    const renderRedirectUrl = `https://automacaonfc.onrender.com/r/${cleanLeadId}${fullQuery}`;
+    res.status(302);
+    res.setHeader('Location', renderRedirectUrl);
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    return res.send(`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=${renderRedirectUrl}"><script>window.location.replace(${JSON.stringify(renderRedirectUrl)});</script><title>Redirecionando...</title></head><body style="background:#090d16;color:#e2e8f0;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;text-align:center;"><div><p style="font-size:15px;font-weight:bold;">Redirecionando para o servidor oficial...</p><a href="${renderRedirectUrl}" style="color:#38bdf8;">Clique aqui se não abrir automaticamente</a></div></body></html>`);
+  }
+
   try {
     // Smart multi-candidate resolution for aliases (e.g. Padaria Suíça, empresa08 <-> empre08, emoresa07 <-> empresa07)
     const lowerClean = cleanLeadId.toLowerCase();
@@ -1147,13 +1160,27 @@ const handleDynamicRedirect = async (req: express.Request, res: express.Response
     } else if (rawChannel === 'website' || rawChannel === 'site') {
       resolvedChannel = 'website';
       targetUrl = leadData?.websiteUrl || '';
-    } else if (rawChannel === 'minisite' || rawChannel === 'perfil') {
+    }
+
+    const getPublicMinisiteUrl = (id: string) => {
+      const customDomain = process.env.PUBLIC_CUSTOM_DOMAIN || process.env.RENDER_EXTERNAL_URL;
+      if (customDomain && !customDomain.includes('.run.app') && !customDomain.includes('localhost')) {
+        return `${customDomain.replace(/\/+$/, '')}/?minisite=${id}`;
+      }
+      const h = req.get('host') || '';
+      if (h && !h.includes('.run.app') && !h.includes('localhost') && !h.includes('127.0.0.1')) {
+        return `${req.protocol || 'https'}://${h}/?minisite=${id}`;
+      }
+      return `https://automacaonfc.onrender.com/?minisite=${id}`;
+    };
+
+    if (rawChannel === 'minisite' || rawChannel === 'perfil') {
       resolvedChannel = 'minisite';
-      targetUrl = `${req.protocol}://${req.get('host')}/?minisite=${cleanLeadId}`;
+      targetUrl = getPublicMinisiteUrl(cleanLeadId);
     } else {
       // General active redirect configured on the lead
       if (activeRedirect === 'minisite') {
-        targetUrl = `${req.protocol}://${req.get('host')}/?minisite=${cleanLeadId}`;
+        targetUrl = getPublicMinisiteUrl(cleanLeadId);
       } else if (activeRedirect === 'instagram') {
         targetUrl = leadData?.nfcInstagramUrl || '';
       } else if (activeRedirect === 'whatsapp') {
