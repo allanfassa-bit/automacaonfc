@@ -335,6 +335,58 @@ app.use((req, res, next) => {
   next();
 });
 
+// 🔄 UNIVERSAL BRIDGE FOR ALL PREVIOUSLY PRINTED/GENERATED QR CODES:
+// If ANY old QR Code or NFC plate was printed with Google AI Studio dev URL (.run.app),
+// immediately bounce it via HTTP 302 to the official Render domain so customers never see "O aplicativo está iniciando..."!
+app.use((req, res, next) => {
+  const host = (req.get('host') || '').toLowerCase();
+  const isDevHost = host.includes('.run.app') || host.includes('ais-dev-') || host.includes('ais-pre-');
+
+  if (isDevHost) {
+    const p = req.path.toLowerCase();
+    const isScanRoute =
+      p.startsWith('/r/') ||
+      p.startsWith('/redirect/') ||
+      p.startsWith('/qr/') ||
+      p.startsWith('/nfc/') ||
+      p.startsWith('/tag/') ||
+      p.startsWith('/p/') ||
+      p.startsWith('/minisite/') ||
+      req.query.minisite !== undefined ||
+      req.query.leadid !== undefined ||
+      req.query.leadId !== undefined ||
+      req.query.cardapio !== undefined;
+
+    if (isScanRoute) {
+      const targetRenderUrl = `https://automacaonfc.onrender.com${req.originalUrl}`;
+      res.status(302);
+      res.setHeader('Location', targetRenderUrl);
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      return res.send(`<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="refresh" content="0;url=${targetRenderUrl}">
+  <title>Redirecionando...</title>
+  <script>window.location.replace(${JSON.stringify(targetRenderUrl)});</script>
+</head>
+<body style="background:#090d16;color:#e2e8f0;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;text-align:center;padding:20px;">
+  <div>
+    <div style="font-size:32px;margin-bottom:12px;">⚡</div>
+    <div style="font-weight:bold;font-size:16px;color:#fff;">Redirecionando para o servidor oficial...</div>
+    <a href="${targetRenderUrl}" style="display:inline-block;margin-top:16px;padding:8px 18px;background:#0284c7;color:#fff;text-decoration:none;border-radius:10px;font-size:13px;font-weight:bold;">Clique aqui se demorar</a>
+  </div>
+</body>
+</html>`);
+    }
+  }
+  next();
+});
+
 app.use(express.json({ limit: '15mb' }));
 app.use(express.urlencoded({ extended: true, limit: '15mb' }));
 
