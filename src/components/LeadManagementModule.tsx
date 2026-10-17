@@ -922,6 +922,25 @@ export function LeadManagementModule(props: LeadManagementModuleProps) {
                       <p className="text-xs text-slate-600">
                         Link Permanente: <strong className="font-mono text-cyan-700">/r/{selectedLead.id}</strong>
                       </p>
+
+                      {selectedLead.stage !== 'won' && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            updateLeadDetails(selectedLead.id, {
+                              stage: 'won',
+                              isPlaqueActive: true,
+                              isPlaquePrinted: true,
+                              isCustomerAccepted: true
+                            });
+                            alert(`🎉 Sucesso! A empresa "${selectedLead.name}" aceitou a proposta! Ela agora está oficialmente cadastrada como Placa Ativa e disponível na aba "Placas & QR Codes".`);
+                          }}
+                          className="w-full mt-2 py-2.5 px-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs uppercase tracking-wider rounded-xl transition cursor-pointer flex items-center justify-center gap-2 shadow-sm"
+                        >
+                          <CheckCircle className="w-4 h-4 text-white" />
+                          <span>Cliente Aceitou! Ativar Placa NFC</span>
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1313,10 +1332,26 @@ export function LeadManagementModule(props: LeadManagementModuleProps) {
                             <span>Mini-Site &amp; Logo</span>
                           </button>
 
-                          <span className="font-bold text-blue-600 group-hover:translate-x-0.5 transition flex items-center gap-1">
-                            <span>Gerenciar</span>
-                            <ArrowRight className="w-3.5 h-3.5" />
-                          </span>
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (confirm(`Tem certeza que deseja excluir "${lead.name}"?`)) {
+                                  removeLead(lead.id);
+                                }
+                              }}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
+                              title="Excluir Empresa"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+
+                            <span className="font-bold text-blue-600 group-hover:translate-x-0.5 transition flex items-center gap-1 ml-1">
+                              <span>Gerenciar</span>
+                              <ArrowRight className="w-3.5 h-3.5" />
+                            </span>
+                          </div>
                         </div>
                       </div>
                     );

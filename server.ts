@@ -9,7 +9,7 @@ import child_process, { exec } from 'child_process';
 import { GoogleGenAI, Type } from '@google/genai';
 import dotenv from 'dotenv';
 import { initializeApp } from 'firebase/app';
-import { getFirestore, doc, getDoc, collection, getDocs, updateDoc, increment, setDoc } from 'firebase/firestore';
+import { getFirestore, doc, getDoc, collection, getDocs, updateDoc, increment, setDoc, deleteDoc } from 'firebase/firestore';
 import { detectNicheVisualProfile } from './src/utils/nicheVisualDatabase';
 
 dotenv.config();
@@ -1514,13 +1514,44 @@ app.get([
   });
 });
 
-// Backend API for Leads Synchronization (Multi-device Sync across Mobile/Tablet/Desktop & Fallback)
+// Backend API for Leads Synchronization (Returns strictly unique database leads, avoiding duplicate alias explosion)
 app.get('/api/leads', async (_req, res) => {
   try {
-    const leadsList = Array.from(leadsMemoryCache.values());
+    const snap = await getDocs(collection(serverDb, 'leads'));
+    const leadsList: CachedLeadItem[] = [];
+    const seen = new Set<string>();
+    snap.forEach((d) => {
+      const data = d.data() as CachedLeadItem;
+      const id = (data.id || d.id || '').trim();
+      if (id && !seen.has(id.toLowerCase())) {
+        seen.add(id.toLowerCase());
+        leadsList.push({ ...data, id });
+      }
+    });
     return res.json({ success: true, leads: leadsList });
   } catch (err: any) {
-    return res.status(500).json({ success: false, error: err.message || 'Failed to fetch leads' });
+    const mapById = new Map<string, CachedLeadItem>();
+    leadsMemoryCache.forEach((item) => {
+      if (item && item.id && !mapById.has(item.id.toLowerCase())) {
+        mapById.set(item.id.toLowerCase(), item);
+      }
+    });
+    return res.json({ success: true, leads: Array.from(mapById.values()) });
+  }
+});
+
+app.delete('/api/leads/:id', async (req, res) => {
+  try {
+    const id = String(req.params.id || '').trim();
+    if (!id) return res.status(400).json({ error: 'ID is required' });
+    try {
+      await deleteDoc(doc(serverDb, 'leads', id));
+    } catch (_) {}
+    leadsMemoryCache.delete(id.toLowerCase());
+    leadsMemoryCache.delete(id);
+    return res.json({ success: true, deleted: id });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
   }
 });
 

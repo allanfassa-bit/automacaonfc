@@ -171,6 +171,9 @@ export interface Lead {
   };
   isPlaquePrinted?: boolean;
   plaquePrintedAt?: string;
+  isPlaqueActive?: boolean;
+  isCustomerAccepted?: boolean;
+  custom?: boolean;
 }
 
 export interface SiteTemplate {
@@ -1213,14 +1216,15 @@ function MainApp() {
 
   // Load initial demo leads on mount from Firestore, Backend API & Local Cache
   useEffect(() => {
-    // 1. Carregamento imediato do cache local para resposta instantânea mesmo offline ou após F5
+    // 1. Carregamento imediato do cache local limpo (sem leads de teste/demo)
     try {
       const cached = localStorage.getItem('alf_local_crm_leads');
       if (cached) {
         const parsed = JSON.parse(cached);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          activeSearchResultsRef.current = parsed;
-          setLeads(parsed);
+          const cleanCached = parsed.filter((l: Lead) => l && l.id && !l.id.startsWith('lead_demo_') && l.id !== 'lead_1' && l.id !== 'lead_2' && l.id !== 'lead_3');
+          activeSearchResultsRef.current = cleanCached;
+          setLeads(cleanCached);
         }
       }
     } catch (_) {}
@@ -1231,8 +1235,9 @@ function MainApp() {
       .then(data => {
         if (data?.success && Array.isArray(data.leads) && data.leads.length > 0) {
           setLeads(prev => {
+            const cleanBackend = data.leads.filter((l: Lead) => l && l.id && !l.id.startsWith('lead_demo_') && l.id !== 'lead_1' && l.id !== 'lead_2' && l.id !== 'lead_3');
             const existingIds = new Set(prev.map(l => l.id));
-            const additional = data.leads.filter((l: Lead) => l && l.id && !existingIds.has(l.id));
+            const additional = cleanBackend.filter((l: Lead) => l && l.id && !existingIds.has(l.id));
             if (additional.length === 0 && prev.length > 0) return prev;
             const merged = [...prev, ...additional];
             try {
@@ -1248,31 +1253,23 @@ function MainApp() {
     const unsubscribe = onSnapshot(collection(db, 'leads'), (snapshot) => {
       const loadedLeads: Lead[] = [];
       snapshot.forEach((doc) => {
-        loadedLeads.push(doc.data() as Lead);
+        const data = doc.data() as Lead;
+        // Strict guard: filter out any demo/junk leads
+        if (data && data.id && !data.id.startsWith('lead_demo_') && data.id !== 'lead_1' && data.id !== 'lead_2' && data.id !== 'lead_3') {
+          loadedLeads.push({ ...data, id: data.id || doc.id });
+        }
       });
       
-      if (loadedLeads.length === 0) {
-        // First boot: seed the database with defaults
-        seedDefaultLeads();
-      } else {
-        // Preserva os leads recém-pesquisados na memória e mescla com os do Firestore para nunca sumirem da tela
-        setLeads(prev => {
-          const loadedIds = new Set(loadedLeads.map(l => l.id));
-          const currentSearchResults = activeSearchResultsRef.current || [];
-          const unsaved = currentSearchResults.filter(l => !loadedIds.has(l.id));
-          const merged = [...unsaved, ...loadedLeads];
-          try {
-            localStorage.setItem('alf_local_crm_leads', JSON.stringify(merged));
-          } catch (_) {}
-          return merged;
-        });
-        // Keep the selectedLead synchronized ONLY if a lead was already selected by the user
-        setSelectedLead(prev => {
-          if (!prev) return null;
-          const current = loadedLeads.find(l => l.id === prev.id) || (activeSearchResultsRef.current || []).find(l => l.id === prev.id);
-          return current || prev;
-        });
-      }
+      setLeads(loadedLeads);
+      try {
+        localStorage.setItem('alf_local_crm_leads', JSON.stringify(loadedLeads));
+      } catch (_) {}
+
+      // Keep selectedLead synchronized
+      setSelectedLead(prev => {
+        if (!prev) return null;
+        return loadedLeads.find(l => l.id === prev.id) || null;
+      });
     }, (error) => {
       console.warn("Firestore snapshot listener notification:", error);
     });
@@ -2258,6 +2255,14 @@ function MainApp() {
       if (selectedLead?.id === leadId) {
         setSelectedLead(null);
       }
+      setLeads((prev) => {
+        const next = prev.filter((l) => l.id !== leadId);
+        try {
+          localStorage.setItem('alf_local_crm_leads', JSON.stringify(next));
+        } catch (_) {}
+        return next;
+      });
+      fetch(`/api/leads/${leadId}`, { method: 'DELETE' }).catch(() => {});
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, `leads/${leadId}`);
     }
@@ -5001,6 +5006,7 @@ function MainApp() {
               setAdminSelectedLeadId(leadId);
               changeTab('portal');
             }}
+            onDeleteLead={removeLead}
           />
         )}
 

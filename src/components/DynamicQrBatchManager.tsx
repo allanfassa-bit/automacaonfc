@@ -71,12 +71,14 @@ interface DynamicQrBatchManagerProps {
   leads: Lead[];
   onSelectLead?: (lead: Lead) => void;
   onNavigateToPortal?: (leadId: string) => void;
+  onDeleteLead?: (leadId: string) => void;
 }
 
-export function DynamicQrBatchManager({ leads, onSelectLead, onNavigateToPortal }: DynamicQrBatchManagerProps) {
+export function DynamicQrBatchManager({ leads, onSelectLead, onNavigateToPortal, onDeleteLead }: DynamicQrBatchManagerProps) {
   // Filters and search
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'active'>('all');
+  const [scopeFilter, setScopeFilter] = useState<'accepted_only' | 'all'>('accepted_only');
 
   // Batch Generator Modal State
   const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
@@ -171,10 +173,29 @@ export function DynamicQrBatchManager({ leads, onSelectLead, onNavigateToPortal 
   const [viewingDirectQrDataUrl, setViewingDirectQrDataUrl] = useState('');
   const [viewingDynamicQrDataUrl, setViewingDynamicQrDataUrl] = useState('');
 
-  // Derive QR Codes list from all leads
-  // A dynamic QR code is any lead registered in the system
+  // A dynamic QR code / plate is ONLY an active, printed, or accepted client plate
+  // Leads in prospecting (new, to_contact, contacted, proposal) stay in the prospecting CRM until the client accepts!
   const dynamicQrs = useMemo(() => {
-    return leads.map((l) => {
+    const targetLeads = scopeFilter === 'accepted_only'
+      ? leads.filter((l) => {
+          if (!l || !l.id) return false;
+          // Purge demo IDs
+          if (l.id.startsWith('lead_demo_') || l.id === 'lead_1' || l.id === 'lead_2' || l.id === 'lead_3') return false;
+          // Must be won, confirmed, or active plate
+          return (
+            l.stage === 'won' ||
+            l.isPlaqueActive === true ||
+            l.isPlaquePrinted === true ||
+            l.isCustomerAccepted === true ||
+            l.custom === true
+          );
+        })
+      : leads.filter((l) => {
+          if (!l || !l.id) return false;
+          return !l.id.startsWith('lead_demo_');
+        });
+
+    return targetLeads.map((l) => {
       const permanentUrl = getDynamicQrUrl(l.id);
       const directUrl = getDirectLeadUrl(l);
       let targetUrl = '';
@@ -211,7 +232,7 @@ export function DynamicQrBatchManager({ leads, onSelectLead, onNavigateToPortal 
         status,
       };
     });
-  }, [leads, qrExportMode]);
+  }, [leads, qrExportMode, scopeFilter]);
 
   // Filtered dynamic QRs
   const filteredQrs = useMemo(() => {
@@ -534,6 +555,10 @@ export function DynamicQrBatchManager({ leads, onSelectLead, onNavigateToPortal 
     }
     try {
       await deleteDoc(doc(db, 'leads', id));
+      if (onDeleteLead) {
+        onDeleteLead(id);
+      }
+      fetch(`/api/leads/${id}`, { method: 'DELETE' }).catch(() => {});
     } catch (err) {
       console.error('Erro ao deletar:', err);
       alert('Erro ao excluir QR Code.');
@@ -1140,6 +1165,28 @@ export function DynamicQrBatchManager({ leads, onSelectLead, onNavigateToPortal 
             )}
           </div>
 
+          {/* Scope filter: Accepted/Active Plates vs All CRM Leads */}
+          <div className="flex bg-slate-100 p-1 rounded-xl w-full sm:w-auto border border-slate-200 text-xs font-bold overflow-x-auto scrollbar-none">
+            <button
+              onClick={() => setScopeFilter('accepted_only')}
+              className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap text-center ${
+                scopeFilter === 'accepted_only' ? 'bg-cyan-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+              }`}
+              title="Exibir apenas empresas que aceitaram a proposta ou placas físicas ativadas"
+            >
+              ⭐ Placas Ativas
+            </button>
+            <button
+              onClick={() => setScopeFilter('all')}
+              className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap text-center ${
+                scopeFilter === 'all' ? 'bg-slate-800 text-white shadow-xs' : 'text-slate-500 hover:text-slate-900'
+              }`}
+              title="Exibir todos os leads incluindo os em prospecção"
+            >
+              Todos ({leads.length})
+            </button>
+          </div>
+
           <div className="flex bg-slate-100 p-1 rounded-xl w-full sm:w-auto border border-slate-200 text-xs font-bold overflow-x-auto scrollbar-none">
             <button
               onClick={() => setStatusFilter('all')}
@@ -1147,7 +1194,7 @@ export function DynamicQrBatchManager({ leads, onSelectLead, onNavigateToPortal 
                 statusFilter === 'all' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-900'
               }`}
             >
-              Todos ({dynamicQrs.length})
+              Filtrar ({dynamicQrs.length})
             </button>
             <button
               onClick={() => setStatusFilter('pending')}
