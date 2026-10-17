@@ -628,11 +628,33 @@ function MainApp() {
       const tabParam = params.get('tab') as any;
       const hashParam = window.location.hash.replace('#', '') as any;
       const validTabs = ['dynamic_qr', 'leads', 'crm', 'site_preview', 'nfc_designer', 'calculator', 'portal', 'users', 'cardapio', 'landing'];
-      const chosenTab = validTabs.includes(tabParam) ? tabParam : validTabs.includes(hashParam) ? hashParam : null;
+      
+      const resolveTabName = (raw: string | null | undefined): any => {
+        if (!raw) return null;
+        const lower = String(raw).toLowerCase().trim();
+        if (validTabs.includes(lower)) return lower;
+        if (lower.includes('dynamic') || lower.includes('qr') || lower.includes('placa') || lower.includes('lote') || lower.includes('sistema')) return 'dynamic_qr';
+        if (lower.includes('site') || lower.includes('mini') || lower.includes('mockup')) return 'site_preview';
+        if (lower.includes('nfc') || lower.includes('totem') || lower.includes('designer')) return 'nfc_designer';
+        if (lower.includes('crm') || lower.includes('kanban')) return 'crm';
+        if (lower.includes('lead') || lower.includes('prospect')) return 'leads';
+        if (lower.includes('cardapio') || lower.includes('menu') || lower.includes('mesa')) return 'cardapio';
+        if (lower.includes('user') || lower.includes('usuario') || lower.includes('equipe')) return 'users';
+        if (lower.includes('portal') || lower.includes('cliente')) return 'portal';
+        if (lower.includes('calc') || lower.includes('preco')) return 'calculator';
+        return null;
+      };
+
+      const chosenTab = resolveTabName(tabParam) || resolveTabName(hashParam);
 
       if (chosenTab) {
         setActiveTab(chosenTab);
-      } else if (!params.get('minisite') && !params.get('m') && !params.get('cardapio') && !params.get('c') && !params.get('menu')) {
+        const url = new URL(window.location.href);
+        if (url.searchParams.get('tab') !== chosenTab) {
+          url.searchParams.set('tab', chosenTab);
+          window.history.replaceState({ tab: chosenTab }, '', url.toString());
+        }
+      } else if (!params.get('minisite') && !params.get('m') && !params.get('view') && !params.get('leadId') && !params.get('cardapio') && !params.get('c') && !params.get('menu')) {
         // Ensure URL stays explicitly on ?tab=leads when entering root domain
         const url = new URL(window.location.href);
         url.searchParams.set('tab', 'leads');
@@ -641,8 +663,8 @@ function MainApp() {
 
       const handlePopState = (e: PopStateEvent) => {
         const currentParams = new URLSearchParams(window.location.search);
-        const curTab = currentParams.get('tab') as any;
-        if (validTabs.includes(curTab)) {
+        const curTab = resolveTabName(currentParams.get('tab'));
+        if (curTab && validTabs.includes(curTab)) {
           setActiveTab(curTab);
         } else if (e.state?.tab && validTabs.includes(e.state.tab)) {
           setActiveTab(e.state.tab);
@@ -679,7 +701,7 @@ function MainApp() {
   const [minisiteParam, setMinisiteParam] = useState<string | null>(() => {
     try {
       const params = new URLSearchParams(window.location.search);
-      const q = params.get('minisite') || params.get('m');
+      const q = params.get('minisite') || params.get('m') || (params.get('view') === 'mini' ? (params.get('leadId') || params.get('id')) : null);
       if (q) return q;
       const path = typeof window !== 'undefined' ? window.location.pathname : '';
       const match = path.match(/^\/(minisite|m)\/([^/?#]+)/i);
