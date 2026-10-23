@@ -8,4 +8,6 @@ coverage/
 !.env.example
 -e 
 .aistudio
-
+backup*
+*.backup
+*.json.bak
