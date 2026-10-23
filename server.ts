@@ -187,22 +187,6 @@ const INITIAL_PHYSICAL_PLATES: CachedLeadItem[] = [
     nfcRedirectActive: 'gmb'
   },
   {
-    id: 'empresa06',
-    name: 'PADARIA BELLA RIO BRANCO',
-    city: 'Brasil',
-    googleMapsUrl: 'https://search.google.com/local/writereview?placeid=ChIJTTKzQz_Xv5QRjyhnE6zQpyI',
-    nfcCustomUrl: 'https://search.google.com/local/writereview?placeid=ChIJTTKzQz_Xv5QRjyhnE6zQpyI',
-    nfcRedirectActive: 'gmb'
-  },
-  {
-    id: 'empresa_06',
-    name: 'PADARIA BELLA RIO BRANCO',
-    city: 'Brasil',
-    googleMapsUrl: 'https://search.google.com/local/writereview?placeid=ChIJTTKzQz_Xv5QRjyhnE6zQpyI',
-    nfcCustomUrl: 'https://search.google.com/local/writereview?placeid=ChIJTTKzQz_Xv5QRjyhnE6zQpyI',
-    nfcRedirectActive: 'gmb'
-  },
-  {
     id: 'empre08',
     name: 'PADARIA SUIÇA',
     city: 'Marília',
@@ -269,37 +253,56 @@ for (const plate of INITIAL_PHYSICAL_PLATES) {
   leadsMemoryCache.set(plate.id.toLowerCase(), plate);
 }
 // Instant Aliases
-leadsMemoryCache.set('bella', INITIAL_PHYSICAL_PLATES[0]);
-leadsMemoryCache.set('bellariobranco', INITIAL_PHYSICAL_PLATES[0]);
-leadsMemoryCache.set('padariabella', INITIAL_PHYSICAL_PLATES[0]);
-leadsMemoryCache.set('bellariobrancomesa', INITIAL_PHYSICAL_PLATES[0]);
-leadsMemoryCache.set('bellariobrancomesas', INITIAL_PHYSICAL_PLATES[0]);
-leadsMemoryCache.set('mesas', INITIAL_PHYSICAL_PLATES[0]);
-leadsMemoryCache.set('mesa', INITIAL_PHYSICAL_PLATES[0]);
-leadsMemoryCache.set('suica', INITIAL_PHYSICAL_PLATES[3]);
-leadsMemoryCache.set('padaria', INITIAL_PHYSICAL_PLATES[3]);
-leadsMemoryCache.set('padariasuica', INITIAL_PHYSICAL_PLATES[3]);
-leadsMemoryCache.set('japa', INITIAL_PHYSICAL_PLATES[5]);
-leadsMemoryCache.set('assados', INITIAL_PHYSICAL_PLATES[5]);
-leadsMemoryCache.set('cbcell', INITIAL_PHYSICAL_PLATES[6]);
-leadsMemoryCache.set('cb_cell', INITIAL_PHYSICAL_PLATES[6]);
-leadsMemoryCache.set('pontello', INITIAL_PHYSICAL_PLATES[6]);
-leadsMemoryCache.set('alf_automacoes', INITIAL_PHYSICAL_PLATES[7]);
-leadsMemoryCache.set('alfautomacoes', INITIAL_PHYSICAL_PLATES[7]);
-leadsMemoryCache.set('alf', INITIAL_PHYSICAL_PLATES[7]);
-leadsMemoryCache.set('modelo_alf', INITIAL_PHYSICAL_PLATES[7]);
-leadsMemoryCache.set('lead_1', INITIAL_PHYSICAL_PLATES[8]);
-leadsMemoryCache.set('lead1', INITIAL_PHYSICAL_PLATES[8]);
-leadsMemoryCache.set('1', INITIAL_PHYSICAL_PLATES[8]);
-leadsMemoryCache.set('01', INITIAL_PHYSICAL_PLATES[8]);
-leadsMemoryCache.set('placa1', INITIAL_PHYSICAL_PLATES[8]);
-leadsMemoryCache.set('placa_1', INITIAL_PHYSICAL_PLATES[8]);
-leadsMemoryCache.set('placa01', INITIAL_PHYSICAL_PLATES[8]);
-leadsMemoryCache.set('placa_01', INITIAL_PHYSICAL_PLATES[8]);
-leadsMemoryCache.set('mabini', INITIAL_PHYSICAL_PLATES[8]);
-leadsMemoryCache.set('mabinilocacao', INITIAL_PHYSICAL_PLATES[8]);
-leadsMemoryCache.set('mabini_locacao', INITIAL_PHYSICAL_PLATES[8]);
-leadsMemoryCache.set('mabinilocacaodecadeirasemesas', INITIAL_PHYSICAL_PLATES[8]);
+const bellaPlate = INITIAL_PHYSICAL_PLATES.find(p => p.id === 'bellariobrancomesas')!;
+const suicaPlate = INITIAL_PHYSICAL_PLATES.find(p => p.id === 'empre08')!;
+const japaPlate = INITIAL_PHYSICAL_PLATES.find(p => p.id === 'assadosdojapa');
+const pontelloPlate = INITIAL_PHYSICAL_PLATES.find(p => p.id === 'danipontello');
+const alfPlate = INITIAL_PHYSICAL_PLATES.find(p => p.id === 'alf_automacoes');
+const mabiniPlate = INITIAL_PHYSICAL_PLATES.find(p => p.id === 'lead_1');
+
+if (bellaPlate) {
+  leadsMemoryCache.set('bella', bellaPlate);
+  leadsMemoryCache.set('bellariobranco', bellaPlate);
+  leadsMemoryCache.set('padariabella', bellaPlate);
+  leadsMemoryCache.set('bellariobrancomesa', bellaPlate);
+  leadsMemoryCache.set('bellariobrancomesas', bellaPlate);
+  leadsMemoryCache.set('mesas', bellaPlate);
+  leadsMemoryCache.set('mesa', bellaPlate);
+}
+if (suicaPlate) {
+  leadsMemoryCache.set('suica', suicaPlate);
+  leadsMemoryCache.set('padaria', suicaPlate);
+  leadsMemoryCache.set('padariasuica', suicaPlate);
+}
+if (japaPlate) {
+  leadsMemoryCache.set('japa', japaPlate);
+  leadsMemoryCache.set('assados', japaPlate);
+}
+if (pontelloPlate) {
+  leadsMemoryCache.set('cbcell', pontelloPlate);
+  leadsMemoryCache.set('cb_cell', pontelloPlate);
+  leadsMemoryCache.set('pontello', pontelloPlate);
+}
+if (alfPlate) {
+  leadsMemoryCache.set('alf_automacoes', alfPlate);
+  leadsMemoryCache.set('alfautomacoes', alfPlate);
+  leadsMemoryCache.set('alf', alfPlate);
+  leadsMemoryCache.set('modelo_alf', alfPlate);
+}
+if (mabiniPlate) {
+  leadsMemoryCache.set('lead_1', mabiniPlate);
+  leadsMemoryCache.set('lead1', mabiniPlate);
+  leadsMemoryCache.set('1', mabiniPlate);
+  leadsMemoryCache.set('01', mabiniPlate);
+  leadsMemoryCache.set('placa1', mabiniPlate);
+  leadsMemoryCache.set('placa_1', mabiniPlate);
+  leadsMemoryCache.set('placa01', mabiniPlate);
+  leadsMemoryCache.set('placa_01', mabiniPlate);
+  leadsMemoryCache.set('mabini', mabiniPlate);
+  leadsMemoryCache.set('mabinilocacao', mabiniPlate);
+  leadsMemoryCache.set('mabini_locacao', mabiniPlate);
+  leadsMemoryCache.set('mabinilocacaodecadeirasemesas', mabiniPlate);
+}
 
 let lastLeadsSyncTimestamp = 0;
 let hasSeededOfficialAlfLead = false;
@@ -1353,6 +1356,15 @@ const handleDynamicRedirect = async (req: express.Request, res: express.Response
       }
     }
 
+    // Free up empresa06 / empresa_06: Padaria Bella Rio Branco is exclusively on 'bellariobrancomesas'
+    if (
+      leadData &&
+      (lowerClean === 'empresa06' || lowerClean === 'empresa_06' || lowerClean === 'empresa6') &&
+      String(leadData?.name || '').toUpperCase().includes('BELLA RIO BRANCO')
+    ) {
+      leadData = null; // Unbind legacy association: placa 06 is completely free for new clients!
+    }
+
     // Determine Business Name and City
     const businessName = leadData?.name || cleanLeadId.replace(/_/g, ' ');
     const cityVal = leadData?.city || '';
@@ -1774,10 +1786,26 @@ app.get([
     try {
       const snap = await getDoc(doc(serverDb, 'leads', cleanLeadId));
       if (snap.exists()) {
-        item = { id: cleanLeadId, ...snap.data() };
-        leadsMemoryCache.set(cleanLeadId, item);
+        const loaded: any = { id: cleanLeadId, ...snap.data() };
+        if (
+          (cleanLeadId === 'empresa06' || cleanLeadId === 'empresa_06' || cleanLeadId === 'empresa6') &&
+          String(loaded?.name || '').toUpperCase().includes('BELLA RIO BRANCO')
+        ) {
+          item = undefined;
+        } else {
+          item = loaded as CachedLeadItem;
+          leadsMemoryCache.set(cleanLeadId, item);
+        }
       }
     } catch (_) {}
+  }
+
+  if (
+    item &&
+    (cleanLeadId === 'empresa06' || cleanLeadId === 'empresa_06' || cleanLeadId === 'empresa6') &&
+    String(item?.name || '').toUpperCase().includes('BELLA RIO BRANCO')
+  ) {
+    item = undefined;
   }
 
   // 2. Known aliases fallback
@@ -1793,7 +1821,7 @@ app.get([
     ) {
       item = leadsMemoryCache.get('lead_1') || leadsMemoryCache.get('lead1') || INITIAL_PHYSICAL_PLATES[8];
     } else if (cleanLeadId.includes('bella') || cleanLeadId.includes('rio')) {
-      item = leadsMemoryCache.get('bellariobrancomesas') || leadsMemoryCache.get('empresa06');
+      item = leadsMemoryCache.get('bellariobrancomesas');
     } else if (cleanLeadId.includes('suica') || cleanLeadId.includes('08')) {
       item = leadsMemoryCache.get('empre08') || leadsMemoryCache.get('empresa08');
     }
@@ -1870,7 +1898,23 @@ app.get('/api/leads', async (req, res) => {
       const id = (data.id || d.id || '').trim();
       if (id && !seen.has(id.toLowerCase())) {
         seen.add(id.toLowerCase());
-        leadsList.push({ ...data, id });
+        if (
+          (id.toLowerCase() === 'empresa06' || id.toLowerCase() === 'empresa_06' || id.toLowerCase() === 'empresa6') &&
+          String(data.name || '').toUpperCase().includes('BELLA RIO BRANCO')
+        ) {
+          leadsList.push({
+            ...data,
+            id,
+            name: 'Placa Empresa 06 (Disponível)',
+            googleMapsUrl: '',
+            nfcCustomUrl: '',
+            isPlaqueActive: false,
+            isCustomerAccepted: false,
+            stage: 'to_contact'
+          });
+        } else {
+          leadsList.push({ ...data, id });
+        }
       }
     });
     return res.json({ success: true, leads: leadsList });

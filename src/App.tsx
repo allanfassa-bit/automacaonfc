@@ -376,7 +376,6 @@ const KNOWN_PHYSICAL_PLATES: Record<string, string> = {
   'padariasuica': 'https://search.google.com/local/writereview?placeid=ChIJx2ytYDXXv5QRQzIXgn7RRrc',
   'empresa04': 'https://search.google.com/local/writereview?placeid=ChIJCyHYx7zXv5QRn264H27HvhY',
   'cbcell': 'https://search.google.com/local/writereview?placeid=ChIJCyHYx7zXv5QRn264H27HvhY',
-  'empresa06': 'https://search.google.com/local/writereview?placeid=ChIJTTKzQz_Xv5QRjyhnE6zQpyI',
   'danipontello': 'https://www.google.com/search?q=Dani%20pontello#lrd=0x0:0x0,3',
   'assadosdojapa': 'https://www.google.com/search?q=ASSADOS+DO+JAPA#lrd=0x0:0x0,3',
   'lead_1': 'https://search.google.com/local/writereview?placeid=ChIJN2yUo4jVv5QRC6D92p6pTJk',
@@ -1674,7 +1673,25 @@ function MainApp() {
         }
       });
       
-      const withoutOldAlf = loadedLeads.filter(
+      const sanitizedLeads = loadedLeads.map(l => {
+        if (
+          (l.id === 'empresa06' || l.id === 'empresa_06' || l.id === 'empresa6') &&
+          String(l.name || '').toUpperCase().includes('BELLA RIO BRANCO')
+        ) {
+          return {
+            ...l,
+            name: 'Placa Empresa 06 (Disponível)',
+            googleMapsUrl: '',
+            nfcCustomUrl: '',
+            isPlaqueActive: false,
+            isCustomerAccepted: false,
+            stage: 'to_contact' as const
+          };
+        }
+        return l;
+      });
+
+      const withoutOldAlf = sanitizedLeads.filter(
         l => l.id !== 'alf_automacoes' && !(l.id === 'lead_1' && l.name === 'Sorriso Perfeito Odontologia')
       );
       const hasLead1 = withoutOldAlf.some(l => l.id === 'lead_1');
