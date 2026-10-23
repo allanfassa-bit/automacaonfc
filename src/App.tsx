@@ -3468,33 +3468,33 @@ function MainApp() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100/70 text-slate-800 font-sans flex flex-col lg:flex-row antialiased w-full max-w-full overflow-x-clip">
+    <div className="min-h-screen bg-[#f5f5f7] text-[#1d1d1f] font-sans flex flex-col lg:flex-row antialiased w-full max-w-full overflow-x-clip">
       
-      {/* 1. DESKTOP LATERAL SIDEBAR (MENU LATERAL PROFISSIONAL) */}
+      {/* 1. DESKTOP LATERAL SIDEBAR (MENU LATERAL ESTILO APPLE HIG) */}
       <aside 
-        className={`hidden lg:flex flex-col shrink-0 border-r border-slate-200/90 bg-white sticky top-0 h-screen transition-all duration-200 z-30 select-none ${
+        className={`hidden lg:flex flex-col shrink-0 border-r border-[#e5e5ea] bg-[#fbfbfd] sticky top-0 h-screen transition-all duration-200 z-30 select-none ${
           isSidebarCollapsed ? 'w-20' : 'w-64'
         }`}
       >
         {/* Sidebar Brand Header */}
-        <div className="h-16 px-4 flex items-center justify-between border-b border-slate-100 shrink-0">
+        <div className="h-16 px-4 flex items-center justify-between border-b border-[#e5e5ea] shrink-0">
           {!isSidebarCollapsed ? (
             <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-9 h-9 rounded-xl bg-slate-950 text-white font-mono font-black text-sm flex items-center justify-center shadow-xs shrink-0">
+              <div className="w-8 h-8 rounded-xl bg-[#1d1d1f] text-white font-semibold text-xs flex items-center justify-center shadow-xs shrink-0 tracking-tight">
                 ALF
               </div>
               <div className="min-w-0 truncate">
-                <span className="text-sm font-black text-slate-900 tracking-tight block truncate">
+                <span className="text-sm font-semibold text-[#1d1d1f] tracking-tight block truncate">
                   ALF Automação
                 </span>
-                <span className="text-[11px] font-semibold text-slate-400 block truncate">
+                <span className="text-[11px] font-normal text-[#86868b] block truncate">
                   Smart Plates &amp; CRM
                 </span>
               </div>
             </div>
           ) : (
             <div className="w-full flex justify-center">
-              <div className="w-9 h-9 rounded-xl bg-slate-950 text-white font-mono font-black text-sm flex items-center justify-center shadow-xs">
+              <div className="w-8 h-8 rounded-xl bg-[#1d1d1f] text-white font-semibold text-xs flex items-center justify-center shadow-xs tracking-tight">
                 ALF
               </div>
             </div>
@@ -3502,7 +3502,7 @@ function MainApp() {
 
           <button
             onClick={toggleSidebar}
-            className={`p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer ${
+            className={`p-1.5 rounded-lg text-[#86868b] hover:text-[#1d1d1f] hover:bg-[#f0f0f2] transition-colors cursor-pointer ${
               isSidebarCollapsed ? 'hidden' : 'block'
             }`}
             title="Recolher menu lateral"
@@ -3514,10 +3514,10 @@ function MainApp() {
 
         {/* When collapsed: expand button */}
         {isSidebarCollapsed && (
-          <div className="py-2 flex justify-center border-b border-slate-100">
+          <div className="py-2 flex justify-center border-b border-[#e5e5ea]">
             <button
               onClick={toggleSidebar}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+              className="p-1.5 rounded-lg text-[#86868b] hover:text-[#1d1d1f] hover:bg-[#f0f0f2] transition-colors cursor-pointer"
               title="Expandir menu lateral"
               aria-label="Expandir menu lateral"
             >
@@ -3527,21 +3527,21 @@ function MainApp() {
         )}
 
         {/* Quick Scanner Action Trigger */}
-        <div className="p-3 border-b border-slate-100/90 shrink-0">
+        <div className="p-3 border-b border-[#e5e5ea] shrink-0">
           {!isSidebarCollapsed ? (
             <button
               type="button"
               onClick={() => setIsPlateScannerOpen(true)}
-              className="w-full flex items-center justify-between px-3 py-2 bg-slate-100/80 hover:bg-indigo-50/70 border border-slate-200/80 hover:border-indigo-200 text-slate-600 hover:text-indigo-900 rounded-xl text-xs transition cursor-pointer group shadow-2xs"
+              className="w-full flex items-center justify-between px-3 py-2 bg-[#f0f0f2] hover:bg-[#e5e5ea] border border-[#e5e5ea] text-[#1d1d1f] rounded-xl text-xs transition-colors cursor-pointer group shadow-2xs"
               title="Identificar a qual empresa pertence a placa ou QR físico (Ctrl+K)"
             >
               <div className="flex items-center gap-2 truncate">
-                <ScanLine className="h-4 w-4 text-indigo-600 shrink-0 group-hover:scale-110 transition-transform" />
-                <span className="font-semibold truncate text-[11px]">
+                <ScanLine className="h-4 w-4 text-[#0071e3] shrink-0 group-hover:scale-105 transition-transform" />
+                <span className="font-medium truncate text-[11px] text-[#1d1d1f]">
                   Ler Placa / Totem...
                 </span>
               </div>
-              <span className="text-[10px] font-mono text-slate-400 bg-white border border-slate-200 px-1.5 py-0.5 rounded-md shrink-0">
+              <span className="text-[10px] font-mono text-[#86868b] bg-white border border-[#e5e5ea] px-1.5 py-0.5 rounded-md shrink-0 tabular-nums">
                 ⌘K
               </span>
             </button>
@@ -3549,7 +3549,7 @@ function MainApp() {
             <button
               type="button"
               onClick={() => setIsPlateScannerOpen(true)}
-              className="w-full flex items-center justify-center p-2.5 bg-slate-100/80 hover:bg-indigo-50 border border-slate-200 text-indigo-600 rounded-xl transition cursor-pointer"
+              className="w-full flex items-center justify-center p-2.5 bg-[#f0f0f2] hover:bg-[#e5e5ea] border border-[#e5e5ea] text-[#0071e3] rounded-xl transition-colors cursor-pointer"
               title="Identificar Placa Física (⌘K)"
             >
               <ScanLine className="h-4 w-4" />
@@ -3566,7 +3566,7 @@ function MainApp() {
             return (
               <div key={cat.id} className="space-y-1">
                 {!isSidebarCollapsed && (
-                  <div className="px-2.5 pb-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                  <div className="px-2.5 pb-1 text-[10px] font-semibold text-[#86868b] uppercase tracking-wider">
                     {cat.title}
                   </div>
                 )}
@@ -3581,13 +3581,13 @@ function MainApp() {
                         onClick={() => handleNavSelect(tab.id)}
                         className={`w-full flex items-center justify-center p-2.5 rounded-xl transition-all cursor-pointer relative group ${
                           isActive
-                            ? 'bg-slate-900 text-white shadow-xs font-bold'
-                            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                            ? 'bg-[#1d1d1f] text-white shadow-xs font-medium'
+                            : 'text-[#424245] hover:text-[#1d1d1f] hover:bg-[#f0f0f2]'
                         }`}
                         title={tab.label}
                       >
                         <Icon className={`h-4 w-4 ${isActive ? 'text-white' : tab.color}`} />
-                        <span className="absolute left-full ml-2 px-2.5 py-1 bg-slate-900 text-white text-[11px] font-semibold rounded-lg shadow-lg whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity z-50">
+                        <span className="absolute left-full ml-2 px-2.5 py-1 bg-[#1d1d1f] text-white text-[11px] font-medium rounded-lg shadow-lg whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity z-50">
                           {tab.label}
                         </span>
                       </button>
@@ -3598,10 +3598,10 @@ function MainApp() {
                     <button
                       key={tab.id}
                       onClick={() => handleNavSelect(tab.id)}
-                      className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer group text-left ${
+                      className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all cursor-pointer group text-left ${
                         isActive
-                          ? 'bg-slate-900 text-white shadow-xs font-bold'
-                          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/90'
+                          ? 'bg-[#1d1d1f] text-white shadow-xs font-medium'
+                          : 'text-[#424245] hover:text-[#1d1d1f] hover:bg-[#f0f0f2]'
                       }`}
                       id={`tab-${tab.id}`}
                     >
@@ -3610,10 +3610,10 @@ function MainApp() {
                         <span className="truncate">{tab.label}</span>
                       </div>
                       {tab.badge && (
-                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md shrink-0 ${
+                        <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded-md shrink-0 tabular-nums ${
                           isActive
                             ? 'bg-white/20 text-white'
-                            : 'bg-slate-200/80 text-slate-700'
+                            : 'bg-[#e5e5ea] text-[#1d1d1f]'
                         }`}>
                           {tab.badge}
                         </span>
@@ -3627,7 +3627,7 @@ function MainApp() {
         </div>
 
         {/* Sidebar Footer & User Profile */}
-        <div className="p-3 border-t border-slate-200/90 bg-slate-50/70 shrink-0 space-y-2">
+        <div className="p-3 border-t border-[#e5e5ea] bg-[#fbfbfd] shrink-0 space-y-2">
           {!isSidebarCollapsed ? (
             <>
               {/* Quick Config Buttons */}
@@ -3635,16 +3635,16 @@ function MainApp() {
                 <button
                   type="button"
                   onClick={() => setIsCustomDomainModalOpen(true)}
-                  className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-[11px] font-bold text-slate-700 bg-white hover:bg-slate-100 border border-slate-200 transition shadow-2xs cursor-pointer"
+                  className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-[11px] font-medium text-[#1d1d1f] bg-white hover:bg-[#f5f5f7] border border-[#e5e5ea] transition-colors shadow-2xs cursor-pointer"
                   title="Configurar seu domínio próprio"
                 >
-                  <Globe className="h-3 w-3 text-blue-600" />
+                  <Globe className="h-3 w-3 text-[#0071e3]" />
                   <span className="truncate">Domínio</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setIsSellerRegisterModalOpen(true)}
-                  className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-[11px] font-bold text-emerald-800 bg-emerald-50/80 hover:bg-emerald-100 border border-emerald-200 transition shadow-2xs cursor-pointer"
+                  className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-[11px] font-medium text-emerald-800 bg-emerald-50/70 hover:bg-emerald-100 border border-emerald-200 transition-colors shadow-2xs cursor-pointer"
                   title="Cadastrar revendedor ou vendedor"
                 >
                   <Briefcase className="h-3 w-3 text-emerald-600" />
@@ -3654,23 +3654,23 @@ function MainApp() {
 
               {/* User Identity Card */}
               {currentUser && (
-                <div className="flex items-center justify-between px-2.5 py-2 bg-white rounded-xl border border-slate-200/80 shadow-2xs">
+                <div className="flex items-center justify-between px-2.5 py-2 bg-white rounded-xl border border-[#e5e5ea] shadow-2xs">
                   <div className="min-w-0 flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-700 font-bold text-xs flex items-center justify-center shrink-0">
+                    <div className="w-7 h-7 rounded-lg bg-[#f0f0f2] border border-[#e5e5ea] text-[#1d1d1f] font-semibold text-xs flex items-center justify-center shrink-0">
                       {currentUser.username.charAt(0).toUpperCase()}
                     </div>
                     <div className="min-w-0">
-                      <p className="text-xs font-bold text-slate-900 truncate">
+                      <p className="text-xs font-semibold text-[#1d1d1f] truncate">
                         {currentUser.username}
                       </p>
-                      <p className="text-[10px] text-slate-400 capitalize">
+                      <p className="text-[10px] text-[#86868b] capitalize">
                         {currentUser.role === 'master' ? 'Administrador' : currentUser.role === 'seller' ? 'Vendedor' : 'Lojista'}
                       </p>
                     </div>
                   </div>
                   <button
                     onClick={handleLogout}
-                    className="p-1 text-slate-400 hover:text-rose-600 transition-colors rounded-lg cursor-pointer"
+                    className="p-1 text-[#86868b] hover:text-rose-600 transition-colors rounded-lg cursor-pointer"
                     title="Sair do sistema"
                   >
                     <LogOut className="h-3.5 w-3.5" />
@@ -3682,7 +3682,7 @@ function MainApp() {
             <div className="flex flex-col items-center gap-2">
               {currentUser && (
                 <div 
-                  className="w-8 h-8 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-700 font-bold text-xs flex items-center justify-center"
+                  className="w-8 h-8 rounded-lg bg-[#f0f0f2] border border-[#e5e5ea] text-[#1d1d1f] font-semibold text-xs flex items-center justify-center"
                   title={`${currentUser.username} (${currentUser.role})`}
                 >
                   {currentUser.username.charAt(0).toUpperCase()}
@@ -3690,7 +3690,7 @@ function MainApp() {
               )}
               <button
                 onClick={handleLogout}
-                className="p-2 text-slate-400 hover:text-rose-600 transition-colors rounded-lg cursor-pointer"
+                className="p-2 text-[#86868b] hover:text-rose-600 transition-colors rounded-lg cursor-pointer"
                 title="Sair do sistema"
               >
                 <LogOut className="h-4 w-4" />
@@ -3703,12 +3703,12 @@ function MainApp() {
       {/* 2. MAIN WORKSPACE (TOP BAR + CONTENT VIEWPORT) */}
       <div className="flex-1 flex flex-col min-w-0 min-h-screen">
         
-        {/* Clean Executive Top Bar */}
+        {/* Clean Executive Top Bar — Apple Translucent Glass */}
         <header 
-          className={`sticky top-0 z-20 w-full transition-all duration-300 ease-in-out ${
+          className={`sticky top-0 z-20 w-full transition-all duration-200 ease-in-out ${
             isHeaderScrolled 
-              ? 'bg-white/95 backdrop-blur-xl border-b border-slate-200/90 shadow-md shadow-slate-900/5' 
-              : 'bg-white/80 backdrop-blur-md border-b border-slate-200/60 shadow-none'
+              ? 'bg-white/85 backdrop-blur-xl border-b border-[#e5e5ea] shadow-[0_2px_12px_rgba(0,0,0,0.03)]' 
+              : 'bg-white/70 backdrop-blur-md border-b border-[#e5e5ea]/80 shadow-none'
           }`}
           style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
         >
@@ -3719,7 +3719,7 @@ function MainApp() {
               {/* Mobile Menu Open Button */}
               <button
                 onClick={() => setIsMobileMenuOpen(true)}
-                className="lg:hidden p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition cursor-pointer shrink-0"
+                className="lg:hidden p-2 rounded-xl bg-[#f0f0f2] hover:bg-[#e5e5ea] text-[#1d1d1f] transition cursor-pointer shrink-0"
                 aria-label="Abrir menu de navegação"
               >
                 <Menu className="h-4 w-4" />
@@ -3727,10 +3727,10 @@ function MainApp() {
 
               {/* Mobile Brand Title */}
               <div className="flex lg:hidden items-center gap-2 min-w-0">
-                <div className="w-7 h-7 rounded-lg bg-slate-950 text-white font-mono font-black text-xs flex items-center justify-center shrink-0">
+                <div className="w-7 h-7 rounded-lg bg-[#1d1d1f] text-white font-semibold text-xs flex items-center justify-center shrink-0">
                   ALF
                 </div>
-                <span className="text-xs font-black text-slate-900 truncate">
+                <span className="text-xs font-semibold text-[#1d1d1f] tracking-tight truncate">
                   ALF Automação
                 </span>
               </div>
@@ -3739,16 +3739,16 @@ function MainApp() {
               <div className="hidden lg:flex items-center gap-2 text-xs font-medium min-w-0">
                 <button
                   onClick={toggleSidebar}
-                  className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition mr-1 cursor-pointer"
+                  className="p-1.5 rounded-lg text-[#86868b] hover:text-[#1d1d1f] hover:bg-[#f0f0f2] transition mr-1 cursor-pointer"
                   title={isSidebarCollapsed ? "Expandir menu lateral" : "Recolher menu lateral"}
                 >
                   {isSidebarCollapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
                 </button>
-                <span className="text-slate-400">ALF</span>
-                <span className="text-slate-300">/</span>
-                <span className="text-slate-500 font-medium">{activeTabMeta.category}</span>
-                <span className="text-slate-300">/</span>
-                <span className="text-slate-900 font-bold truncate">{activeTabMeta.label}</span>
+                <span className="text-[#86868b]">ALF</span>
+                <span className="text-[#c7c7cc]">/</span>
+                <span className="text-[#86868b] font-normal">{activeTabMeta.category}</span>
+                <span className="text-[#c7c7cc]">/</span>
+                <span className="text-[#1d1d1f] font-semibold truncate">{activeTabMeta.label}</span>
               </div>
             </div>
 
@@ -3757,16 +3757,16 @@ function MainApp() {
               <button
                 type="button"
                 onClick={() => setIsPlateScannerOpen(true)}
-                className="w-full flex items-center justify-between px-3 py-1.5 bg-slate-100/80 hover:bg-slate-200/70 border border-slate-200 text-slate-500 rounded-xl text-xs transition cursor-pointer group"
+                className="w-full flex items-center justify-between px-3.5 py-1.5 bg-[#f0f0f2] hover:bg-[#e5e5ea] border border-[#e5e5ea] text-[#1d1d1f] rounded-xl text-xs transition-colors cursor-pointer group"
                 title="Identificar placa ou QR físico (⌘K)"
               >
                 <div className="flex items-center gap-2 truncate">
-                  <ScanLine className="h-3.5 w-3.5 text-indigo-600 shrink-0" />
-                  <span className="text-slate-600 font-medium truncate text-[11px]">
-                    Identificar placa ou QR físico...
+                  <ScanLine className="h-3.5 w-3.5 text-[#0071e3] shrink-0" />
+                  <span className="text-[#86868b] font-normal truncate text-[11px]">
+                    Buscar empresa, placa ou QR físico...
                   </span>
                 </div>
-                <span className="text-[10px] font-mono text-slate-400 bg-white border border-slate-200 px-1.5 py-0.5 rounded-md shrink-0">
+                <span className="text-[10px] font-mono text-[#86868b] bg-white border border-[#e5e5ea] px-1.5 py-0.5 rounded-md shrink-0 tabular-nums">
                   ⌘K
                 </span>
               </button>
@@ -4067,24 +4067,24 @@ function MainApp() {
         className="flex-1 max-w-7xl w-full mx-auto px-3.5 sm:px-6 lg:px-8 py-4 sm:py-5 pb-28 lg:pb-10"
       >
         
-        {/* Senior UX Contextual Section Header & Workflow Bar */}
-        <div className="mb-6 bg-white border border-slate-200/90 rounded-2xl p-4 sm:p-5 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        {/* Apple HIG Contextual Section Header & Workflow Bar */}
+        <div className="mb-6 bg-white border border-[#e5e5ea] rounded-2xl p-4 sm:p-5 shadow-[0_2px_8px_rgba(0,0,0,0.02)] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-start gap-3.5 min-w-0">
-            <div className={`p-2.5 rounded-xl shrink-0 ${activeTabMeta.bgColor} border border-slate-200/60`}>
+            <div className="w-10 h-10 rounded-xl bg-[#f5f5f7] border border-[#e5e5ea] flex items-center justify-center text-[#1d1d1f] shrink-0">
               <activeTabMeta.icon className={`h-5 w-5 ${activeTabMeta.color}`} />
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                <span className="text-[10px] font-semibold text-[#86868b] uppercase tracking-wider">
                   {activeTabMeta.category}
                 </span>
-                <span className="text-slate-300">·</span>
-                <span className="text-[11px] text-slate-500 font-medium">ALF Engine</span>
+                <span className="text-[#c7c7cc]">·</span>
+                <span className="text-[11px] text-[#86868b] font-normal">ALF Engine</span>
               </div>
-              <h1 className="text-base sm:text-lg font-black text-slate-900 tracking-tight truncate">
+              <h1 className="text-base sm:text-lg font-semibold text-[#1d1d1f] tracking-tight truncate">
                 {activeTabMeta.title}
               </h1>
-              <p className="text-xs text-slate-500 line-clamp-1 mt-0.5">
+              <p className="text-xs text-[#86868b] line-clamp-1 mt-0.5">
                 {activeTabMeta.description}
               </p>
             </div>
@@ -4097,7 +4097,7 @@ function MainApp() {
                 <button
                   type="button"
                   onClick={() => setIsPlateScannerOpen(true)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-xl border border-indigo-200 transition cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[#0071e3] bg-blue-50/70 hover:bg-blue-100/70 rounded-xl border border-blue-200/80 transition-colors cursor-pointer"
                 >
                   <ScanLine className="h-3.5 w-3.5" />
                   <span>Identificar Placa</span>
@@ -4105,7 +4105,7 @@ function MainApp() {
                 <button
                   type="button"
                   onClick={() => handleNavSelect('nfc_designer')}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl border border-slate-200 transition cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[#1d1d1f] bg-white hover:bg-[#f5f5f7] rounded-xl border border-[#e5e5ea] transition-colors cursor-pointer shadow-2xs"
                 >
                   <Sparkles className="h-3.5 w-3.5 text-amber-600" />
                   <span>Designer Totem 10x10</span>

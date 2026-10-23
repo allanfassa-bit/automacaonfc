@@ -435,24 +435,24 @@ export function LeadManagementModule(props: LeadManagementModuleProps) {
 
   return (
     <div className="space-y-5 animate-in fade-in duration-150 text-left">
-      {/* 1: Master Didactic Navigation Header */}
-      <div className="bg-white border border-slate-200/90 rounded-2xl p-2.5 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
-        <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl overflow-x-auto scrollbar-none">
+      {/* 1: Master Didactic Navigation Header — Apple Segmented Control */}
+      <div className="bg-white border border-[#e5e5ea] rounded-2xl p-2.5 shadow-[0_2px_8px_rgba(0,0,0,0.02)] flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+        <div className="flex items-center gap-1.5 p-1 bg-[#f0f0f2] rounded-xl overflow-x-auto scrollbar-none">
           <button
             type="button"
             onClick={() => {
               setLeadsSubTab('directory');
               setSelectedLead(null);
             }}
-            className={`px-3.5 py-2 text-xs font-bold rounded-lg transition-all flex items-center gap-2 cursor-pointer shrink-0 ${
+            className={`px-3.5 py-2 text-xs rounded-lg transition-all flex items-center gap-2 cursor-pointer shrink-0 ${
               leadsSubTab === 'directory'
-                ? 'bg-white text-slate-900 shadow-xs font-black'
-                : 'text-slate-600 hover:text-slate-900'
+                ? 'bg-white text-[#1d1d1f] shadow-xs font-semibold'
+                : 'text-[#6e6e73] hover:text-[#1d1d1f] font-normal'
             }`}
           >
-            <Building2 className="w-4 h-4 text-blue-600" />
+            <Building2 className="w-4 h-4 text-[#0071e3]" />
             <span>Base de Empresas</span>
-            <span className="text-[10px] bg-blue-100 text-blue-800 font-mono px-2 py-0.5 rounded-full font-bold">
+            <span className="text-[10px] bg-blue-50 text-[#0071e3] border border-blue-200/60 font-mono px-2 py-0.5 rounded-full font-semibold tabular-nums">
               {leads.length}
             </span>
           </button>
@@ -460,10 +460,10 @@ export function LeadManagementModule(props: LeadManagementModuleProps) {
           <button
             type="button"
             onClick={() => setLeadsSubTab('search')}
-            className={`px-3.5 py-2 text-xs font-bold rounded-lg transition-all flex items-center gap-2 cursor-pointer shrink-0 ${
+            className={`px-3.5 py-2 text-xs rounded-lg transition-all flex items-center gap-2 cursor-pointer shrink-0 ${
               leadsSubTab === 'search'
-                ? 'bg-white text-slate-900 shadow-xs font-black'
-                : 'text-slate-600 hover:text-slate-900'
+                ? 'bg-white text-[#1d1d1f] shadow-xs font-semibold'
+                : 'text-[#6e6e73] hover:text-[#1d1d1f] font-normal'
             }`}
           >
             <Sparkles className="w-4 h-4 text-cyan-600" />
@@ -473,13 +473,13 @@ export function LeadManagementModule(props: LeadManagementModuleProps) {
           <button
             type="button"
             onClick={() => setLeadsSubTab('pricing')}
-            className={`px-3 py-2 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 cursor-pointer shrink-0 ${
+            className={`px-3 py-2 text-xs rounded-lg transition-all flex items-center gap-1.5 cursor-pointer shrink-0 ${
               leadsSubTab === 'pricing'
-                ? 'bg-white text-slate-900 shadow-xs font-black'
-                : 'text-slate-600 hover:text-slate-900'
+                ? 'bg-white text-[#1d1d1f] shadow-xs font-semibold'
+                : 'text-[#6e6e73] hover:text-[#1d1d1f] font-normal'
             }`}
           >
-            <Sliders className="w-3.5 h-3.5 text-slate-500" />
+            <Sliders className="w-3.5 h-3.5 text-[#86868b]" />
             <span>Tabela de Preços</span>
           </button>
         </div>
@@ -490,35 +490,35 @@ export function LeadManagementModule(props: LeadManagementModuleProps) {
             <button
               type="button"
               onClick={() => setSelectedLead(null)}
-              className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition flex items-center gap-1.5 cursor-pointer text-xs"
+              className="px-3.5 py-2 bg-[#f0f0f2] hover:bg-[#e5e5ea] text-[#1d1d1f] font-medium rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer text-xs"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
-              <span>Voltar p/ Lista</span>
+              <span>Voltar para Lista</span>
             </button>
           )}
 
           <button
             type="button"
             onClick={() => setIsNewClientModalOpen(true)}
-            className="px-3.5 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black rounded-xl transition flex items-center gap-1.5 cursor-pointer text-xs shadow-sm"
+            className="px-3.5 py-2 bg-[#0071e3] hover:bg-[#0077ed] text-white font-medium rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer text-xs shadow-xs"
           >
             <Plus className="w-4 h-4" />
-            <span>+ Cadastrar Cliente &amp; Mini-Site (Logo/Serviços)</span>
+            <span>Novo Cliente &amp; Mini-Site</span>
           </button>
 
           <button
             type="button"
             onClick={() => setLeadsSubTab(leadsSubTab === 'search' ? 'directory' : 'search')}
-            className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white font-black rounded-xl transition flex items-center gap-1.5 cursor-pointer text-xs shadow-xs"
+            className="px-3.5 py-2 bg-[#1d1d1f] hover:bg-[#2d2d2f] text-white font-medium rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer text-xs shadow-xs"
           >
             {leadsSubTab === 'search' ? (
               <>
-                <Building2 className="w-3.5 h-3.5 text-cyan-400" />
+                <Building2 className="w-3.5 h-3.5 text-cyan-300" />
                 <span>Ver Empresas ({leads.length})</span>
               </>
             ) : (
               <>
-                <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+                <Sparkles className="w-3.5 h-3.5 text-cyan-300" />
                 <span>Escanear Google</span>
               </>
             )}
@@ -530,23 +530,23 @@ export function LeadManagementModule(props: LeadManagementModuleProps) {
       {leadsSubTab === 'directory' && (
         <div className="space-y-5">
           {/* A: Super Search & Filter Toolbar */}
-          <div className="bg-white border border-slate-200/90 rounded-2xl p-4 sm:p-5 shadow-xs space-y-3.5">
+          <div className="bg-white border border-[#e5e5ea] rounded-2xl p-4 sm:p-5 shadow-[0_2px_8px_rgba(0,0,0,0.02)] space-y-3.5">
             <div className="flex flex-col sm:flex-row gap-2.5 items-stretch sm:items-center justify-between">
               {/* Main Search Input */}
               <div className="relative flex-1">
-                <Search className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
+                <Search className="absolute left-3.5 top-3 h-4 w-4 text-[#86868b]" />
                 <input
                   type="text"
                   value={tableSearchTerm}
                   onChange={(e) => setTableSearchTerm(e.target.value)}
-                  placeholder={`🔍 Pesquisar entre todas as ${leads.length} empresas cadastradas (digite nome, cidade, endereço)...`}
-                  className="w-full bg-slate-50 hover:bg-white focus:bg-white border border-slate-200 rounded-xl py-2.5 pl-10 pr-9 text-xs font-semibold focus:outline-hidden focus:border-blue-500 transition-all shadow-inner"
+                  placeholder={`Pesquisar entre todas as ${leads.length} empresas cadastradas (nome, cidade, endereço)...`}
+                  className="w-full bg-[#f5f5f7] focus:bg-white border border-[#e5e5ea] focus:border-[#0071e3] rounded-xl py-2 pl-10 pr-9 text-xs text-[#1d1d1f] placeholder:text-[#86868b] transition-all"
                 />
                 {tableSearchTerm && (
                   <button
                     type="button"
                     onClick={() => setTableSearchTerm('')}
-                    className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-700 text-xs font-bold p-0.5 rounded-full hover:bg-slate-200"
+                    className="absolute right-3 top-2.5 text-[#86868b] hover:text-[#1d1d1f] text-xs font-medium p-0.5 rounded-full hover:bg-[#e5e5ea]"
                   >
                     ✕
                   </button>
@@ -573,8 +573,8 @@ export function LeadManagementModule(props: LeadManagementModuleProps) {
               </div>
             </div>
 
-            {/* Category Filter Tabs */}
-            <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-slate-100">
+            {/* Category Filter Tabs — Apple Clean Segmented Aesthetic */}
+            <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-[#e5e5ea]">
               <button
                 type="button"
                 onClick={() => {
@@ -582,94 +582,94 @@ export function LeadManagementModule(props: LeadManagementModuleProps) {
                   setRatingFilter('all');
                   setEasyConversionOnly(false);
                 }}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer flex items-center gap-1.5 ${
                   leadCategoryFilter === 'all' && ratingFilter === 'all' && !easyConversionOnly
-                    ? 'bg-slate-900 text-white shadow-xs'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    ? 'bg-[#1d1d1f] text-white shadow-xs'
+                    : 'bg-[#f0f0f2] text-[#424245] hover:bg-[#e5e5ea] hover:text-[#1d1d1f]'
                 }`}
               >
                 <span>Todas</span>
-                <span className="text-[10px] opacity-80 font-mono">({stats.total})</span>
+                <span className="text-[10px] opacity-75 font-mono tabular-nums">({stats.total})</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setLeadCategoryFilter('nfc_active')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer flex items-center gap-1.5 ${
                   leadCategoryFilter === 'nfc_active'
-                    ? 'bg-emerald-600 text-white shadow-xs'
-                    : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
+                    ? 'bg-[#1d1d1f] text-white shadow-xs'
+                    : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200/60'
                 }`}
               >
-                <span>🏷️ Placa NFC Ativa</span>
-                <span className="text-[10px] font-mono">({stats.nfcActive})</span>
+                <span>Placas NFC Ativas</span>
+                <span className="text-[10px] font-mono tabular-nums">({stats.nfcActive})</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setLeadCategoryFilter('nfc_pending')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer flex items-center gap-1.5 ${
                   leadCategoryFilter === 'nfc_pending'
-                    ? 'bg-amber-500 text-slate-950 shadow-xs font-black'
-                    : 'bg-amber-50 text-amber-800 hover:bg-amber-100'
+                    ? 'bg-[#1d1d1f] text-white shadow-xs'
+                    : 'bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200/60'
                 }`}
               >
-                <span>🟡 Aguardando Placa</span>
-                <span className="text-[10px] font-mono">({stats.nfcPending})</span>
+                <span>Aguardando Configuração</span>
+                <span className="text-[10px] font-mono tabular-nums">({stats.nfcPending})</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setLeadCategoryFilter('plaque_unprinted')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer flex items-center gap-1.5 ${
                   leadCategoryFilter === 'plaque_unprinted'
-                    ? 'bg-amber-500 text-slate-950 shadow-xs font-black'
-                    : 'bg-amber-50 text-amber-800 hover:bg-amber-100'
+                    ? 'bg-[#1d1d1f] text-white shadow-xs'
+                    : 'bg-amber-50/80 text-amber-900 hover:bg-amber-100 border border-amber-200/60'
                 }`}
                 title="Filtrar placas novas que ainda não foram impressas"
               >
-                <span>🟡 Placas Pendentes</span>
-                <span className="text-[10px] font-mono font-black">({stats.plaqueUnprinted})</span>
+                <span>Placas Pendentes</span>
+                <span className="text-[10px] font-mono tabular-nums">({stats.plaqueUnprinted})</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setLeadCategoryFilter('plaque_printed')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer flex items-center gap-1.5 ${
                   leadCategoryFilter === 'plaque_printed'
-                    ? 'bg-emerald-600 text-white shadow-xs font-black'
-                    : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
+                    ? 'bg-[#1d1d1f] text-white shadow-xs'
+                    : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200/60'
                 }`}
                 title="Filtrar placas que já foram impressas"
               >
-                <span>🟢 Placas Já Impressas</span>
-                <span className="text-[10px] font-mono font-black">({stats.plaquePrinted})</span>
+                <span>Placas Impressas</span>
+                <span className="text-[10px] font-mono tabular-nums">({stats.plaquePrinted})</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setLeadCategoryFilter('in_crm')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer flex items-center gap-1.5 ${
                   leadCategoryFilter === 'in_crm'
-                    ? 'bg-blue-600 text-white shadow-xs'
-                    : 'bg-blue-50 text-blue-800 hover:bg-blue-100'
+                    ? 'bg-[#1d1d1f] text-white shadow-xs'
+                    : 'bg-blue-50 text-blue-800 hover:bg-blue-100 border border-blue-200/60'
                 }`}
               >
-                <span>💼 No Funil CRM</span>
-                <span className="text-[10px] font-mono">({stats.inCrm})</span>
+                <span>No Funil CRM</span>
+                <span className="text-[10px] font-mono tabular-nums">({stats.inCrm})</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setLeadCategoryFilter('high_converting')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer flex items-center gap-1.5 ${
                   leadCategoryFilter === 'high_converting'
-                    ? 'bg-violet-600 text-white shadow-xs'
-                    : 'bg-violet-50 text-violet-800 hover:bg-violet-100'
+                    ? 'bg-[#1d1d1f] text-white shadow-xs'
+                    : 'bg-violet-50 text-violet-800 hover:bg-violet-100 border border-violet-200/60'
                 }`}
               >
-                <span>🎯 Alta Conversão</span>
-                <span className="text-[10px] font-mono">({stats.highConverting})</span>
+                <span>Alta Oportunidade</span>
+                <span className="text-[10px] font-mono tabular-nums">({stats.highConverting})</span>
               </button>
 
               {/* City selector if multiple cities */}
@@ -1261,14 +1261,14 @@ export function LeadManagementModule(props: LeadManagementModuleProps) {
                       <div
                         key={lead.id}
                         onClick={() => handleSelectLead(lead)}
-                        className="bg-white border border-slate-200 hover:border-blue-400 hover:shadow-md rounded-2xl p-4 transition-all cursor-pointer flex flex-col justify-between gap-3 group"
+                        className="bg-white border border-[#e5e5ea] hover:border-[#0071e3]/60 hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)] rounded-2xl p-4 transition-all duration-200 cursor-pointer flex flex-col justify-between gap-3 group"
                       >
                         <div className="space-y-1.5">
                           <div className="flex items-center justify-between gap-2">
-                            <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                            <span className="text-[10px] uppercase font-semibold text-[#86868b] tracking-wider truncate">
                               {lead.niche || 'Geral'}
                             </span>
-                            <div className="flex items-center gap-1.5">
+                            <div className="flex items-center gap-1.5 shrink-0">
                               {/* Plaque print status tag */}
                               {lead.isPlaquePrinted ? (
                                 <button
@@ -1277,10 +1277,10 @@ export function LeadManagementModule(props: LeadManagementModuleProps) {
                                     e.stopPropagation();
                                     updateLeadDetails(lead.id, { isPlaquePrinted: false });
                                   }}
-                                  className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 hover:bg-emerald-200 transition cursor-pointer"
+                                  className="text-[9px] font-medium uppercase px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100 transition cursor-pointer tabular-nums"
                                   title="Placa impressa. Clique para desmarcar"
                                 >
-                                  🖨️ Impressa
+                                  Impressa
                                 </button>
                               ) : (
                                 <button
@@ -1289,54 +1289,54 @@ export function LeadManagementModule(props: LeadManagementModuleProps) {
                                     e.stopPropagation();
                                     updateLeadDetails(lead.id, { isPlaquePrinted: true, plaquePrintedAt: new Date().toISOString() });
                                   }}
-                                  className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300 hover:bg-amber-200 transition cursor-pointer"
+                                  className="text-[9px] font-medium uppercase px-2 py-0.5 rounded-md bg-amber-50 text-amber-900 border border-amber-200 hover:bg-amber-100 transition cursor-pointer tabular-nums"
                                   title="Placa pendente. Clique para marcar como impressa"
                                 >
-                                  🟡 Pendente
+                                  Pendente
                                 </button>
                               )}
 
                               {hasNfc ? (
-                                <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
-                                  ✓ NFC
+                                <span className="text-[9px] font-medium uppercase px-2 py-0.5 rounded-md bg-blue-50 text-[#0071e3] border border-blue-200/60">
+                                  NFC
                                 </span>
                               ) : null}
                             </div>
                           </div>
 
-                          <h4 className="text-sm font-black text-slate-900 group-hover:text-blue-600 transition leading-snug">
+                          <h4 className="text-sm font-semibold text-[#1d1d1f] group-hover:text-[#0071e3] transition-colors leading-snug tracking-tight">
                             {lead.name}
                           </h4>
 
-                          <p className="text-xs text-slate-500 flex items-center gap-1">
-                            <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                          <p className="text-xs text-[#86868b] flex items-center gap-1">
+                            <MapPin className="w-3.5 h-3.5 text-[#86868b] shrink-0" />
                             <span className="truncate">{lead.city || 'Brasil'}</span>
                           </p>
 
                           <div className="flex items-center gap-2 pt-0.5">
-                            <div className="flex items-center text-amber-500 text-xs font-bold gap-1">
-                              <Star className="w-3.5 h-3.5 fill-amber-400" />
-                              <span className={isLowRating ? 'text-red-600 font-black' : 'text-slate-700'}>
+                            <div className="flex items-center text-amber-500 text-xs font-semibold gap-1">
+                              <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                              <span className={isLowRating ? 'text-rose-600 font-semibold' : 'text-[#1d1d1f]'}>
                                 {lead.rating || 5.0}
                               </span>
                             </div>
-                            <span className="text-[11px] text-slate-400">
+                            <span className="text-[11px] text-[#86868b] tabular-nums">
                               ({lead.reviewCount || 0} avaliações)
                             </span>
                           </div>
                         </div>
 
-                        <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100 text-xs">
+                        <div className="flex items-center justify-between gap-2 pt-2 border-t border-[#e5e5ea] text-xs">
                           <button
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
                               handleSelectLead(lead, 'site');
                             }}
-                            className="px-2.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 font-black text-[11px] flex items-center gap-1 transition cursor-pointer"
+                            className="px-2.5 py-1.5 rounded-xl bg-[#f0f0f2] hover:bg-[#e5e5ea] text-[#1d1d1f] border border-[#e5e5ea] font-medium text-[11px] flex items-center gap-1.5 transition-colors cursor-pointer"
                             title="Subir logotipo, cadastrar serviços e ver o Mini-Site deste cliente"
                           >
-                            <Smartphone className="w-3.5 h-3.5 text-emerald-600" />
+                            <Smartphone className="w-3.5 h-3.5 text-[#0071e3]" />
                             <span>Mini-Site &amp; Logo</span>
                           </button>
 
@@ -1349,13 +1349,13 @@ export function LeadManagementModule(props: LeadManagementModuleProps) {
                                   removeLead(lead.id);
                                 }
                               }}
-                              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
+                              className="p-1.5 rounded-lg text-[#86868b] hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
                               title="Excluir Empresa"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
 
-                            <span className="font-bold text-blue-600 group-hover:translate-x-0.5 transition flex items-center gap-1 ml-1">
+                            <span className="font-medium text-[#0071e3] group-hover:translate-x-0.5 transition-transform flex items-center gap-1 ml-1">
                               <span>Gerenciar</span>
                               <ArrowRight className="w-3.5 h-3.5" />
                             </span>

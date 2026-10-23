@@ -1053,21 +1053,21 @@ export function DynamicQrBatchManager({ leads, onSelectLead, onNavigateToPortal,
 
   return (
     <div className="space-y-6">
-      {/* Executive Clean Header */}
-      <div className="bg-slate-900 border border-slate-800 text-white p-4 sm:p-7 rounded-3xl shadow-sm relative overflow-hidden">
+      {/* Executive Apple HIG Clean Header */}
+      <div className="bg-[#1d1d1f] border border-[#2d2d30] text-white p-5 sm:p-7 rounded-2xl shadow-sm relative overflow-hidden">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5 sm:gap-6">
           <div className="space-y-1.5 max-w-2xl">
-            <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-400">
-              <Sparkles className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+            <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-[#86868b]">
+              <Sparkles className="w-3.5 h-3.5 text-[#2997ff] shrink-0" />
               <span>Totens Acrílicos 10x10cm &amp; QR Codes Contactless</span>
               <span aria-hidden="true" className="hidden sm:inline">·</span>
-              <span className="text-emerald-400 font-bold">Google 5 Estrelas Direto</span>
+              <span className="text-[#30d158] font-medium">Google 5 Estrelas Direto</span>
             </div>
-            <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white">
+            <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-white">
               Central de Placas &amp; QR Codes Inteligentes
             </h1>
-            <p className="text-slate-400 text-xs sm:text-sm leading-relaxed">
-              Imprima suas placas com antecedência: o QR code impresso <strong className="text-white">nunca muda</strong>. Ao realizar uma venda presencial, leia a placa ou selecione o código abaixo para vincular o novo cliente na hora!
+            <p className="text-[#86868b] text-xs sm:text-sm leading-relaxed">
+              Imprima suas placas com antecedência: o QR code impresso <strong className="text-white font-medium">nunca muda</strong>. Ao realizar uma venda presencial, leia a placa ou selecione o código abaixo para vincular o novo cliente na hora!
             </p>
           </div>
 
@@ -1090,11 +1090,11 @@ export function DynamicQrBatchManager({ leads, onSelectLead, onNavigateToPortal,
                 setQuickActivatedLead(null);
                 setIsQuickActivateOpen(true);
               }}
-              className="w-full lg:w-auto bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-slate-950 font-bold px-4 py-2.5 rounded-xl text-xs uppercase tracking-wider transition shadow-sm flex items-center justify-center gap-2 cursor-pointer text-center"
+              className="w-full lg:w-auto bg-[#0071e3] hover:bg-[#0077ed] active:scale-[0.98] text-white font-medium px-4 py-2.5 rounded-xl text-xs tracking-tight transition shadow-sm flex items-center justify-center gap-2 cursor-pointer text-center"
               id="btn-quick-activate-field"
             >
-              <Zap className="w-4 h-4 fill-slate-950 text-slate-950 shrink-0" />
-              <span>⚡ Ativar Placa na Hora</span>
+              <Zap className="w-4 h-4 fill-white text-white shrink-0" />
+              <span>Ativar Placa na Hora</span>
             </button>
 
             <button
@@ -1105,25 +1105,25 @@ export function DynamicQrBatchManager({ leads, onSelectLead, onNavigateToPortal,
                 setBindSuccessMessage(null);
                 setIsIdentifyModalOpen(true);
               }}
-              className="w-full lg:w-auto bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-bold px-4 py-2.5 rounded-xl text-xs uppercase tracking-wider transition border border-indigo-400/30 flex items-center justify-center gap-2 cursor-pointer shadow-sm text-center"
+              className="w-full lg:w-auto bg-white/10 hover:bg-white/15 active:scale-[0.98] text-white font-medium px-4 py-2.5 rounded-xl text-xs tracking-tight transition border border-white/15 flex items-center justify-center gap-2 cursor-pointer shadow-xs text-center"
               title="Aponte a câmera ou digite o código da placa física para saber qual é a empresa e cadastrar o novo cliente"
             >
               <ScanLine className="w-4 h-4 shrink-0" />
-              <span>🔍 Identificar Placa Impressa</span>
+              <span>Identificar Placa Impressa</span>
             </button>
 
             <button
               onClick={() => setIsBatchModalOpen(true)}
-              className="w-full lg:w-auto bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 border border-slate-700 font-bold px-3.5 py-2.5 rounded-xl text-xs transition flex items-center justify-center gap-1.5 cursor-pointer text-center"
+              className="w-full lg:w-auto bg-white/10 hover:bg-white/15 active:scale-[0.98] text-[#f5f5f7] border border-white/15 font-medium px-3.5 py-2.5 rounded-xl text-xs transition flex items-center justify-center gap-1.5 cursor-pointer text-center"
               id="btn-open-batch-generator"
             >
-              <Sparkles className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+              <Sparkles className="w-3.5 h-3.5 text-[#2997ff] shrink-0" />
               <span>Gerar Lote (1 a 40)</span>
             </button>
 
             <button
               onClick={() => setIsSingleModalOpen(true)}
-              className="w-full lg:w-auto bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 border border-slate-700 font-bold px-3.5 py-2.5 rounded-xl text-xs transition flex items-center justify-center gap-1.5 cursor-pointer text-center"
+              className="w-full lg:w-auto bg-white/10 hover:bg-white/15 active:scale-[0.98] text-[#f5f5f7] border border-white/15 font-medium px-3.5 py-2.5 rounded-xl text-xs transition flex items-center justify-center gap-1.5 cursor-pointer text-center"
             >
               <Plus className="w-3.5 h-3.5 shrink-0" />
               <span>Novo Individual</span>
@@ -1131,52 +1131,52 @@ export function DynamicQrBatchManager({ leads, onSelectLead, onNavigateToPortal,
           </div>
         </div>
 
-        {/* Clean Unboxed Stats Row */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-6 pt-5 border-t border-slate-800">
-          <div className="bg-slate-950/60 p-3.5 rounded-2xl border border-slate-800 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-slate-800 text-indigo-400 flex items-center justify-center font-bold shrink-0">
-              <QrCode className="w-5 h-5" />
+        {/* Clean Apple Translucent Stats Row */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-6 pt-5 border-t border-[#2d2d30]">
+          <div className="bg-white/5 p-3.5 rounded-xl border border-white/10 flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg bg-white/10 text-[#2997ff] flex items-center justify-center font-semibold shrink-0">
+              <QrCode className="w-4 h-4" />
             </div>
             <div>
-              <span className="text-[11px] font-semibold text-slate-400 block">Total de Placas Cadastradas</span>
-              <span className="text-lg font-black text-white">{stats.total} unidades</span>
+              <span className="text-[11px] font-medium text-[#86868b] block">Total de Placas Cadastradas</span>
+              <span className="text-base font-semibold text-white tabular-nums">{stats.total} unidades</span>
             </div>
           </div>
 
-          <div className="bg-slate-950/60 p-3.5 rounded-2xl border border-slate-800 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-950/80 text-emerald-400 flex items-center justify-center font-bold border border-emerald-800/40 shrink-0">
-              <CheckCircle className="w-5 h-5" />
+          <div className="bg-white/5 p-3.5 rounded-xl border border-white/10 flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg bg-[#30d158]/15 text-[#30d158] flex items-center justify-center font-semibold shrink-0">
+              <CheckCircle className="w-4 h-4" />
             </div>
             <div>
-              <span className="text-[11px] font-semibold text-slate-400 block">Com Link 5★ Configurado</span>
-              <span className="text-lg font-black text-emerald-400">{stats.active} ativas</span>
+              <span className="text-[11px] font-medium text-[#86868b] block">Com Link 5★ Configurado</span>
+              <span className="text-base font-semibold text-[#30d158] tabular-nums">{stats.active} ativas</span>
             </div>
           </div>
 
-          <div className="bg-slate-950/60 p-3.5 rounded-2xl border border-slate-800 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-950/80 text-amber-400 flex items-center justify-center font-bold border border-amber-800/40 shrink-0">
-              <Clock className="w-5 h-5" />
+          <div className="bg-white/5 p-3.5 rounded-xl border border-white/10 flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg bg-[#ff9f0a]/15 text-[#ff9f0a] flex items-center justify-center font-semibold shrink-0">
+              <Clock className="w-4 h-4" />
             </div>
             <div>
-              <span className="text-[11px] font-semibold text-slate-400 block">Livres para Novos Clientes</span>
-              <span className="text-lg font-black text-amber-300">{stats.pending} disponíveis</span>
+              <span className="text-[11px] font-medium text-[#86868b] block">Livres para Novos Clientes</span>
+              <span className="text-base font-semibold text-[#ff9f0a] tabular-nums">{stats.pending} disponíveis</span>
             </div>
           </div>
         </div>
       </div>
 
       {/* Operating Mode & Public Domain Control Center */}
-      <div className="bg-slate-900 border border-slate-800 rounded-3xl p-4 sm:p-5 shadow-lg space-y-4 text-white">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-800/80 pb-4">
+      <div className="bg-white border border-[#e5e5ea] rounded-2xl p-5 shadow-[0_2px_8px_rgba(0,0,0,0.02)] space-y-4 text-[#1d1d1f]">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-[#e5e5ea] pb-4">
           <div className="space-y-1">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[10px] font-black uppercase tracking-wider bg-cyan-950 text-cyan-400 border border-cyan-800 px-2.5 py-0.5 rounded-full">
+              <span className="text-[10px] font-semibold uppercase tracking-wider bg-[#f0f0f2] text-[#424245] border border-[#e5e5ea] px-2.5 py-0.5 rounded-full">
                 Formato dos QR Codes
               </span>
-              <span className="text-xs font-black text-slate-200">Escolha o Modo para Download e Impressão de Placas:</span>
+              <span className="text-xs font-semibold text-[#1d1d1f]">Escolha o Modo para Download e Impressão de Placas:</span>
             </div>
-            <p className="text-[11px] text-slate-400">
-              O <strong className="text-emerald-400">Modo Direto Oficial</strong> grava a URL de avaliação do Google (sem intermediário, 100% à prova de falhas em qualquer celular). O <strong className="text-cyan-400">Modo Dinâmico</strong> usa o redirecionamento permanente (/r/...).
+            <p className="text-xs text-[#86868b] leading-relaxed">
+              O <strong className="text-[#1d1d1f] font-medium">Modo Direto Oficial</strong> grava a URL de avaliação do Google (sem intermediário, 100% à prova de falhas em qualquer celular). O <strong className="text-[#0071e3] font-medium">Modo Dinâmico</strong> usa o redirecionamento permanente (/r/...).
             </p>
           </div>
 
@@ -1185,35 +1185,35 @@ export function DynamicQrBatchManager({ leads, onSelectLead, onNavigateToPortal,
             <button
               type="button"
               onClick={() => setIsEduModalOpen(true)}
-              className="w-full sm:w-auto px-3.5 py-2 rounded-xl text-xs font-bold text-amber-300 hover:text-amber-200 bg-amber-950/60 hover:bg-amber-900/60 border border-amber-800/80 transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs text-center"
+              className="w-full sm:w-auto px-3.5 py-2 rounded-xl text-xs font-medium text-[#6e6e73] hover:text-[#1d1d1f] bg-[#f5f5f7] hover:bg-[#e5e5ea] border border-[#e5e5ea] transition flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs text-center"
               title="Entenda as diferenças técnicas e práticas entre Link Direto e Link Dinâmico"
             >
-              <HelpCircle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+              <HelpCircle className="w-3.5 h-3.5 text-[#0071e3] shrink-0" />
               <span>Diferença: Direto vs Dinâmico</span>
             </button>
 
-            <div className="flex flex-col sm:flex-row bg-slate-950 p-1 rounded-2xl border border-slate-800 text-xs font-bold shadow-inner w-full sm:w-auto">
+            <div className="flex flex-col sm:flex-row bg-[#f0f0f2] p-1 rounded-xl border border-[#e5e5ea] text-xs font-medium w-full sm:w-auto">
               <button
                 onClick={() => setQrExportMode('direct')}
-                className={`flex-1 py-2 px-3 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer text-center ${
+                className={`flex-1 py-1.5 px-3 rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer text-center ${
                   qrExportMode === 'direct'
-                    ? 'bg-emerald-500 text-slate-950 font-black shadow-md'
-                    : 'text-slate-400 hover:text-white'
+                    ? 'bg-white text-[#1d1d1f] font-semibold shadow-xs'
+                    : 'text-[#6e6e73] hover:text-[#1d1d1f]'
                 }`}
               >
-                <CheckCircle className="w-3.5 h-3.5 shrink-0" />
-                <span className="truncate">⭐ Direto Oficial (Google)</span>
+                <CheckCircle className="w-3.5 h-3.5 text-[#30d158] shrink-0" />
+                <span className="truncate">Direto Oficial (Google)</span>
               </button>
               <button
                 onClick={() => setQrExportMode('dynamic')}
-                className={`flex-1 py-2 px-3 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer text-center ${
+                className={`flex-1 py-1.5 px-3 rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer text-center ${
                   qrExportMode === 'dynamic'
-                    ? 'bg-cyan-500 text-slate-950 font-black shadow-md'
-                    : 'text-slate-400 hover:text-white'
+                    ? 'bg-white text-[#0071e3] font-semibold shadow-xs'
+                    : 'text-[#6e6e73] hover:text-[#1d1d1f]'
                 }`}
               >
                 <RefreshCw className="w-3.5 h-3.5 shrink-0" />
-                <span className="truncate">🔄 Dinâmico Nuvem (/r/:id)</span>
+                <span className="truncate">Dinâmico Nuvem (/r/:id)</span>
               </button>
             </div>
           </div>
@@ -1222,28 +1222,28 @@ export function DynamicQrBatchManager({ leads, onSelectLead, onNavigateToPortal,
         {/* Domain status indicator & Notice */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs pt-1">
           <div className="flex items-center gap-2.5">
-            <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border ${
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border ${
               hasCustomPublicDomain()
-                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
-                : 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30'
+                ? 'bg-[#30d158]/10 text-[#30d158] border-[#30d158]/30'
+                : 'bg-[#0071e3]/10 text-[#0071e3] border-[#0071e3]/20'
             }`}>
               <Globe className="w-4 h-4" />
             </div>
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <span className="font-bold text-slate-300">Domínio Público do Redirecionador:</span>
+                <span className="font-medium text-[#1d1d1f]">Domínio Público do Redirecionador:</span>
                 {hasCustomPublicDomain() ? (
-                  <span className="text-[10px] bg-emerald-950 text-emerald-300 border border-emerald-800 font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
-                    <CheckCircle className="w-3 h-3 text-emerald-400" />
-                    ✓ Domínio Próprio Conectado
+                  <span className="text-[10px] bg-[#30d158]/15 text-[#1b7a35] border border-[#30d158]/30 font-medium px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <CheckCircle className="w-3 h-3 text-[#30d158]" />
+                    Domínio Próprio Conectado
                   </span>
                 ) : (
-                  <span className="text-[10px] bg-slate-800 text-amber-300 border border-amber-800/60 font-bold px-2 py-0.5 rounded-full">
+                  <span className="text-[10px] bg-[#f5f5f7] text-[#86868b] border border-[#e5e5ea] font-medium px-2 py-0.5 rounded-full">
                     Ambiente em Nuvem (Configure seu Domínio)
                   </span>
                 )}
               </div>
-              <p className="text-[11px] font-mono text-slate-400 break-all mt-0.5">
+              <p className="text-[11px] font-mono text-[#86868b] break-all mt-0.5">
                 {hasCustomPublicDomain() ? getCustomPublicDomain() : getPublicAppOrigin()}
               </p>
             </div>
@@ -1257,9 +1257,9 @@ export function DynamicQrBatchManager({ leads, onSelectLead, onNavigateToPortal,
                 setDomainModalTab('settings');
                 setIsDomainModalOpen(true);
               }}
-              className="text-xs font-bold text-cyan-400 hover:text-cyan-300 bg-slate-800 hover:bg-slate-700 border border-slate-700 px-3.5 py-2 rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5"
+              className="text-xs font-medium text-[#1d1d1f] hover:bg-[#e5e5ea] bg-[#f5f5f7] border border-[#e5e5ea] px-3.5 py-2 rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5"
             >
-              <Sliders className="w-3.5 h-3.5 shrink-0" />
+              <Sliders className="w-3.5 h-3.5 text-[#0071e3] shrink-0" />
               <span>Configurar Domínio Próprio</span>
             </button>
             <button
@@ -1269,32 +1269,32 @@ export function DynamicQrBatchManager({ leads, onSelectLead, onNavigateToPortal,
                 setDomainModalTab('deploy_tutorial');
                 setIsDomainModalOpen(true);
               }}
-              className="text-xs font-bold text-emerald-400 hover:text-emerald-300 bg-emerald-950/60 hover:bg-emerald-900/60 border border-emerald-800/80 px-3.5 py-2 rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5"
+              className="text-xs font-medium text-[#1d1d1f] hover:bg-[#e5e5ea] bg-[#f5f5f7] border border-[#e5e5ea] px-3.5 py-2 rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5"
             >
-              <Server className="w-3.5 h-3.5 shrink-0" />
-              <span>Como Subir no Seu Domínio (Tutorial)</span>
+              <Server className="w-3.5 h-3.5 text-[#30d158] shrink-0" />
+              <span>Tutorial de Domínio</span>
             </button>
           </div>
         </div>
       </div>
 
       {/* Action Bar: Search, Filters & Batch Exports */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs flex flex-col lg:flex-row items-center justify-between gap-4">
+      <div className="bg-white border border-[#e5e5ea] rounded-2xl p-4 shadow-[0_2px_8px_rgba(0,0,0,0.02)] flex flex-col lg:flex-row items-center justify-between gap-4">
         {/* Left: Search & Filter */}
         <div className="flex flex-col sm:flex-row items-center gap-2.5 w-full lg:w-auto">
           <div className="relative w-full sm:w-72">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+            <Search className="w-4 h-4 text-[#86868b] absolute left-3 top-2.5" />
             <input
               type="text"
               placeholder="Buscar por nome, ID (ex: 01, 25)..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-hidden focus:ring-1 focus:ring-slate-900"
+              className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-[#e5e5ea] bg-[#f5f5f7] focus:bg-white focus:outline-hidden focus:border-[#0071e3] text-[#1d1d1f] placeholder:text-[#86868b] transition"
             />
             {searchTerm && (
               <button
                 onClick={() => setSearchTerm('')}
-                className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600"
+                className="absolute right-2.5 top-2.5 text-[#86868b] hover:text-[#1d1d1f]"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -1302,20 +1302,20 @@ export function DynamicQrBatchManager({ leads, onSelectLead, onNavigateToPortal,
           </div>
 
           {/* Scope filter: Accepted/Active Plates vs All CRM Leads */}
-          <div className="flex bg-slate-100 p-1 rounded-xl w-full sm:w-auto border border-slate-200 text-xs font-bold overflow-x-auto scrollbar-none">
+          <div className="flex bg-[#f0f0f2] p-1 rounded-xl w-full sm:w-auto border border-[#e5e5ea] text-xs font-medium overflow-x-auto scrollbar-none">
             <button
               onClick={() => setScopeFilter('accepted_only')}
               className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap text-center ${
-                scopeFilter === 'accepted_only' ? 'bg-cyan-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                scopeFilter === 'accepted_only' ? 'bg-white text-[#1d1d1f] font-semibold shadow-xs' : 'text-[#6e6e73] hover:text-[#1d1d1f]'
               }`}
               title="Exibir apenas empresas que aceitaram a proposta ou placas físicas ativadas"
             >
-              ⭐ Placas Ativas
+              Placas Ativas
             </button>
             <button
               onClick={() => setScopeFilter('all')}
               className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap text-center ${
-                scopeFilter === 'all' ? 'bg-slate-800 text-white shadow-xs' : 'text-slate-500 hover:text-slate-900'
+                scopeFilter === 'all' ? 'bg-white text-[#1d1d1f] font-semibold shadow-xs' : 'text-[#6e6e73] hover:text-[#1d1d1f]'
               }`}
               title="Exibir todos os leads incluindo os em prospecção"
             >
@@ -1323,11 +1323,11 @@ export function DynamicQrBatchManager({ leads, onSelectLead, onNavigateToPortal,
             </button>
           </div>
 
-          <div className="flex bg-slate-100 p-1 rounded-xl w-full sm:w-auto border border-slate-200 text-xs font-bold overflow-x-auto scrollbar-none">
+          <div className="flex bg-[#f0f0f2] p-1 rounded-xl w-full sm:w-auto border border-[#e5e5ea] text-xs font-medium overflow-x-auto scrollbar-none">
             <button
               onClick={() => setStatusFilter('all')}
               className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap text-center ${
-                statusFilter === 'all' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-900'
+                statusFilter === 'all' ? 'bg-white text-[#1d1d1f] font-semibold shadow-xs' : 'text-[#6e6e73] hover:text-[#1d1d1f]'
               }`}
             >
               Filtrar ({dynamicQrs.length})
@@ -1335,7 +1335,7 @@ export function DynamicQrBatchManager({ leads, onSelectLead, onNavigateToPortal,
             <button
               onClick={() => setStatusFilter('pending')}
               className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap text-center ${
-                statusFilter === 'pending' ? 'bg-white text-amber-800 shadow-xs' : 'text-slate-500 hover:text-slate-900'
+                statusFilter === 'pending' ? 'bg-white text-[#ff9f0a] font-semibold shadow-xs' : 'text-[#6e6e73] hover:text-[#1d1d1f]'
               }`}
             >
               Aguardando ({stats.pending})
@@ -1343,7 +1343,7 @@ export function DynamicQrBatchManager({ leads, onSelectLead, onNavigateToPortal,
             <button
               onClick={() => setStatusFilter('active')}
               className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap text-center ${
-                statusFilter === 'active' ? 'bg-white text-emerald-800 shadow-xs' : 'text-slate-500 hover:text-slate-900'
+                statusFilter === 'active' ? 'bg-white text-[#30d158] font-semibold shadow-xs' : 'text-[#6e6e73] hover:text-[#1d1d1f]'
               }`}
             >
               Ativos ({stats.active})
@@ -1356,17 +1356,17 @@ export function DynamicQrBatchManager({ leads, onSelectLead, onNavigateToPortal,
           <button
             onClick={handleDownloadAllZip}
             disabled={isExportingZip || dynamicQrs.length === 0}
-            className="col-span-2 sm:col-auto bg-slate-900 hover:bg-slate-800 active:scale-95 text-white font-bold text-xs py-2 px-3.5 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 text-center"
+            className="col-span-2 sm:col-auto bg-[#1d1d1f] hover:bg-[#323236] active:scale-[0.98] text-white font-medium text-xs py-2 px-3.5 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 text-center"
             title="Baixar arquivo ZIP com todos os QR Codes em PNG HD 1000px"
           >
             {isExportingZip ? (
               <>
-                <RefreshCw className="w-3.5 h-3.5 animate-spin text-cyan-400 shrink-0" />
+                <RefreshCw className="w-3.5 h-3.5 animate-spin text-[#2997ff] shrink-0" />
                 <span className="truncate">Compactando ({zipProgress?.current}/{zipProgress?.total})...</span>
               </>
             ) : (
               <>
-                <Download className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                <Download className="w-3.5 h-3.5 text-[#2997ff] shrink-0" />
                 <span className="truncate">Baixar Todos em ZIP ({dynamicQrs.length})</span>
               </>
             )}
@@ -1375,20 +1375,20 @@ export function DynamicQrBatchManager({ leads, onSelectLead, onNavigateToPortal,
           <button
             onClick={handleBatchPrint}
             disabled={dynamicQrs.length === 0}
-            className="bg-white hover:bg-slate-50 active:scale-95 text-slate-800 border border-slate-200 font-bold text-xs py-2 px-3.5 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-2xs text-center"
+            className="bg-white hover:bg-[#f5f5f7] active:scale-[0.98] text-[#1d1d1f] border border-[#e5e5ea] font-medium text-xs py-2 px-3.5 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-2xs text-center"
             title="Imprimir cartela formatada com todos os QR Codes para corte"
           >
-            <Printer className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+            <Printer className="w-3.5 h-3.5 text-[#0071e3] shrink-0" />
             <span className="truncate">Imprimir Cartela</span>
           </button>
 
           <button
             onClick={handleExportCsv}
             disabled={dynamicQrs.length === 0}
-            className="bg-white hover:bg-slate-50 active:scale-95 text-slate-800 border border-slate-200 font-bold text-xs py-2 px-3 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-2xs text-center"
+            className="bg-white hover:bg-[#f5f5f7] active:scale-[0.98] text-[#1d1d1f] border border-[#e5e5ea] font-medium text-xs py-2 px-3 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-2xs text-center"
             title="Exportar planilha CSV com links permanentes e URLs de destino"
           >
-            <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+            <FileSpreadsheet className="w-3.5 h-3.5 text-[#30d158] shrink-0" />
             <span>CSV</span>
           </button>
 
@@ -1396,10 +1396,10 @@ export function DynamicQrBatchManager({ leads, onSelectLead, onNavigateToPortal,
           <button
             onClick={handleBackupDatabase}
             disabled={dynamicQrs.length === 0}
-            className="bg-cyan-50 hover:bg-cyan-100 active:scale-95 text-cyan-900 border border-cyan-200 font-bold text-xs py-2 px-3 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-2xs text-center"
+            className="bg-white hover:bg-[#f5f5f7] active:scale-[0.98] text-[#1d1d1f] border border-[#e5e5ea] font-medium text-xs py-2 px-3 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-2xs text-center"
             title="Baixar Backup Completo de todas as empresas e tags em JSON com 1 clique"
           >
-            <Database className="w-3.5 h-3.5 text-cyan-700 shrink-0" />
+            <Database className="w-3.5 h-3.5 text-[#0071e3] shrink-0" />
             <span>Backup JSON</span>
           </button>
 
@@ -1414,17 +1414,17 @@ export function DynamicQrBatchManager({ leads, onSelectLead, onNavigateToPortal,
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={isRestoring}
-            className="bg-amber-50 hover:bg-amber-100 active:scale-95 text-amber-900 border border-amber-200 font-bold text-xs py-2 px-3 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-2xs text-center"
+            className="bg-white hover:bg-[#f5f5f7] active:scale-[0.98] text-[#1d1d1f] border border-[#e5e5ea] font-medium text-xs py-2 px-3 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-2xs text-center"
             title="Restaurar empresas e tags a partir de um arquivo de backup JSON"
           >
             {isRestoring ? (
               <>
-                <RefreshCw className="w-3.5 h-3.5 animate-spin text-amber-700 shrink-0" />
+                <RefreshCw className="w-3.5 h-3.5 animate-spin text-[#86868b] shrink-0" />
                 <span className="truncate">Restaurando...</span>
               </>
             ) : (
               <>
-                <Upload className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+                <Upload className="w-3.5 h-3.5 text-[#ff9f0a] shrink-0" />
                 <span>Restaurar</span>
               </>
             )}
