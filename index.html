@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>ALF Automação - GMB Sales Engine</title>
+    <meta name="description" content="Sistema de inteligência de vendas locais para prospectar empresas sem site e com baixas avaliações, gerando modelos de placas NFC/QR-Code, landing pages interativas e scripts de WhatsApp de alta conversão." />
+    <meta property="og:title" content="ALF Automação - GMB Sales Engine" />
+    <meta property="og:description" content="Sistema de inteligência de vendas locais para prospectar empresas sem site e com baixas avaliações, gerando modelos de placas NFC/QR-Code, landing pages interativas e scripts de WhatsApp de alta conversão." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    
+    <!-- Mobile Web App Capable (PWA) Settings -->
+    <meta name="theme-color" content="#0f172a" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="ALF Vendas" />
+    <link rel="apple-touch-icon" href="/icon.svg" />
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800;900&family=Playfair+Display:ital,wght@0,600;0,700;0,800;0,900;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=Poppins:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+    <script>
+      // Suppress benign Vite HMR WebSocket connection errors in cloud proxy environment
+      (function() {
+        var isHmrError = function(e) {
+          var msg = (e && (e.message || (e.reason && (e.reason.message || e.reason)) || e.filename || String(e))) || '';
+          return msg.indexOf('WebSocket') !== -1 ||
+                 msg.indexOf('@vite/client') !== -1 ||
+                 msg.indexOf('closed without opened') !== -1 ||
+                 (msg.indexOf('vite') !== -1 && msg.indexOf('ws') !== -1);
+        };
+        var origConsoleError = console.error;
+        console.error = function() {
+          var args = Array.prototype.slice.call(arguments);
+          var str = args.map(function(a) { return (a && a.message) || String(a); }).join(' ');
+          if (isHmrError(str)) {
+            return;
+          }
+          return origConsoleError.apply(console, arguments);
+        };
+        window.addEventListener('error', function(event) {
+          if (isHmrError(event && (event.error || event.message || event))) {
+            event.stopImmediatePropagation();
+            event.preventDefault();
+            return true;
+          }
+        }, true);
+        window.addEventListener('unhandledrejection', function(event) {
+          if (isHmrError(event && (event.reason || event))) {
+            event.stopImmediatePropagation();
+            event.preventDefault();
+            return true;
+          }
+        }, true);
+
+        // Intercept native WebSocket so @vite/client in dev proxy never throws "closed without opened"
+        if (typeof window !== 'undefined' && window.WebSocket) {
+          var OrigWS = window.WebSocket;
+          window.WebSocket = function(url, protocols) {
+            try {
+              var s = String(url || '');
+              if (s.indexOf('.run.app') !== -1 || s.indexOf('vite') !== -1) {
+                return {
+                  url: s,
+                  readyState: 3,
+                  send: function() {},
+                  close: function() {},
+                  addEventListener: function() {},
+                  removeEventListener: function() {},
+                  dispatchEvent: function() { return false; }
+                };
+              }
+            } catch (_) {}
+            return new OrigWS(url, protocols);
+          };
+          window.WebSocket.prototype = OrigWS.prototype;
+          window.WebSocket.CONNECTING = 0;
+          window.WebSocket.OPEN = 1;
+          window.WebSocket.CLOSING = 2;
+          window.WebSocket.CLOSED = 3;
+        }
+      })();
+
+      // Force one-time Service Worker & Workbox cache refresh so new deployments appear immediately
+      (function() {
+        try {
+          var BUILD_VER = 'alf_v2026_10_22_nivaldo_v4';
+          localStorage.removeItem('alf_auth_user');
+          if (localStorage.getItem('alf_sw_ver') !== BUILD_VER) {
+            localStorage.setItem('alf_sw_ver', BUILD_VER);
+            if ('serviceWorker' in navigator) {
+              navigator.serviceWorker.getRegistrations().then(function(regs) {
+                for (var i = 0; i < regs.length; i++) {
+                  regs[i].unregister();
+                }
+              });
+            }
+            if ('caches' in window) {
+              caches.keys().then(function(names) {
+                for (var j = 0; j < names.length; j++) {
+                  caches.delete(names[j]);
+                }
+              });
+            }
+          }
+          window.addEventListener('vite:preloadError', function() {
+            window.location.reload();
+          });
+        } catch (_) {}
+      })();
+
+      // Immediate redirect interceptor for direct physical plate scans (never inside iframe preview)
+      (function() {
+        try {
+          if (window.self !== window.top) return; // Prevent breaking preview iframes
+          var h = window.location.hostname || '';
+          var p = window.location.pathname || '';
+          var s = window.location.search || '';
+          var isDevOrRunApp = h.indexOf('.run.app') !== -1 || h.indexOf('ais-dev-') !== -1 || h.indexOf('ais-pre-') !== -1;
+
+          // If a smartphone scanned an NFC tag pointing to Google Cloud Run dev container (.run.app),
+          // immediately redirect to the official production server on Render:
+          if (isDevOrRunApp) {
+            if (/^\/(r|redirect|nfc|tag)\//i.test(p)) {
+              window.location.replace('https://automacaonfc.onrender.com' + p + s);
+              return;
+            }
+          }
+
+          if (/^\/(r|redirect|nfc|tag)\//i.test(p)) {
+            var cleanId = p.replace(/^\/(r|redirect|nfc|tag)\//i, '').replace(/[^a-zA-Z0-9_\-]/g, '').toLowerCase().split('/')[0].split('?')[0];
+            if (cleanId) {
+              if (cleanId === 'alf' || cleanId.indexOf('alf_automacoes') !== -1 || cleanId.indexOf('alfautomacoes') !== -1) {
+                window.location.replace('https://automacaonfc.onrender.com/?minisite=alf');
+                return;
+              }
+              if (cleanId === 'nivaldo' || cleanId === 'furtuozocorretor' || cleanId === 'corretor') {
+                window.location.replace('https://automacaonfc.onrender.com/?minisite=nivaldo');
+                return;
+              }
+              if (cleanId === 'medica' || cleanId === 'bio_medica' || cleanId === 'medico') {
+                window.location.replace('https://automacaonfc.onrender.com/?minisite=medica');
+                return;
+              }
+              if (cleanId === 'estetica' || cleanId === 'bio_estetica_facial' || cleanId === 'skincare') {
+                window.location.replace('https://automacaonfc.onrender.com/?minisite=estetica');
+                return;
+              }
+              if (cleanId === 'sobrancelha' || cleanId === 'sobrancelhas' || cleanId === 'bio_sobrancelha' || cleanId === 'micropigmentacao') {
+                window.location.replace('https://automacaonfc.onrender.com/?minisite=sobrancelha');
+                return;
+              }
+              if (cleanId.indexOf('japa') !== -1 || cleanId.indexOf('assado') !== -1) {
+                window.location.replace('https://automacaonfc.onrender.com/?minisite=assadosdojapa');
+                return;
+              }
+              if (cleanId.indexOf('bella') !== -1 || cleanId.indexOf('mesa') !== -1 || cleanId.indexOf('rio') !== -1) {
+                window.location.replace('https://search.google.com/local/writereview?placeid=ChIJTTKzQz_Xv5QRjyhnE6zQpyI');
+                return;
+              }
+              if (cleanId.indexOf('suica') !== -1 || cleanId.indexOf('08') !== -1) {
+                window.location.replace('https://search.google.com/local/writereview?placeid=ChIJx2ytYDXXv5QRQzIXgn7RRrc');
+                return;
+              }
+              if (cleanId.indexOf('cbcell') !== -1 || cleanId.indexOf('cell') !== -1) {
+                window.location.replace('https://search.google.com/local/writereview?placeid=ChIJCyHYx7zXv5QRn264H27HvhY');
+                return;
+              }
+              fetch('/api/resolve-redirect/' + cleanId, { cache: 'no-store' })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                  if (data && data.targetUrl) {
+                    window.location.replace(data.targetUrl);
+                  }
+                })
+                .catch(function() {});
+            }
+          }
+        } catch (_) {}
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+

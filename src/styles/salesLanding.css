@@ -1,0 +1,382 @@
+/* ============================================================================
+   ALF AUTOMAÇÃO — APPLE KEYNOTE + FRAMER CONTINUOUS SCROLL DESIGN SYSTEM
+   Scoped strictly to .alf-lp-root — zero impact on Backend, Admin, or Bio Sites.
+   ============================================================================ */
+
+.alf-lp-root {
+  --alf-bg-dark: #050505;
+  --alf-bg-light: #F5F5F7;
+  --alf-surface-dark: #111113;
+  --alf-surface-light: #FFFFFF;
+  --alf-text-on-dark: #F5F5F7;
+  --alf-text-on-light: #1D1D1F;
+  --alf-text-secondary: #86868B;
+  --alf-blue: #2979FF;
+  --alf-blue-hover: #1B63E0;
+  --alf-border-dark: rgba(255, 255, 255, 0.10);
+  --alf-border-light: rgba(29, 29, 31, 0.08);
+
+  background-color: var(--alf-bg-dark);
+  color: var(--alf-text-on-dark);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", sans-serif;
+  line-height: 1.5;
+  letter-spacing: -0.012em;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+.alf-lp-root h1,
+.alf-lp-root h2,
+.alf-lp-root h3,
+.alf-lp-root h4,
+.alf-lp-root h5,
+.alf-lp-root h6 {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif;
+  letter-spacing: -0.02em;
+}
+
+/* Section Theme Alternation */
+.alf-section-dark {
+  background-color: var(--alf-bg-dark);
+  color: var(--alf-text-on-dark);
+}
+
+.alf-section-light {
+  background-color: var(--alf-bg-light);
+  color: var(--alf-text-on-light);
+}
+
+/* Apple Global Grid Container */
+.alf-lp-container {
+  width: 100%;
+  max-width: 1200px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: clamp(20px, 4vw, 64px);
+  padding-right: clamp(20px, 4vw, 64px);
+}
+
+.alf-lp-section {
+  padding-top: clamp(64px, 8vw, 128px);
+  padding-bottom: clamp(64px, 8vw, 128px);
+}
+
+/* ============================================================================
+   APPLE KEYNOTE TYPOGRAPHY SCALE & METALLIC GRADIENTS
+   ============================================================================ */
+.alf-typo-display {
+  font-size: clamp(2.2rem, 6.2vw, 5.75rem);
+  font-weight: 600;
+  line-height: 1.04;
+  letter-spacing: -0.02em;
+}
+
+.alf-typo-h1 {
+  font-size: clamp(1.9rem, 4.8vw, 4.5rem);
+  font-weight: 600;
+  line-height: 1.06;
+  letter-spacing: -0.02em;
+}
+
+.alf-typo-h2 {
+  font-size: clamp(1.75rem, 4vw, 3.75rem);
+  font-weight: 600;
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+}
+
+.alf-typo-h3 {
+  font-size: clamp(1.25rem, 2.2vw, 2rem);
+  font-weight: 600;
+  line-height: 1.18;
+  letter-spacing: -0.02em;
+}
+
+.alf-typo-body {
+  font-size: clamp(1.05rem, 1.3vw, 1.3rem);
+  font-weight: 400;
+  line-height: 1.52;
+  letter-spacing: -0.012em;
+}
+
+.alf-typo-eyebrow {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* Apple Titanium Metallic Headline Finish on Dark Backgrounds */
+.alf-text-titanium {
+  background: linear-gradient(180deg, #FFFFFF 0%, #F5F5F7 45%, #86868B 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: #F5F5F7;
+}
+
+/* ============================================================================
+   APPLE-STYLE ULTRA-SLIM FROSTED GLASS NAVBAR
+   ============================================================================ */
+.alf-lp-header {
+  height: 54px;
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background-color: rgba(5, 5, 5, 0.78);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  transition: background-color 0.3s ease;
+}
+
+.alf-lp-header.is-scrolled {
+  background-color: rgba(5, 5, 5, 0.92);
+}
+
+.alf-lp-brand-lockup {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+}
+
+.alf-lp-brand-emblem {
+  width: 38px;
+  height: 28px;
+  border-radius: 6px;
+  background-color: #000000;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+/* ============================================================================
+   TITANIUM SMARTPHONE CHASSIS (REALISTIC PROPORTIONS, NO BOX CLUTTER)
+   ============================================================================ */
+.alf-titanium-phone {
+  width: 100%;
+  max-width: 340px;
+  margin-left: auto;
+  margin-right: auto;
+  border-radius: 48px;
+  padding: 11px;
+  background: linear-gradient(145deg, #2C2C2E 0%, #151517 45%, #0A0A0C 100%);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.22),
+    0 40px 90px -20px rgba(0, 0, 0, 0.85),
+    inset 0 1px 1px rgba(255, 255, 255, 0.25);
+  position: relative;
+}
+
+.alf-titanium-phone-simulator {
+  max-width: 372px;
+}
+
+.alf-titanium-phone-light {
+  box-shadow:
+    0 0 0 1px rgba(29, 29, 31, 0.15),
+    0 40px 80px -20px rgba(29, 29, 31, 0.28),
+    inset 0 1px 1px rgba(255, 255, 255, 0.3);
+}
+
+.alf-titanium-island {
+  width: 88px;
+  height: 22px;
+  background: #000000;
+  border-radius: 999px;
+  margin: 4px auto 9px auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 10px;
+}
+
+.alf-titanium-lens {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: radial-gradient(circle, #2979FF 0%, #0F172A 70%);
+}
+
+.alf-titanium-screen {
+  border-radius: 37px;
+  overflow: hidden;
+  background: #061318;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  position: relative;
+  /* Creates a containing block so position:fixed elements inside MiniSiteViewer stay inside the phone screen */
+  transform: translateZ(0);
+}
+
+.alf-live-biosite-viewport {
+  height: 510px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.22) transparent;
+}
+
+@media (max-width: 640px) {
+  .alf-titanium-phone,
+  .alf-titanium-phone-simulator {
+    max-width: 332px;
+    border-radius: 42px;
+    padding: 9px;
+  }
+
+  .alf-titanium-screen {
+    border-radius: 33px;
+  }
+
+  .alf-live-biosite-viewport {
+    height: 460px;
+  }
+}
+
+.alf-live-biosite-viewport .mini-site-preview-container {
+  min-height: 100% !important;
+  padding-bottom: 16px !important;
+}
+
+/* ============================================================================
+   APPLE / FRAMER SEGMENTED PILL SWITCHER & BUTTONS
+   ============================================================================ */
+.alf-segmented-bar {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 5px;
+  border-radius: 999px;
+  background-color: #151518;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+}
+
+.alf-btn-blue {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background-color: var(--alf-blue);
+  color: #FFFFFF;
+  font-weight: 500;
+  font-size: 0.9375rem;
+  letter-spacing: -0.01em;
+  padding: 13px 26px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  transition: background-color 0.2s ease, transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.alf-btn-blue:hover {
+  background-color: var(--alf-blue-hover);
+  transform: scale(1.015);
+}
+
+.alf-btn-dark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background-color: #1D1D1F;
+  color: #FFFFFF;
+  font-weight: 500;
+  font-size: 0.9375rem;
+  letter-spacing: -0.01em;
+  padding: 13px 26px;
+  border-radius: 999px;
+  border: 1px solid #1D1D1F;
+  transition: background-color 0.2s ease, transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.alf-btn-dark:hover {
+  background-color: #050505;
+  transform: scale(1.015);
+}
+
+.alf-btn-ghost-on-dark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background-color: transparent;
+  color: #2979FF;
+  font-weight: 500;
+  font-size: 0.9375rem;
+  letter-spacing: -0.01em;
+  padding: 13px 24px;
+  border-radius: 999px;
+  border: 1px solid rgba(41, 121, 255, 0.35);
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.alf-btn-ghost-on-dark:hover {
+  background-color: rgba(41, 121, 255, 0.1);
+  border-color: #2979FF;
+}
+
+.alf-btn-ghost-on-light {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background-color: transparent;
+  color: #1D1D1F;
+  font-weight: 500;
+  font-size: 0.9375rem;
+  letter-spacing: -0.01em;
+  padding: 13px 24px;
+  border-radius: 999px;
+  border: 1px solid rgba(29, 29, 31, 0.2);
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.alf-btn-ghost-on-light:hover {
+  background-color: rgba(29, 29, 31, 0.05);
+  border-color: #1D1D1F;
+}
+
+/* Gallery Bento Tile on Light Section */
+.alf-bento-light {
+  background-color: #FFFFFF;
+  border-radius: 28px;
+  overflow: hidden;
+  box-shadow: 0 14px 40px -12px rgba(0, 0, 0, 0.06);
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+              box-shadow 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.alf-bento-light:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 24px 56px -14px rgba(0, 0, 0, 0.11);
+}
+
+.alf-gsap-target {
+  will-change: transform, opacity;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .alf-gsap-target {
+    will-change: auto !important;
+    transition: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}

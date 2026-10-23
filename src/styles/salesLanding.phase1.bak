@@ -1,0 +1,285 @@
+/* ============================================================================
+   ALF AUTOMAÇÃO — ISOLATED COMMERCIAL LANDING PAGE DESIGN SYSTEM
+   Concept: PREMIUM DIGITAL INFRASTRUCTURE (Linear, Stripe, Vercel, Apple)
+   Scoped strictly to .alf-lp-root to guarantee zero side-effects on
+   Admin Portal, Client Portal, or Bio Sites.
+   ============================================================================ */
+
+.alf-lp-root {
+  --color-primary: #0B1220;
+  --color-secondary: #172033;
+  --color-accent: #00B8D9;
+  --color-accent-hover: #00A3C4;
+  --color-background: #F8FAFC;
+  --color-surface: #FFFFFF;
+  --color-text-primary: #111827;
+  --color-text-secondary: #64748B;
+  --color-border: #E2E8F0;
+  --color-dark-border: rgba(255, 255, 255, 0.08);
+  --color-dark-surface: rgba(23, 32, 51, 0.72);
+  --shadow-soft: 0 20px 50px rgba(15, 23, 42, 0.08);
+  --shadow-card: 0 12px 32px -4px rgba(15, 23, 42, 0.06), 0 2px 6px -1px rgba(15, 23, 42, 0.04);
+  --shadow-elevated: 0 24px 60px -12px rgba(11, 18, 32, 0.16);
+  --transition-premium: all 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+
+  background-color: var(--color-background);
+  color: var(--color-text-primary);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+/* Container & Grid Architecture */
+.alf-lp-container {
+  width: 100%;
+  max-width: 1240px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 24px;
+  padding-right: 24px;
+}
+
+@media (min-width: 640px) {
+  .alf-lp-container {
+    padding-left: 32px;
+    padding-right: 32px;
+  }
+}
+
+.alf-lp-section {
+  padding-top: 64px;
+  padding-bottom: 64px;
+}
+
+@media (min-width: 1024px) {
+  .alf-lp-section {
+    padding-top: 104px;
+    padding-bottom: 104px;
+  }
+}
+
+.alf-lp-section-dark {
+  background-color: var(--color-primary);
+  color: #F8FAFC;
+  position: relative;
+}
+
+.alf-lp-section-light {
+  background-color: var(--color-background);
+  color: var(--color-text-primary);
+  position: relative;
+}
+
+.alf-lp-section-surface {
+  background-color: var(--color-surface);
+  color: var(--color-text-primary);
+  position: relative;
+}
+
+/* Typographic Hierarchy */
+.alf-lp-hero-title {
+  font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+  font-size: clamp(2.35rem, 4.6vw, 4.25rem);
+  font-weight: 700;
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+}
+
+.alf-lp-h2 {
+  font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+  font-size: clamp(1.875rem, 3.2vw, 2.75rem);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+}
+
+.alf-lp-h3 {
+  font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+  font-size: 1.375rem;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.02em;
+}
+
+.alf-lp-eyebrow {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.alf-lp-body-lg {
+  font-size: 1.125rem;
+  line-height: 1.65;
+}
+
+.alf-lp-body {
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+/* Header Fixed Minimalist */
+.alf-lp-header {
+  height: 72px;
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background-color: rgba(11, 18, 32, 0.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--color-dark-border);
+  transition: var(--transition-premium);
+}
+
+.alf-lp-header.is-scrolled {
+  background-color: rgba(11, 18, 32, 0.96);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.28);
+}
+
+/* Surfaces & Cards */
+.alf-lp-card {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 20px;
+  box-shadow: var(--shadow-card);
+  transition: var(--transition-premium);
+}
+
+.alf-lp-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-soft);
+  border-color: #CBD5E1;
+}
+
+.alf-lp-card-featured {
+  background-color: var(--color-primary);
+  color: #FFFFFF;
+  border: 1px solid rgba(0, 184, 217, 0.45);
+  border-radius: 20px;
+  box-shadow: var(--shadow-elevated);
+  transition: var(--transition-premium);
+}
+
+.alf-lp-card-featured:hover {
+  transform: translateY(-4px);
+  border-color: var(--color-accent);
+}
+
+.alf-lp-dark-panel {
+  background: linear-gradient(180deg, rgba(23, 32, 51, 0.85) 0%, rgba(11, 18, 32, 0.95) 100%);
+  border: 1px solid var(--color-dark-border);
+  border-radius: 20px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+}
+
+/* Buttons */
+.alf-lp-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background-color: var(--color-accent);
+  color: var(--color-primary);
+  font-weight: 600;
+  font-size: 0.9375rem;
+  padding: 13px 24px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  transition: var(--transition-premium);
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.alf-lp-btn-primary:hover {
+  background-color: var(--color-accent-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 24px -6px rgba(0, 184, 217, 0.35);
+}
+
+.alf-lp-btn-dark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background-color: var(--color-primary);
+  color: #FFFFFF;
+  font-weight: 600;
+  font-size: 0.9375rem;
+  padding: 13px 24px;
+  border-radius: 12px;
+  border: 1px solid var(--color-primary);
+  transition: var(--transition-premium);
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.alf-lp-btn-dark:hover {
+  background-color: var(--color-secondary);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 24px -6px rgba(11, 18, 32, 0.25);
+}
+
+.alf-lp-btn-secondary-dark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background-color: rgba(255, 255, 255, 0.04);
+  color: #F8FAFC;
+  font-weight: 500;
+  font-size: 0.9375rem;
+  padding: 13px 24px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  transition: var(--transition-premium);
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.alf-lp-btn-secondary-dark:hover {
+  background-color: rgba(255, 255, 255, 0.09);
+  border-color: rgba(255, 255, 255, 0.28);
+  transform: translateY(-2px);
+}
+
+.alf-lp-btn-outline-light {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background-color: var(--color-surface);
+  color: var(--color-text-primary);
+  font-weight: 600;
+  font-size: 0.9375rem;
+  padding: 13px 24px;
+  border-radius: 12px;
+  border: 1px solid var(--color-border);
+  transition: var(--transition-premium);
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.alf-lp-btn-outline-light:hover {
+  border-color: var(--color-primary);
+  background-color: #F1F5F9;
+  transform: translateY(-2px);
+}
+
+/* Subtle Hero Radial Lighting */
+.alf-lp-hero-glow {
+  background: radial-gradient(circle at 75% 35%, rgba(0, 184, 217, 0.14) 0%, rgba(23, 32, 51, 0.3) 42%, rgba(11, 18, 32, 0) 72%);
+}
+
+.alf-lp-grid-pattern {
+  background-size: 40px 40px;
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+}

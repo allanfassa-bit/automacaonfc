@@ -1,0 +1,286 @@
+/* ============================================================================
+   ALF AUTOMAÇÃO — APPLE-INSPIRED PRODUCT PRESENTATION DESIGN SYSTEM
+   Background: Pure Obsidian (#050505)
+   Typography: High-Contrast White, Generous Negative Space
+   Accent: Discreet ALF Blue (#2563EB)
+   Scoped strictly to .alf-lp-root — zero impact on Admin/Client Portals or Bio Sites.
+   ============================================================================ */
+
+.alf-lp-root {
+  --alf-obsidian: #050505;
+  --alf-surface: #0C0C0E;
+  --alf-surface-elevated: #121216;
+  --alf-white: #FFFFFF;
+  --alf-text-secondary: #A1A1AA;
+  --alf-text-muted: #71717A;
+  --alf-blue: #2563EB;
+  --alf-blue-hover: #1D4ED8;
+  --alf-hairline: rgba(255, 255, 255, 0.08);
+  --alf-hairline-strong: rgba(255, 255, 255, 0.14);
+
+  background-color: var(--alf-obsidian);
+  color: var(--alf-white);
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+/* Layout Containers — Mobile-First (360px+) up to 1240px */
+.alf-lp-container {
+  width: 100%;
+  max-width: 1200px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 20px;
+  padding-right: 20px;
+}
+
+@media (min-width: 640px) {
+  .alf-lp-container {
+    padding-left: 32px;
+    padding-right: 32px;
+  }
+}
+
+@media (min-width: 1280px) {
+  .alf-lp-container {
+    padding-left: 40px;
+    padding-right: 40px;
+  }
+}
+
+.alf-lp-section {
+  padding-top: 72px;
+  padding-bottom: 72px;
+}
+
+@media (min-width: 1024px) {
+  .alf-lp-section {
+    padding-top: 120px;
+    padding-bottom: 120px;
+  }
+}
+
+/* Apple-Style High-Contrast Typography */
+.alf-lp-h1 {
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: clamp(2.15rem, 4.8vw, 3.75rem);
+  font-weight: 700;
+  line-height: 1.06;
+  letter-spacing: -0.035em;
+  color: #FFFFFF;
+}
+
+.alf-lp-h2 {
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: clamp(1.75rem, 3.4vw, 2.75rem);
+  font-weight: 700;
+  line-height: 1.12;
+  letter-spacing: -0.03em;
+}
+
+.alf-lp-h3 {
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: clamp(1.2rem, 2vw, 1.5rem);
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+}
+
+.alf-lp-kicker {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* Minimalist Sticky Header on #050505 */
+.alf-lp-header {
+  height: 72px;
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background-color: rgba(5, 5, 5, 0.86);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border-bottom: 1px solid var(--alf-hairline);
+  transition: background-color 0.25s ease;
+}
+
+.alf-lp-header.is-scrolled {
+  background-color: rgba(5, 5, 5, 0.96);
+}
+
+/* Clean Executive Brand Lockup */
+.alf-lp-brand-lockup {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+}
+
+.alf-lp-brand-emblem {
+  width: 48px;
+  height: 36px;
+  border-radius: 9px;
+  background-color: #000000;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+/* Hero Obsidian Stage (#050505) */
+.alf-lp-hero-bg {
+  background-color: #050505;
+  color: #FFFFFF;
+}
+
+/* Pure HTML/CSS Upright Smartphone Frame (Cena 3 — Bio Site) */
+.alf-phone-frame {
+  width: 100%;
+  max-width: 310px;
+  margin-left: auto;
+  margin-right: auto;
+  border-radius: 42px;
+  padding: 10px;
+  background: #141417;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 32px 80px rgba(0, 0, 0, 0.85);
+  position: relative;
+}
+
+.alf-phone-notch {
+  width: 84px;
+  height: 20px;
+  background: #000000;
+  border-radius: 999px;
+  margin: 4px auto 8px auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 10px;
+}
+
+.alf-phone-notch-lens {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: #1E293B;
+}
+
+.alf-phone-screen {
+  border-radius: 32px;
+  overflow: hidden;
+  background: #061318;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  position: relative;
+}
+
+/* Editorial Cards & Surfaces */
+.alf-lp-card-dark {
+  background-color: var(--alf-surface);
+  border: 1px solid var(--alf-hairline);
+  border-radius: 24px;
+  transition: border-color 0.25s ease, transform 0.25s ease;
+}
+
+.alf-lp-card-dark:hover {
+  border-color: var(--alf-hairline-strong);
+}
+
+.alf-lp-card {
+  background-color: #0C0C0E;
+  border: 1px solid var(--alf-hairline);
+  border-radius: 24px;
+  transition: border-color 0.25s ease, transform 0.25s ease;
+}
+
+.alf-lp-card:hover {
+  border-color: var(--alf-hairline-strong);
+  transform: translateY(-2px);
+}
+
+/* Action Buttons — High Contrast White & Discreet ALF Blue */
+.alf-lp-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background-color: #FFFFFF;
+  color: #050505;
+  font-weight: 600;
+  font-size: 0.9375rem;
+  padding: 14px 28px;
+  border-radius: 999px;
+  border: 1px solid #FFFFFF;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.alf-lp-btn-primary:hover {
+  background-color: #E4E4E7;
+  transform: translateY(-1px);
+}
+
+.alf-lp-btn-blue {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background-color: var(--alf-blue);
+  color: #FFFFFF;
+  font-weight: 600;
+  font-size: 0.9375rem;
+  padding: 14px 28px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.alf-lp-btn-blue:hover {
+  background-color: var(--alf-blue-hover);
+  transform: translateY(-1px);
+}
+
+.alf-lp-btn-ghost-dark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background-color: transparent;
+  color: #FFFFFF;
+  font-weight: 500;
+  font-size: 0.9375rem;
+  padding: 14px 26px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.alf-lp-btn-ghost-dark:hover {
+  background-color: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.38);
+}
+
+/* GSAP GPU-accelerated layer */
+.alf-gsap-scene {
+  will-change: transform, opacity;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .alf-gsap-scene {
+    will-change: auto !important;
+    transition: none !important;
+  }
+}

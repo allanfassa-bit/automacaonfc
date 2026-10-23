@@ -1,0 +1,346 @@
+/* ============================================================================
+   ALF AUTOMAÇÃO — ISOLATED EDITORIAL & GSAP STORYTELLING DESIGN SYSTEM
+   Concept: "DO TOQUE À PRESENÇA DIGITAL"
+   Direction: Premium Modern Business + Editorial Product Experience
+   Scoped strictly to .alf-lp-root — zero impact on Admin/Client Portals or Bio Sites.
+   ============================================================================ */
+
+.alf-lp-root {
+  --alf-navy-hero: #0B1220;
+  --alf-navy-inst: #101D32;
+  --alf-warm-white: #FAF9F6;
+  --alf-white: #FFFFFF;
+  --alf-blue-action: #2563EB;
+  --alf-blue-action-hover: #1D4ED8;
+  --alf-text-main: #172033;
+  --alf-text-muted: #667085;
+  --alf-border: #E5E7EB;
+  --alf-dark-border: rgba(255, 255, 255, 0.1);
+
+  background-color: var(--alf-warm-white);
+  color: var(--alf-text-main);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+/* Layout Containers — Optimized for Smartphones (360px+) up to Desktop */
+.alf-lp-container {
+  width: 100%;
+  max-width: 1240px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 16px;
+  padding-right: 16px;
+}
+
+@media (min-width: 640px) {
+  .alf-lp-container {
+    padding-left: 32px;
+    padding-right: 32px;
+  }
+}
+
+@media (min-width: 1280px) {
+  .alf-lp-container {
+    padding-left: 40px;
+    padding-right: 40px;
+  }
+}
+
+.alf-lp-section {
+  padding-top: 56px;
+  padding-bottom: 56px;
+}
+
+@media (min-width: 640px) {
+  .alf-lp-section {
+    padding-top: 76px;
+    padding-bottom: 76px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .alf-lp-section {
+    padding-top: 112px;
+    padding-bottom: 112px;
+  }
+}
+
+/* Editorial Typography */
+.alf-lp-h1 {
+  font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+  font-size: clamp(2rem, 5.2vw, 3.85rem);
+  font-weight: 800;
+  line-height: 1.08;
+  letter-spacing: -0.032em;
+}
+
+/* Subtle Professional Hero Headline Color & Shimmer Effect */
+.alf-lp-hero-highlight {
+  position: relative;
+  display: inline;
+  background: linear-gradient(
+    120deg,
+    #60A5FA 0%,
+    #BAE6FD 32%,
+    #38BDF8 62%,
+    #3B82F6 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: #60A5FA;
+  filter: drop-shadow(0 6px 24px rgba(56, 189, 248, 0.24));
+  animation: alfHeroTextShimmer 7s ease-in-out infinite;
+}
+
+@keyframes alfHeroTextShimmer {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+.alf-lp-h2 {
+  font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+  font-size: clamp(1.65rem, 3.2vw, 2.75rem);
+  font-weight: 700;
+  line-height: 1.14;
+  letter-spacing: -0.028em;
+}
+
+.alf-lp-h3 {
+  font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+  font-size: clamp(1.2rem, 2vw, 1.5rem);
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+}
+
+.alf-lp-kicker {
+  font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* Minimalist Sticky Header */
+.alf-lp-header {
+  height: 76px;
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background-color: rgba(11, 18, 32, 0.94);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  transition: background-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.alf-lp-header.is-scrolled {
+  background-color: rgba(8, 13, 24, 0.98);
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.35);
+}
+
+/* Executive Dimensional Brand Lockup (Header & Footer) */
+.alf-lp-brand-lockup {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+  padding: 6px 12px 6px 6px;
+  border-radius: 16px;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.07) 0%,
+    rgba(16, 29, 50, 0.85) 100%
+  );
+  border: 1px solid rgba(96, 165, 250, 0.28);
+  box-shadow:
+    0 8px 24px -6px rgba(0, 0, 0, 0.55),
+    0 0 20px -4px rgba(37, 99, 235, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.2s ease;
+}
+
+.alf-lp-brand-lockup:hover {
+  border-color: rgba(96, 165, 250, 0.55);
+  box-shadow:
+    0 10px 28px -6px rgba(0, 0, 0, 0.65),
+    0 0 26px -2px rgba(56, 189, 248, 0.38),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  transform: translateY(-1px);
+}
+
+.alf-lp-brand-emblem {
+  width: 52px;
+  height: 40px;
+  border-radius: 11px;
+  background: radial-gradient(circle at 50% 30%, #162238 0%, #050811 100%);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.15), 0 4px 10px rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+@media (min-width: 640px) {
+  .alf-lp-brand-lockup {
+    gap: 14px;
+    padding: 7px 16px 7px 8px;
+  }
+  .alf-lp-brand-emblem {
+    width: 62px;
+    height: 44px;
+  }
+}
+
+/* Hero Deep Navy Environment */
+.alf-lp-hero-bg {
+  background-color: var(--alf-navy-hero);
+  background-image: radial-gradient(
+    circle at 72% 38%,
+    rgba(37, 99, 235, 0.18) 0%,
+    rgba(16, 29, 50, 0.5) 45%,
+    rgba(11, 18, 32, 1) 82%
+  );
+  color: #FFFFFF;
+}
+
+/* Editorial Cards & Surfaces */
+.alf-lp-card {
+  background-color: var(--alf-white);
+  border: 1px solid var(--alf-border);
+  border-radius: 24px;
+  box-shadow: 0 12px 32px -8px rgba(16, 29, 50, 0.06);
+  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+              box-shadow 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+              border-color 0.25s ease;
+}
+
+.alf-lp-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 20px 44px -12px rgba(16, 29, 50, 0.1);
+  border-color: #D1D5DB;
+}
+
+/* Action Buttons */
+.alf-lp-btn-blue {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background-color: var(--alf-blue-action);
+  color: #FFFFFF;
+  font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 0.9375rem;
+  padding: 13px 22px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  transition: background-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.alf-lp-btn-blue:hover {
+  background-color: var(--alf-blue-action-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 10px 24px -6px rgba(37, 99, 235, 0.45);
+}
+
+.alf-lp-btn-navy {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background-color: var(--alf-navy-inst);
+  color: #FFFFFF;
+  font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 0.9375rem;
+  padding: 13px 22px;
+  border-radius: 12px;
+  border: 1px solid var(--alf-navy-inst);
+  transition: background-color 0.2s ease, transform 0.2s ease;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.alf-lp-btn-navy:hover {
+  background-color: var(--alf-navy-hero);
+  transform: translateY(-1px);
+}
+
+.alf-lp-btn-ghost-dark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background-color: rgba(255, 255, 255, 0.05);
+  color: #FFFFFF;
+  font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 0.9375rem;
+  padding: 13px 22px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.alf-lp-btn-ghost-dark:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: translateY(-1px);
+}
+
+.alf-lp-btn-outline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background-color: var(--alf-white);
+  color: var(--alf-text-main);
+  font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 0.9375rem;
+  padding: 13px 20px;
+  border-radius: 12px;
+  border: 1px solid var(--alf-border);
+  transition: border-color 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.alf-lp-btn-outline:hover {
+  border-color: var(--alf-navy-inst);
+  background-color: var(--alf-warm-white);
+  transform: translateY(-1px);
+}
+
+/* GSAP Stage Hardware Elements (GPU-accelerated transforms only) */
+.alf-gsap-layer {
+  will-change: transform, opacity;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .alf-gsap-layer {
+    will-change: auto !important;
+    transition: none !important;
+  }
+  .alf-lp-hero-highlight {
+    animation: none !important;
+  }
+}

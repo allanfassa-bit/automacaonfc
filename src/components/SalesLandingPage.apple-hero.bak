@@ -1,0 +1,1729 @@
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import gsap from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import {
+  Smartphone,
+  QrCode,
+  Shield,
+  CheckCircle2,
+  ArrowRight,
+  MessageCircle,
+  Instagram,
+  Wifi,
+  Eye,
+  X,
+  Menu,
+  Sliders,
+  Layers
+} from 'lucide-react';
+import {
+  ALF_LOGO_DATA_URI,
+  READY_MINISITE_MOCKUPS,
+  ReadyMockupTemplate
+} from '../utils/readyMiniSiteMockups';
+import { MiniSiteViewer } from './MiniSiteViewer';
+import '../styles/salesLanding.css';
+
+gsap.registerPlugin(ScrollTrigger);
+
+export interface InterestLeadPayload {
+  name: string;
+  email: string;
+  phone: string;
+  companyName: string;
+  niche: string;
+  interestType: string;
+}
+
+export interface SalesLandingPageProps {
+  onOpenLogin: (suggestedTab?: string) => void;
+  onExploreDemo?: () => void;
+  initialNiche?: string;
+  onRegisterInterest?: (payload: InterestLeadPayload) => Promise<void> | void;
+  isAdminAuthenticated?: boolean;
+  onGoToAdminPanel?: () => void;
+}
+
+const SHOWCASE_PUBLIC_MODEL_IDS = [
+  'bio_medica',
+  'modelo_bio_pessoal_demo',
+  'modelo_corretor_demo',
+  'cafe',
+  'bio_estetica_facial',
+  'hamburgueria'
+];
+
+const HERO_BIO_DEMO_TABS: Array<{ id: string; label: string }> = [
+  { id: 'bio_medica', label: 'Médico' },
+  { id: 'modelo_bio_pessoal_demo', label: 'Bio Pessoal' },
+  { id: 'modelo_corretor_demo', label: 'Corretor' }
+];
+
+export const SalesLandingPage: React.FC<SalesLandingPageProps> = ({
+  onOpenLogin,
+  initialNiche,
+  onRegisterInterest,
+  isAdminAuthenticated,
+  onGoToAdminPanel
+}) => {
+  const [selectedShowcaseMockupId, setSelectedShowcaseMockupId] = useState<string>(() => {
+    if (initialNiche) {
+      const matched = READY_MINISITE_MOCKUPS.find(
+        (m) =>
+          SHOWCASE_PUBLIC_MODEL_IDS.includes(m.id) &&
+          (m.id.toLowerCase().includes(initialNiche.toLowerCase()) ||
+            m.category.toLowerCase().includes(initialNiche.toLowerCase()))
+      );
+      if (matched) return matched.id;
+    }
+    return 'bio_medica';
+  });
+
+  const [activeScene, setActiveScene] = useState<1 | 2 | 3 | 4>(1);
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState<boolean>(false);
+  const [fullscreenEmulationMockup, setFullscreenEmulationMockup] = useState<ReadyMockupTemplate | null>(null);
+  const [isHeaderScrolled, setIsHeaderScrolled] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isPrivacyModalOpen, setIsPrivacyModalOpen] = useState(false);
+
+  // Public Interest Capture Modal State (preserves honeypot & rate limiting)
+  const [isInterestModalOpen, setIsInterestModalOpen] = useState(false);
+  const [interestTopic, setInterestTopic] = useState<string>('Bio Site + Cartão NFC (R$ 1.199,00)');
+  const [interestName, setInterestName] = useState('');
+  const [interestEmail, setInterestEmail] = useState('');
+  const [interestPhone, setInterestPhone] = useState('');
+  const [interestCompany, setInterestCompany] = useState('');
+  const [interestNicheInput, setInterestNicheInput] = useState('');
+  const [honeypotWebsite, setHoneypotWebsite] = useState('');
+  const [isSubmittingInterest, setIsSubmittingInterest] = useState(false);
+  const [interestSubmittedSuccess, setInterestSubmittedSuccess] = useState(false);
+  const [interestError, setInterestError] = useState('');
+  const [lastSubmitTimestamp, setLastSubmitTimestamp] = useState<number>(0);
+
+  // Refs for GSAP Hero Storytelling & Secret Footer Login
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const heroSectionRef = useRef<HTMLElement | null>(null);
+  const secretLogoClicksRef = useRef<{ count: number; lastClick: number }>({ count: 0, lastClick: 0 });
+
+  const openInterestModal = (topic?: string) => {
+    if (topic) setInterestTopic(topic);
+    setInterestSubmittedSuccess(false);
+    setInterestError('');
+    setIsInterestModalOpen(true);
+  };
+
+  const handleSecretFooterLogoClick = () => {
+    const now = Date.now();
+    if (now - secretLogoClicksRef.current.lastClick > 2500) {
+      secretLogoClicksRef.current.count = 1;
+    } else {
+      secretLogoClicksRef.current.count += 1;
+    }
+    secretLogoClicksRef.current.lastClick = now;
+    if (secretLogoClicksRef.current.count >= 5) {
+      secretLogoClicksRef.current.count = 0;
+      onOpenLogin();
+    }
+  };
+
+  const handleInterestSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setInterestError('');
+
+    if (honeypotWebsite.trim().length > 0) {
+      setInterestSubmittedSuccess(true);
+      return;
+    }
+
+    const now = Date.now();
+    if (now - lastSubmitTimestamp < 30000) {
+      setInterestError('Aguarde alguns segundos antes de enviar uma nova solicitação.');
+      return;
+    }
+
+    const cleanName = interestName.trim();
+    const cleanEmail = interestEmail.trim().toLowerCase();
+    const cleanPhone = interestPhone.replace(/\D/g, '');
+    const cleanCompany = interestCompany.trim() || cleanName;
+
+    if (!cleanName || cleanName.length < 2) {
+      setInterestError('Por favor, informe seu nome completo.');
+      return;
+    }
+    if (!cleanEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      setInterestError('Por favor, informe um e-mail válido para contato.');
+      return;
+    }
+    if (!cleanPhone || cleanPhone.length < 10) {
+      setInterestError('Por favor, informe seu WhatsApp ou telefone com DDD.');
+      return;
+    }
+
+    setIsSubmittingInterest(true);
+    try {
+      if (onRegisterInterest) {
+        await onRegisterInterest({
+          name: cleanName,
+          email: cleanEmail,
+          phone: cleanPhone,
+          companyName: cleanCompany,
+          niche: interestNicheInput.trim() || 'Não informado',
+          interestType: interestTopic
+        });
+      }
+      setLastSubmitTimestamp(Date.now());
+      setInterestSubmittedSuccess(true);
+    } catch (_) {
+      setInterestSubmittedSuccess(true);
+    } finally {
+      setIsSubmittingInterest(false);
+    }
+  };
+
+  const publicShowcaseModels: ReadyMockupTemplate[] = useMemo(() => {
+    return SHOWCASE_PUBLIC_MODEL_IDS.map((id) =>
+      READY_MINISITE_MOCKUPS.find((m) => m.id === id)
+    ).filter((m): m is ReadyMockupTemplate => Boolean(m));
+  }, []);
+
+  // Ensure the Hero smartphone demo defaults to one of the 3 Hero Demo models (Médico, Bio Pessoal, Corretor)
+  const heroSelectedMockup: ReadyMockupTemplate = useMemo(() => {
+    const heroMatch = publicShowcaseModels.find((m) => m.id === selectedShowcaseMockupId);
+    if (heroMatch) return heroMatch;
+    return (
+      publicShowcaseModels.find((m) => m.id === 'bio_medica') ||
+      publicShowcaseModels[0] ||
+      READY_MINISITE_MOCKUPS[0]
+    );
+  }, [publicShowcaseModels, selectedShowcaseMockupId]);
+
+  useEffect(() => {
+    const onScroll = () => {
+      const y = window.scrollY || document.documentElement.scrollTop || 0;
+      setIsHeaderScrolled(y > 16);
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  // GSAP + ScrollTrigger 4-Scene Hero Storytelling with matchMedia & prefers-reduced-motion
+  useEffect(() => {
+    if (typeof window === 'undefined' || !rootRef.current || !heroSectionRef.current) return;
+
+    const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    setPrefersReducedMotion(motionQuery.matches);
+
+    const ctx = gsap.context(() => {
+      const mm = gsap.matchMedia();
+
+      // Desktop Storytelling with controlled scrub & short pin
+      mm.add('(min-width: 1024px) and (prefers-reduced-motion: no-preference)', () => {
+        gsap.fromTo(
+          '.alf-hero-intro',
+          { opacity: 0, y: 18 },
+          { opacity: 1, y: 0, duration: 0.65, stagger: 0.08, ease: 'power2.out' }
+        );
+
+        const tl = gsap.timeline({
+          scrollTrigger: {
+            trigger: heroSectionRef.current,
+            start: 'top top+=76',
+            end: '+=960',
+            pin: true,
+            scrub: 0.5,
+            anticipatePin: 1,
+            invalidateOnRefresh: true,
+            onUpdate: (self) => {
+              const p = self.progress;
+              if (p < 0.24) {
+                setActiveScene(1);
+              } else if (p < 0.54) {
+                setActiveScene(2);
+              } else if (p < 0.82) {
+                setActiveScene(3);
+              } else {
+                setActiveScene(4);
+              }
+            }
+          }
+        });
+
+        // CENA 02: Smartphone approaches Placa NFC + discreet pulse + Google review screen
+        tl.to(
+          '.alf-stage-phone',
+          { x: -28, y: -6, scale: 1.03, duration: 1, ease: 'power2.inOut' },
+          'scene2'
+        )
+          .to(
+            '.alf-stage-plaque',
+            { x: 14, scale: 1.04, duration: 1, ease: 'power2.inOut' },
+            'scene2'
+          )
+          .fromTo(
+            '.alf-stage-nfc-pulse',
+            { opacity: 0, scale: 0.75 },
+            { opacity: 1, scale: 1.18, duration: 0.9, ease: 'power2.out' },
+            'scene2+=0.1'
+          )
+          .to(
+            '.alf-screen-scene1',
+            { opacity: 0, duration: 0.45, ease: 'power1.out' },
+            'scene2+=0.15'
+          )
+          .fromTo(
+            '.alf-screen-scene2',
+            { opacity: 0, y: 10 },
+            { opacity: 1, y: 0, duration: 0.55, ease: 'power2.out' },
+            'scene2+=0.25'
+          );
+
+        // CENA 03: Placa NFC steps softly out of focus, Cartão NFC enters, screen shows real Bio Site
+        tl.to(
+          '.alf-stage-plaque',
+          { x: -24, y: 12, scale: 0.88, opacity: 0.32, duration: 1, ease: 'power2.inOut' },
+          'scene3'
+        )
+          .to(
+            '.alf-stage-nfc-pulse',
+            { opacity: 0, scale: 1.35, duration: 0.5 },
+            'scene3'
+          )
+          .fromTo(
+            '.alf-stage-card',
+            { opacity: 0, y: 28, scale: 0.92 },
+            { opacity: 1, y: 0, scale: 1, duration: 0.9, ease: 'power2.out' },
+            'scene3+=0.1'
+          )
+          .to(
+            '.alf-stage-phone',
+            { x: 0, y: 0, scale: 1.05, duration: 1, ease: 'power2.inOut' },
+            'scene3'
+          )
+          .to(
+            '.alf-screen-scene2',
+            { opacity: 0, duration: 0.4, ease: 'power1.out' },
+            'scene3+=0.15'
+          )
+          .fromTo(
+            '.alf-screen-scene3',
+            { opacity: 0, y: 10 },
+            { opacity: 1, y: 0, duration: 0.6, ease: 'power2.out' },
+            'scene3+=0.25'
+          );
+
+        // CENA 04: Final conversion composition — both solutions visible in harmony
+        tl.to(
+          '.alf-stage-plaque',
+          { x: 0, y: 0, scale: 0.96, opacity: 1, duration: 0.9, ease: 'power2.out' },
+          'scene4'
+        )
+          .to(
+            '.alf-stage-phone',
+            { scale: 1, duration: 0.9, ease: 'power2.out' },
+            'scene4'
+          )
+          .fromTo(
+            '.alf-stage-final-cta',
+            { opacity: 0, y: 12 },
+            { opacity: 1, y: 0, duration: 0.6, ease: 'power2.out' },
+            'scene4+=0.2'
+          );
+      });
+
+      // Mobile — Lightweight entrance, no prolonged pinning
+      mm.add('(max-width: 1023px) and (prefers-reduced-motion: no-preference)', () => {
+        gsap.fromTo(
+          '.alf-hero-intro',
+          { opacity: 0, y: 14 },
+          { opacity: 1, y: 0, duration: 0.5, stagger: 0.06, ease: 'power2.out' }
+        );
+      });
+    }, rootRef);
+
+    const handleResize = () => {
+      ScrollTrigger.refresh();
+    };
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      ctx.revert();
+    };
+  }, []);
+
+  return (
+    <div ref={rootRef} className="alf-lp-root min-h-screen">
+      {/* Barra de retorno caso o administrador já esteja autenticado */}
+      {isAdminAuthenticated && onGoToAdminPanel && (
+        <div className="bg-[#070B14] border-b border-white/10 py-2 px-4 text-xs text-slate-300">
+          <div className="alf-lp-container flex items-center justify-between gap-4">
+            <span className="flex items-center gap-2 font-medium truncate">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
+              <span className="truncate">Sessão administrativa ativa</span>
+            </span>
+            <button
+              type="button"
+              onClick={onGoToAdminPanel}
+              className="text-white hover:text-blue-400 font-semibold flex items-center gap-1 cursor-pointer transition shrink-0"
+            >
+              <span>Voltar ao Console</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* HEADER EXECUTIVO FIXO — LOGO PROEMINENTE E RESPONSIVO NO MOBILE E DESKTOP */}
+      <header className={`alf-lp-header ${isHeaderScrolled ? 'is-scrolled' : ''}`}>
+        <div className="alf-lp-container h-full flex items-center justify-between gap-3 sm:gap-6">
+          <a href="#" className="alf-lp-brand-lockup shrink-0">
+            <div className="alf-lp-brand-emblem">
+              <img
+                src="/alf-logo.jpg"
+                alt="ALF Automação"
+                className="w-full h-full object-contain scale-105"
+              />
+            </div>
+            <div className="text-left leading-none pr-1">
+              <div className="flex items-center gap-1.5">
+                <span className="font-extrabold text-white text-sm sm:text-base tracking-tight uppercase">
+                  ALF
+                </span>
+                <span className="font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-sky-300 to-blue-500 text-sm sm:text-base tracking-tight uppercase">
+                  AUTOMAÇÃO
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5 mt-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0" />
+                <span className="text-[9px] sm:text-[10px] font-semibold tracking-[0.12em] text-slate-300 uppercase block">
+                  Identidade Digital &amp; NFC
+                </span>
+              </div>
+            </div>
+          </a>
+
+          <nav className="hidden lg:flex items-center gap-8 text-sm font-medium text-slate-300">
+            <a href="#solucoes" className="hover:text-white transition-colors">
+              Soluções
+            </a>
+            <a href="#modelos" className="hover:text-white transition-colors">
+              Bio Sites
+            </a>
+            <a href="#como-funciona" className="hover:text-white transition-colors">
+              Como funciona
+            </a>
+            <a href="#credibilidade" className="hover:text-white transition-colors">
+              Credibilidade
+            </a>
+          </nav>
+
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            <a
+              href="#solucoes"
+              className="hidden sm:inline-flex alf-lp-btn-blue text-xs sm:text-sm !py-2.5 !px-4 sm:!px-5"
+            >
+              <span>Conhecer soluções</span>
+            </a>
+
+            <button
+              type="button"
+              onClick={() => setIsMobileMenuOpen((prev) => !prev)}
+              className="lg:hidden w-10 h-10 rounded-xl bg-white/5 hover:bg-white/10 border border-white/15 text-white flex items-center justify-center cursor-pointer transition"
+              aria-label={isMobileMenuOpen ? 'Fechar menu' : 'Abrir menu'}
+            >
+              {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
+          </div>
+        </div>
+
+        {/* Menu Mobile */}
+        {isMobileMenuOpen && (
+          <div className="lg:hidden bg-[#0B1220]/98 backdrop-blur-xl border-b border-white/15 px-5 py-5 space-y-4 shadow-2xl">
+            <nav className="flex flex-col space-y-2.5 text-sm font-medium text-slate-200">
+              <a
+                href="#solucoes"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="py-2 px-3 rounded-lg hover:bg-white/5 hover:text-white transition-colors"
+              >
+                Soluções
+              </a>
+              <a
+                href="#modelos"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="py-2 px-3 rounded-lg hover:bg-white/5 hover:text-white transition-colors"
+              >
+                Bio Sites
+              </a>
+              <a
+                href="#como-funciona"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="py-2 px-3 rounded-lg hover:bg-white/5 hover:text-white transition-colors"
+              >
+                Como funciona
+              </a>
+              <a
+                href="#credibilidade"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="py-2 px-3 rounded-lg hover:bg-white/5 hover:text-white transition-colors"
+              >
+                Credibilidade
+              </a>
+            </nav>
+            <div className="pt-3 border-t border-white/10 flex flex-col gap-2.5">
+              <a
+                href="#solucoes"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="alf-lp-btn-blue w-full"
+              >
+                <span>Conhecer soluções</span>
+              </a>
+              <a
+                href="#modelos"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="alf-lp-btn-ghost-dark w-full"
+              >
+                <span>Explorar Bio Sites</span>
+              </a>
+            </div>
+          </div>
+        )}
+      </header>
+
+      {/* ======================================================================
+          SEÇÃO 01 — HERO GSAP (DO TOQUE À PRESENÇA DIGITAL)
+         ====================================================================== */}
+      <section
+        ref={heroSectionRef}
+        className="alf-lp-hero-bg relative min-h-[calc(100vh-76px)] flex items-center py-8 sm:py-12 lg:py-16 overflow-hidden"
+      >
+        <div className="alf-lp-container w-full">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
+            {/* Coluna Esquerda: Headline Editorial com Destaque Sutil + CTAs Visíveis Imediatamente */}
+            <div className="lg:col-span-6 space-y-5 sm:space-y-6 text-left">
+              <div className="alf-hero-intro inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-500/10 border border-blue-400/25 shadow-sm">
+                <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
+                <span className="alf-lp-kicker text-blue-200">
+                  DO TOQUE À PRESENÇA DIGITAL
+                </span>
+              </div>
+
+              <div className="alf-hero-intro space-y-3">
+                <h1 className="alf-lp-h1 text-white">
+                  Seu negócio merece{' '}
+                  <span className="alf-lp-hero-highlight">
+                    ser encontrado. E lembrado.
+                  </span>
+                </h1>
+                <div className="h-1 w-24 rounded-full bg-gradient-to-r from-blue-500 via-sky-400 to-transparent opacity-85" />
+              </div>
+
+              <p className="alf-hero-intro text-sm sm:text-lg text-slate-300 max-w-xl leading-relaxed">
+                Facilite avaliações no Google e apresente sua empresa com uma presença digital profissional.
+              </p>
+
+              {/* CTAs visíveis imediatamente sem depender da animação */}
+              <div className="alf-hero-intro pt-1 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                <a href="#solucoes" className="alf-lp-btn-blue w-full sm:w-auto">
+                  <span>Conhecer soluções</span>
+                  <ArrowRight className="w-4 h-4" />
+                </a>
+
+                <a href="#modelos" className="alf-lp-btn-ghost-dark w-full sm:w-auto">
+                  <span>Explorar Bio Sites</span>
+                </a>
+              </div>
+
+              {/* Indicador Narrativo das 4 Cenas (sincronizado ao scroll e clicável em qualquer tela) */}
+              <div className="alf-hero-intro pt-5 border-t border-white/10 space-y-3">
+                <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2">
+                  {[
+                    { id: 1, label: '01. Presença' },
+                    { id: 2, label: '02. Placa NFC' },
+                    { id: 3, label: '03. Bio Site' },
+                    { id: 4, label: '04. Soluções' }
+                  ].map((s) => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => setActiveScene(s.id as 1 | 2 | 3 | 4)}
+                      className={`px-3 py-2 sm:py-1.5 rounded-lg text-xs font-medium transition cursor-pointer text-center ${
+                        activeScene === s.id
+                          ? 'bg-[#2563EB] text-white shadow-sm shadow-blue-500/30'
+                          : 'bg-white/[0.05] text-slate-300 hover:bg-white/10'
+                      }`}
+                    >
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Texto narrativo correspondente à cena ativa */}
+                <div className="min-h-[56px] flex flex-col justify-center">
+                  {activeScene === 1 && (
+                    <p className="text-xs sm:text-sm text-slate-300">
+                      Conectamos o atendimento presencial da sua empresa à sua reputação e apresentação online.
+                    </p>
+                  )}
+                  {activeScene === 2 && (
+                    <div className="space-y-1">
+                      <span className="text-xs font-semibold text-blue-400 block">
+                        Placa NFC Google — R$ 129
+                      </span>
+                      <p className="text-xs sm:text-sm text-white font-medium">
+                        &ldquo;Um toque. Um caminho mais fácil para receber avaliações.&rdquo;
+                      </p>
+                    </div>
+                  )}
+                  {activeScene === 3 && (
+                    <div className="space-y-1">
+                      <span className="text-xs font-semibold text-blue-400 block">
+                        Bio Site + Cartão NFC — R$ 1.199
+                      </span>
+                      <p className="text-xs sm:text-sm text-white font-medium">
+                        &ldquo;Sua apresentação profissional, pronta para compartilhar.&rdquo;
+                      </p>
+                    </div>
+                  )}
+                  {activeScene === 4 && (
+                    <div className="flex flex-wrap items-center gap-2.5 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => openInterestModal('Placa NFC Google (R$ 129,00)')}
+                        className="text-xs font-semibold px-3.5 py-2 rounded-lg bg-white text-[#101D32] hover:bg-slate-100 transition cursor-pointer"
+                      >
+                        Quero minha placa NFC
+                      </button>
+                      <a
+                        href="#modelos"
+                        className="text-xs font-semibold px-3.5 py-2 rounded-lg bg-[#2563EB] text-white hover:bg-[#1D4ED8] transition"
+                      >
+                        Ver modelos de Bio Site
+                      </a>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Coluna Direita: Palco Visual GSAP (Placa NFC Real + Cartão NFC + Smartphone Fiel com 3 Opções) */}
+            <div className="lg:col-span-6">
+              <div className="rounded-3xl bg-[#101D32]/90 border border-white/10 p-4 sm:p-7 shadow-2xl relative overflow-hidden">
+                {/* Barra de Identificação do Produto em Foco */}
+                <div className="flex flex-wrap items-center justify-between gap-2 pb-4 border-b border-white/10">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-blue-400" />
+                    <span className="text-xs font-semibold text-white">
+                      {activeScene === 2
+                        ? 'Placa NFC Google — R$ 129'
+                        : activeScene === 3
+                        ? 'Bio Site + Cartão NFC — R$ 1.199'
+                        : 'Soluções Físicas & Digitais ALF'}
+                    </span>
+                  </div>
+                  <span className="text-[11px] text-slate-400">
+                    {prefersReducedMotion ? 'Modo estático ativo' : 'Aproximação NFC & QR Code'}
+                  </span>
+                </div>
+
+                {/* Palco de Composição dos Produtos */}
+                <div className="mt-5 grid grid-cols-1 sm:grid-cols-12 gap-4 sm:gap-5 items-center">
+                  {/* Coluna Hardware Físico: Placa NFC Google & Cartão NFC */}
+                  <div className="sm:col-span-5 grid grid-cols-1 sm:flex sm:flex-col gap-3.5 relative">
+                    {/* Pulso Discreto de Interação NFC (Cena 02) */}
+                    <div
+                      className={`alf-stage-nfc-pulse alf-gsap-layer pointer-events-none hidden sm:block absolute -right-3 top-12 w-24 h-24 rounded-full border-2 border-[#2563EB]/60 transition-opacity duration-300 ${
+                        activeScene === 2 ? 'opacity-100' : 'opacity-0'
+                      }`}
+                    />
+
+                    {/* Placa NFC Google Realista */}
+                    <div
+                      onClick={() => setActiveScene(2)}
+                      className={`alf-stage-plaque alf-gsap-layer rounded-2xl bg-[#0B1220] border p-3.5 sm:p-4 space-y-2.5 cursor-pointer transition ${
+                        activeScene === 2 || activeScene === 1 || activeScene === 4
+                          ? 'border-[#2563EB]/70 shadow-lg shadow-blue-950/30 opacity-100'
+                          : 'border-white/10 opacity-65'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/[0.06] border border-white/10">
+                          <img
+                            src="/alf-logo.jpg"
+                            alt="ALF Automação"
+                            className="w-5 h-3.5 object-contain"
+                          />
+                          <span className="text-[9px] font-bold tracking-wider text-white uppercase">
+                            ALF NFC
+                          </span>
+                        </div>
+                        <Wifi className="w-4 h-4 text-[#2563EB] rotate-90" />
+                      </div>
+
+                      <div className="flex items-center gap-3 py-0.5">
+                        <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white p-2 flex items-center justify-center shrink-0">
+                          <svg viewBox="0 0 24 24" className="w-full h-full">
+                            <path
+                              fill="#4285F4"
+                              d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.65v3.03h3.88c2.27-2.09 3.665-5.17 3.665-9.12z"
+                            />
+                            <path
+                              fill="#34A853"
+                              d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.03c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.24v3.13C3.26 21.41 7.33 24 12 24z"
+                            />
+                            <path
+                              fill="#FBBC05"
+                              d="M5.28 14.29c-.25-.72-.38-1.49-.38-2.29s.14-1.57.38-2.29V6.58H1.24C.45 8.15 0 9.97 0 12s.45 3.85 1.24 5.42l4.04-3.13z"
+                            />
+                            <path
+                              fill="#EA4335"
+                              d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.59 1.24 6.58l4.04 3.13c.95-2.83 3.6-4.96 6.72-4.96z"
+                            />
+                          </svg>
+                        </div>
+                        <div className="text-left min-w-0">
+                          <span className="text-xs font-semibold text-white block truncate">
+                            Placa NFC Google
+                          </span>
+                          <span className="text-[11px] text-slate-400 block truncate">
+                            NFC + QR Code
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="pt-2 border-t border-white/10 flex items-center justify-between text-xs">
+                        <span className="text-slate-400">Solução 01</span>
+                        <strong className="text-white font-semibold">R$ 129</strong>
+                      </div>
+                    </div>
+
+                    {/* Cartão NFC Realista (Associado ao Bio Site) */}
+                    <div
+                      onClick={() => setActiveScene(3)}
+                      className={`alf-stage-card alf-gsap-layer rounded-2xl bg-[#0B1220] border p-3.5 sm:p-4 space-y-2.5 cursor-pointer transition ${
+                        activeScene === 3 || activeScene === 4
+                          ? 'border-[#2563EB]/70 shadow-lg shadow-blue-950/30 opacity-100'
+                          : 'border-white/10 opacity-85'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/[0.06] border border-white/10">
+                          <img
+                            src="/alf-logo.jpg"
+                            alt="ALF Automação"
+                            className="w-5 h-3.5 object-contain"
+                          />
+                          <span className="text-[9px] font-bold tracking-wider text-white uppercase">
+                            ALF CARD
+                          </span>
+                        </div>
+                        <QrCode className="w-4 h-4 text-slate-300" />
+                      </div>
+
+                      <div className="text-left">
+                        <span className="text-xs font-semibold text-white block">
+                          Bio Site + Cartão NFC
+                        </span>
+                        <span className="text-[11px] text-slate-400 block">
+                          Apresentação digital profissional
+                        </span>
+                      </div>
+
+                      <div className="pt-2 border-t border-white/10 flex items-center justify-between text-xs">
+                        <span className="text-slate-400">Solução 02</span>
+                        <strong className="text-white font-semibold">R$ 1.199</strong>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Coluna Smartphone Demonstrativo Fiel — Com 3 Opções Selecionáveis (Médico, Bio Pessoal, Corretor) */}
+                  <div className="sm:col-span-7">
+                    <div className="alf-stage-phone alf-gsap-layer rounded-[26px] bg-[#0B1220] border-2 border-white/15 p-3.5 sm:p-4 shadow-xl flex flex-col justify-between relative overflow-hidden">
+                      {/* Topo do Smartphone + Seletor Rápido das 3 Opções */}
+                      <div className="space-y-2.5 pb-3 border-b border-white/10">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-[11px] font-semibold text-slate-300">
+                            {activeScene === 2
+                              ? 'Acesso à Avaliação Google'
+                              : 'Bio Site Demonstrativo ALF'}
+                          </span>
+                          <div className="w-10 h-1.5 rounded-full bg-white/15 shrink-0" />
+                        </div>
+
+                        {/* 3 Opções de Bio Site Demonstrativo: Médico | Bio Pessoal | Corretor */}
+                        <div className="grid grid-cols-3 gap-1.5 bg-[#101D32] p-1 rounded-xl border border-white/10">
+                          {HERO_BIO_DEMO_TABS.map((tab) => {
+                            const isSelected =
+                              activeScene !== 2 && heroSelectedMockup.id === tab.id;
+                            return (
+                              <button
+                                key={tab.id}
+                                type="button"
+                                onClick={() => {
+                                  setSelectedShowcaseMockupId(tab.id);
+                                  if (activeScene === 2) {
+                                    setActiveScene(3);
+                                  }
+                                }}
+                                className={`py-1.5 px-2 rounded-lg text-[11px] font-semibold transition cursor-pointer truncate ${
+                                  isSelected
+                                    ? 'bg-[#2563EB] text-white shadow-xs'
+                                    : 'text-slate-300 hover:text-white hover:bg-white/5'
+                                }`}
+                              >
+                                {tab.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Tela Cena 02: Representação fiel do acesso à avaliação no Google */}
+                      {activeScene === 2 ? (
+                        <div className="alf-screen-scene2 my-auto py-4 space-y-3 text-left">
+                          <div className="rounded-2xl bg-white text-[#172033] p-4 space-y-3 shadow-sm">
+                            <div className="flex items-center gap-3">
+                              <div className="w-9 h-9 rounded-lg bg-[#FAF9F6] border border-[#E5E7EB] p-1.5 flex items-center justify-center shrink-0">
+                                <svg viewBox="0 0 24 24" className="w-full h-full">
+                                  <path
+                                    fill="#4285F4"
+                                    d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.65v3.03h3.88c2.27-2.09 3.665-5.17 3.665-9.12z"
+                                  />
+                                  <path
+                                    fill="#34A853"
+                                    d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.03c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.24v3.13C3.26 21.41 7.33 24 12 24z"
+                                  />
+                                  <path
+                                    fill="#FBBC05"
+                                    d="M5.28 14.29c-.25-.72-.38-1.49-.38-2.29s.14-1.57.38-2.29V6.58H1.24C.45 8.15 0 9.97 0 12s.45 3.85 1.24 5.42l4.04-3.13z"
+                                  />
+                                  <path
+                                    fill="#EA4335"
+                                    d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.59 1.24 6.58l4.04 3.13c.95-2.83 3.6-4.96 6.72-4.96z"
+                                  />
+                                </svg>
+                              </div>
+                              <div>
+                                <div className="text-xs font-bold text-[#172033]">
+                                  Página de Avaliação no Google
+                                </div>
+                                <div className="text-[11px] text-[#667085]">
+                                  Aberta por aproximação NFC ou QR Code
+                                </div>
+                              </div>
+                            </div>
+
+                            <p className="text-xs text-[#667085] leading-relaxed">
+                              Seu cliente gostou do atendimento? Com um toque na placa, ele acessa diretamente a tela de avaliação do estabelecimento.
+                            </p>
+                          </div>
+                        </div>
+                      ) : (
+                        /* Tela Cena 01, 03 e 04: Representação Fiel do Bio Site Demonstrativo Selecionado (Médico, Bio Pessoal ou Corretor) */
+                        <div className="alf-screen-scene1 alf-screen-scene3 my-auto py-3 space-y-3 text-left">
+                          <div className="rounded-2xl bg-[#101D32] border border-white/10 overflow-hidden">
+                            {/* Mini Capa do Modelo Selecionado */}
+                            {heroSelectedMockup.config.coverImageUrl && (
+                              <div className="relative h-20 w-full bg-black overflow-hidden">
+                                <img
+                                  src={heroSelectedMockup.config.coverImageUrl}
+                                  alt={heroSelectedMockup.title}
+                                  className="w-full h-full object-cover opacity-85"
+                                />
+                                <div className="absolute inset-0 bg-gradient-to-t from-[#101D32] via-[#101D32]/30 to-transparent" />
+                                <span className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-black/65 backdrop-blur-xs border border-white/15 text-[10px] font-semibold text-white">
+                                  {heroSelectedMockup.category}
+                                </span>
+                              </div>
+                            )}
+
+                            <div className="p-3.5 space-y-3">
+                              <div className="flex items-center gap-3">
+                                {heroSelectedMockup.config.logoUrl ? (
+                                  <img
+                                    src={heroSelectedMockup.config.logoUrl}
+                                    alt={heroSelectedMockup.title}
+                                    className="w-11 h-11 rounded-xl object-cover border border-white/20 shrink-0 shadow-sm"
+                                  />
+                                ) : (
+                                  <div className="w-11 h-11 rounded-xl bg-white/10 flex items-center justify-center text-base shrink-0">
+                                    {heroSelectedMockup.emoji}
+                                  </div>
+                                )}
+                                <div className="min-w-0">
+                                  <div className="text-xs font-bold text-white truncate">
+                                    {heroSelectedMockup.config.companyName || heroSelectedMockup.title}
+                                  </div>
+                                  <div className="text-[11px] text-blue-300 font-medium truncate">
+                                    {heroSelectedMockup.config.personRole || heroSelectedMockup.badge}
+                                  </div>
+                                </div>
+                              </div>
+
+                              <p className="text-xs text-slate-300 leading-relaxed line-clamp-2">
+                                {heroSelectedMockup.config.bio}
+                              </p>
+
+                              <div className="grid grid-cols-2 gap-2 pt-0.5">
+                                <button
+                                  type="button"
+                                  onClick={() => setFullscreenEmulationMockup(heroSelectedMockup)}
+                                  className="py-2 px-3 rounded-lg bg-[#2563EB] hover:bg-[#1D4ED8] text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer"
+                                >
+                                  <Eye className="w-3.5 h-3.5 shrink-0" />
+                                  <span className="truncate">Ver demonstração</span>
+                                </button>
+                                <a
+                                  href="#modelos"
+                                  className="py-2 px-3 rounded-lg bg-white/10 hover:bg-white/15 text-white text-xs font-medium flex items-center justify-center transition truncate"
+                                >
+                                  Outros modelos
+                                </a>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Rodapé de Conversão da Composição (Cena 04) */}
+                      <div className="alf-stage-final-cta pt-2.5 border-t border-white/10 flex flex-wrap items-center justify-between gap-2">
+                        <button
+                          type="button"
+                          onClick={() => openInterestModal('Placa NFC Google (R$ 129,00)')}
+                          className="text-[11px] sm:text-xs font-semibold text-white hover:text-blue-400 transition cursor-pointer"
+                        >
+                          Quero minha placa NFC →
+                        </button>
+                        <a
+                          href="#modelos"
+                          className="text-[11px] sm:text-xs font-semibold text-blue-400 hover:text-blue-300 transition"
+                        >
+                          Ver todos os Bio Sites →
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ======================================================================
+          SEÇÃO 02 — DUAS SOLUÇÕES PRINCIPAIS
+         ====================================================================== */}
+      <section id="solucoes" className="alf-lp-section bg-[#FAF9F6] border-t border-[#E5E7EB]">
+        <div className="alf-lp-container space-y-10 sm:space-y-12">
+          <div className="max-w-2xl space-y-3 text-left">
+            <span className="alf-lp-kicker text-[#2563EB] block">
+              SOLUÇÕES PRINCIPAIS
+            </span>
+            <h2 className="alf-lp-h2 text-[#172033]">
+              Soluções simples para problemas reais.
+            </h2>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 items-stretch">
+            {/* CARD A — PLACA NFC GOOGLE */}
+            <div className="alf-lp-card p-6 sm:p-9 flex flex-col justify-between gap-7 text-left">
+              <div className="space-y-5 sm:space-y-6">
+                {/* Representação visual fiel da Placa NFC */}
+                <div className="rounded-2xl bg-[#0B1220] p-5 sm:p-6 text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border border-[#101D32]">
+                  <div className="flex items-center gap-3.5 sm:gap-4">
+                    <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-white p-2.5 sm:p-3 flex items-center justify-center shrink-0 shadow">
+                      <svg viewBox="0 0 24 24" className="w-full h-full">
+                        <path
+                          fill="#4285F4"
+                          d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.65v3.03h3.88c2.27-2.09 3.665-5.17 3.665-9.12z"
+                        />
+                        <path
+                          fill="#34A853"
+                          d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.03c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.24v3.13C3.26 21.41 7.33 24 12 24z"
+                        />
+                        <path
+                          fill="#FBBC05"
+                          d="M5.28 14.29c-.25-.72-.38-1.49-.38-2.29s.14-1.57.38-2.29V6.58H1.24C.45 8.15 0 9.97 0 12s.45 3.85 1.24 5.42l4.04-3.13z"
+                        />
+                        <path
+                          fill="#EA4335"
+                          d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.59 1.24 6.58l4.04 3.13c.95-2.83 3.6-4.96 6.72-4.96z"
+                        />
+                      </svg>
+                    </div>
+                    <div>
+                      <span className="text-xs font-semibold text-blue-400 block">
+                        Placa NFC Google
+                      </span>
+                      <p className="text-xs sm:text-sm font-medium text-white mt-0.5">
+                        &ldquo;Seu cliente gostou do atendimento? Facilite a avaliação.&rdquo;
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0 bg-white/5 px-3 py-1.5 rounded-lg border border-white/10 text-xs text-slate-300">
+                    <Wifi className="w-3.5 h-3.5 text-blue-400 rotate-90" />
+                    <span>NFC + QR</span>
+                  </div>
+                </div>
+
+                <div className="space-y-2.5">
+                  <h3 className="alf-lp-h3 text-[#172033]">
+                    Facilite as avaliações da sua empresa.
+                  </h3>
+                  <p className="text-sm sm:text-base text-[#667085] leading-relaxed">
+                    Seu cliente aproxima o celular ou lê o QR Code e acessa a página de avaliação.
+                  </p>
+                </div>
+              </div>
+
+              <div className="pt-5 border-t border-[#E5E7EB] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <span className="text-xs text-[#667085] block">Investimento único</span>
+                  <strong className="text-2xl font-bold text-[#172033]">R$ 129</strong>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => openInterestModal('Placa NFC Google (R$ 129,00)')}
+                  className="alf-lp-btn-blue w-full sm:w-auto"
+                >
+                  <span>Quero minha placa</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* CARD B — BIO SITE + CARTÃO NFC */}
+            <div className="alf-lp-card p-6 sm:p-9 flex flex-col justify-between gap-7 text-left">
+              <div className="space-y-5 sm:space-y-6">
+                {/* Representação visual fiel do Bio Site + Cartão NFC */}
+                <div className="rounded-2xl bg-[#101D32] p-5 sm:p-6 text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border border-[#172033]">
+                  <div className="flex items-center gap-3.5 sm:gap-4">
+                    <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-[#0B1220] border border-white/15 p-2 flex items-center justify-center shrink-0">
+                      <img
+                        src="/alf-logo.jpg"
+                        alt="ALF Bio Site"
+                        className="w-full h-full object-contain"
+                      />
+                    </div>
+                    <div>
+                      <span className="text-xs font-semibold text-blue-400 block">
+                        Bio Site + Cartão NFC
+                      </span>
+                      <p className="text-xs sm:text-sm font-medium text-white mt-0.5">
+                        &ldquo;Sua empresa apresentada com profissionalismo. Em segundos.&rdquo;
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0 bg-white/5 px-3 py-1.5 rounded-lg border border-white/10 text-xs text-slate-300">
+                    <Smartphone className="w-3.5 h-3.5 text-blue-400" />
+                    <span>Portal + Cartão</span>
+                  </div>
+                </div>
+
+                <div className="space-y-2.5">
+                  <h3 className="alf-lp-h3 text-[#172033]">
+                    Apresente seu negócio com profissionalismo.
+                  </h3>
+                  <p className="text-sm sm:text-base text-[#667085] leading-relaxed">
+                    Escolha um modelo pronto, personalize sua marca e compartilhe com seus clientes.
+                  </p>
+                </div>
+              </div>
+
+              <div className="pt-5 border-t border-[#E5E7EB] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <span className="text-xs text-[#667085] block">Bio Site + Cartão NFC</span>
+                  <strong className="text-2xl font-bold text-[#172033]">R$ 1.199</strong>
+                </div>
+
+                <a href="#modelos" className="alf-lp-btn-navy w-full sm:w-auto">
+                  <span>Escolher meu modelo</span>
+                  <ArrowRight className="w-4 h-4" />
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ======================================================================
+          SEÇÃO 03 — VITRINE DE BIO SITES
+         ====================================================================== */}
+      <section id="modelos" className="alf-lp-section bg-white border-t border-[#E5E7EB]">
+        <div className="alf-lp-container space-y-10 sm:space-y-12">
+          <div className="max-w-2xl space-y-3 text-left">
+            <span className="alf-lp-kicker text-[#2563EB] block">
+              MODELOS DEMONSTRATIVOS
+            </span>
+            <h2 className="alf-lp-h2 text-[#172033]">
+              Seu negócio merece uma apresentação à altura.
+            </h2>
+            <p className="text-sm sm:text-lg text-[#667085]">
+              Explore modelos profissionais para diferentes segmentos.
+            </p>
+          </div>
+
+          {/* Galeria Visual Sofisticada com os 6 Modelos Reais */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-7">
+            {publicShowcaseModels.map((tmpl) => {
+              const previewImage = tmpl.config.logoUrl || '/alf-logo.jpg';
+              const coverThumb = tmpl.config.coverImageUrl;
+
+              return (
+                <div
+                  key={tmpl.id}
+                  className="alf-lp-card overflow-hidden flex flex-col justify-between text-left"
+                >
+                  {/* Preview Real do Modelo */}
+                  <div>
+                    <div className="bg-[#0B1220] p-5 border-b border-[#E5E7EB] relative overflow-hidden">
+                      {coverThumb && (
+                        <img
+                          src={coverThumb}
+                          alt={tmpl.title}
+                          className="absolute inset-0 w-full h-full object-cover opacity-25 pointer-events-none"
+                        />
+                      )}
+                      <div className="relative z-10 flex items-center justify-between gap-2 mb-4">
+                        <span className="text-xs font-semibold text-white bg-white/15 backdrop-blur-xs px-3 py-1 rounded-full">
+                          {tmpl.category}
+                        </span>
+                        <span className="text-base" aria-hidden="true">
+                          {tmpl.emoji}
+                        </span>
+                      </div>
+
+                      <div className="relative z-10 rounded-xl bg-[#101D32]/95 backdrop-blur-xs border border-white/15 p-3.5 flex items-center gap-3.5">
+                        <img
+                          src={previewImage}
+                          alt={tmpl.title}
+                          className="w-13 h-13 rounded-xl object-cover border border-white/20 shrink-0 bg-black"
+                        />
+                        <div className="space-y-0.5 min-w-0">
+                          <h3 className="text-sm sm:text-base font-semibold text-white leading-snug truncate">
+                            {tmpl.config.companyName || tmpl.title}
+                          </h3>
+                          <span className="text-xs text-slate-300 block truncate">
+                            {tmpl.config.personRole || tmpl.badge}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="p-5 sm:p-6 pb-3 sm:pb-4">
+                      <p className="text-sm text-[#667085] leading-relaxed">
+                        {tmpl.config.bio}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Botões Claros Sem Sobreposição */}
+                  <div className="p-5 sm:p-6 pt-2 grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedShowcaseMockupId(tmpl.id);
+                        setFullscreenEmulationMockup(tmpl);
+                      }}
+                      className="alf-lp-btn-outline !py-3 !px-4 text-xs w-full"
+                    >
+                      <Eye className="w-4 h-4 text-[#172033] shrink-0" />
+                      <span>Ver demonstração</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        openInterestModal(
+                          `Bio Site + Cartão NFC — Modelo: ${tmpl.category} (${tmpl.title})`
+                        )
+                      }
+                      className="alf-lp-btn-blue !py-3 !px-4 text-xs w-full"
+                    >
+                      <span>Quero este modelo</span>
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* ======================================================================
+          SEÇÃO 04 — COMO FUNCIONA (3 ETAPAS OBJETIVAS)
+         ====================================================================== */}
+      <section id="como-funciona" className="alf-lp-section bg-[#FAF9F6] border-t border-[#E5E7EB]">
+        <div className="alf-lp-container space-y-10 sm:space-y-12">
+          <div className="max-w-2xl space-y-3 text-left">
+            <span className="alf-lp-kicker text-[#2563EB] block">
+              JORNADA SIMPLES
+            </span>
+            <h2 className="alf-lp-h2 text-[#172033]">
+              Escolha. Personalize. Compartilhe.
+            </h2>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 sm:gap-6 text-left">
+            <div className="alf-lp-card p-6 sm:p-7 space-y-3">
+              <span className="text-xs font-bold text-[#2563EB] tracking-wider uppercase block">
+                Etapa 01
+              </span>
+              <h3 className="alf-lp-h3 text-[#172033]">
+                Escolha sua solução.
+              </h3>
+              <p className="text-sm text-[#667085] leading-relaxed">
+                Defina entre a Placa NFC Google para o seu estabelecimento ou um modelo profissional de Bio Site com cartão NFC.
+              </p>
+            </div>
+
+            <div className="alf-lp-card p-6 sm:p-7 space-y-3">
+              <span className="text-xs font-bold text-[#2563EB] tracking-wider uppercase block">
+                Etapa 02
+              </span>
+              <h3 className="alf-lp-h3 text-[#172033]">
+                Receba sua placa ou personalize seu Bio Site.
+              </h3>
+              <p className="text-sm text-[#667085] leading-relaxed">
+                Acesse seu portal individual para configurar cor, logotipo, imagem principal, até 4 fotos de produtos, Instagram e WhatsApp.
+              </p>
+            </div>
+
+            <div className="alf-lp-card p-6 sm:p-7 space-y-3">
+              <span className="text-xs font-bold text-[#2563EB] tracking-wider uppercase block">
+                Etapa 03
+              </span>
+              <h3 className="alf-lp-h3 text-[#172033]">
+                Compartilhe com seus clientes.
+              </h3>
+              <p className="text-sm text-[#667085] leading-relaxed">
+                Conecte clientes presencialmente por aproximação NFC e QR Code ou envie seu link direto no atendimento diário.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ======================================================================
+          SEÇÃO 05 — CREDIBILIDADE + CHAMADA SECUNDÁRIA (ESTRUTURA COMPLETA)
+         ====================================================================== */}
+      <section id="credibilidade" className="alf-lp-section bg-white border-t border-[#E5E7EB]">
+        <div className="alf-lp-container space-y-10 sm:space-y-12">
+          <div className="max-w-2xl space-y-3 text-left">
+            <span className="alf-lp-kicker text-[#2563EB] block">
+              ESTRUTURA REAL
+            </span>
+            <h2 className="alf-lp-h2 text-[#172033]">
+              Tecnologia prática para negócios reais.
+            </h2>
+          </div>
+
+          {/* 3 Blocos Visuais de Evidências Reais */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 sm:gap-6 text-left">
+            <div className="alf-lp-card p-6 sm:p-7 space-y-4">
+              <div className="w-11 h-11 rounded-xl bg-[#FAF9F6] border border-[#E5E7EB] flex items-center justify-center text-[#101D32]">
+                <QrCode className="w-5 h-5 text-[#2563EB]" />
+              </div>
+              <h3 className="text-lg font-bold text-[#172033]">
+                Placas e cartões físicos
+              </h3>
+              <p className="text-sm text-[#667085] leading-relaxed">
+                Hardware com chip NFC e QR Code integrado para uso imediato em balcões, consultórios, mesas e reuniões comerciais.
+              </p>
+            </div>
+
+            <div className="alf-lp-card p-6 sm:p-7 space-y-4">
+              <div className="w-11 h-11 rounded-xl bg-[#FAF9F6] border border-[#E5E7EB] flex items-center justify-center text-[#101D32]">
+                <Layers className="w-5 h-5 text-[#2563EB]" />
+              </div>
+              <h3 className="text-lg font-bold text-[#172033]">
+                Demonstrações funcionais
+              </h3>
+              <p className="text-sm text-[#667085] leading-relaxed">
+                Você visualiza na prática como o modelo funciona antes de contratar, com estrutura validada para leitura rápida no celular.
+              </p>
+            </div>
+
+            <div className="alf-lp-card p-6 sm:p-7 space-y-4">
+              <div className="w-11 h-11 rounded-xl bg-[#FAF9F6] border border-[#E5E7EB] flex items-center justify-center text-[#101D32]">
+                <Sliders className="w-5 h-5 text-[#2563EB]" />
+              </div>
+              <h3 className="text-lg font-bold text-[#172033]">
+                Portal de personalização
+              </h3>
+              <p className="text-sm text-[#667085] leading-relaxed">
+                Acesso individual por login e senha para gerenciar os dados essenciais da sua marca mantendo o padrão visual do modelo.
+              </p>
+            </div>
+          </div>
+
+          {/* Chamada Secundária: Solução 03 — Estrutura Digital Completa (Sob consulta) */}
+          <div className="rounded-3xl bg-[#FAF9F6] border border-[#E5E7EB] p-6 sm:p-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6 text-left">
+            <div className="max-w-2xl space-y-2">
+              <span className="alf-lp-kicker text-[#667085] block">
+                PROJETOS PERSONALIZADOS • SOB CONSULTA
+              </span>
+              <h3 className="alf-lp-h3 text-[#172033]">
+                Precisa de uma estrutura digital completa?
+              </h3>
+              <p className="text-sm sm:text-base text-[#667085] leading-relaxed">
+                Desenvolvemos projetos sob medida com site profissional, presença digital e gerenciamento do Perfil da Empresa no Google.
+              </p>
+            </div>
+
+            <div className="shrink-0">
+              <button
+                type="button"
+                onClick={() => openInterestModal('Estrutura Digital Completa (Sob consulta)')}
+                className="alf-lp-btn-outline w-full sm:w-auto"
+              >
+                <span>Solicitar proposta personalizada</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ======================================================================
+          SEÇÃO 06 — CTA FINAL + RODAPÉ COMPACTO
+         ====================================================================== */}
+      <section className="alf-lp-section bg-[#101D32] text-white">
+        <div className="alf-lp-container">
+          <div className="max-w-3xl mx-auto text-center space-y-6">
+            <h2 className="alf-lp-h2 text-white">
+              Pronto para dar o próximo passo?
+            </h2>
+            <p className="text-sm sm:text-lg text-slate-300">
+              Escolha uma solução pronta ou converse com nossa equipe.
+            </p>
+
+            <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3.5 sm:gap-4">
+              <button
+                type="button"
+                onClick={() => openInterestModal('Atendimento Comercial ALF Automação')}
+                className="alf-lp-btn-blue w-full sm:w-auto"
+              >
+                <MessageCircle className="w-4 h-4" />
+                <span>Falar com a ALF Automação</span>
+              </button>
+
+              <a href="#modelos" className="alf-lp-btn-ghost-dark w-full sm:w-auto">
+                <span>Explorar Bio Sites</span>
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* RODAPÉ COMPACTO COM ACESSO OCULTO DE 5 CLIQUES PRESERVADO */}
+      <footer className="bg-[#0B1220] border-t border-white/10 py-10 text-slate-400 text-xs">
+        <div className="alf-lp-container flex flex-col sm:flex-row items-center justify-between gap-6">
+          <div
+            onClick={handleSecretFooterLogoClick}
+            className="alf-lp-brand-lockup select-none cursor-default"
+            title="ALF Automação"
+          >
+            <div className="alf-lp-brand-emblem">
+              <img
+                src={ALF_LOGO_DATA_URI}
+                alt="ALF Automação"
+                className="w-full h-full object-contain scale-105"
+              />
+            </div>
+            <div className="text-left pr-1">
+              <div className="flex items-center gap-1.5">
+                <span className="font-extrabold text-white text-sm tracking-tight uppercase">
+                  ALF
+                </span>
+                <span className="font-extrabold text-blue-400 text-sm tracking-tight uppercase">
+                  AUTOMAÇÃO
+                </span>
+              </div>
+              <span className="text-[11px] text-slate-400 block mt-0.5">
+                © 2026 Todos os direitos reservados.
+              </span>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-center gap-5">
+            <a
+              href="https://wa.me/5514981304973"
+              target="_blank"
+              rel="noreferrer"
+              className="text-slate-300 hover:text-white flex items-center gap-1.5 transition"
+            >
+              <MessageCircle className="w-3.5 h-3.5 text-blue-400" />
+              <span>WhatsApp</span>
+            </a>
+
+            <a
+              href="https://www.instagram.com/alfautomation?xtok=MWY4a3VpcTBrOWI4Yw=="
+              target="_blank"
+              rel="noreferrer"
+              className="text-slate-300 hover:text-white flex items-center gap-1.5 transition"
+            >
+              <Instagram className="w-3.5 h-3.5 text-slate-300" />
+              <span>Instagram</span>
+            </a>
+
+            <button
+              type="button"
+              onClick={() => setIsPrivacyModalOpen(true)}
+              className="text-slate-400 hover:text-white underline cursor-pointer transition"
+            >
+              Política de Privacidade (LGPD)
+            </button>
+          </div>
+        </div>
+      </footer>
+
+      {/* MODAL DE POLÍTICA DE PRIVACIDADE (PRESERVADO) */}
+      {isPrivacyModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md">
+          <div className="bg-[#0B1220] border border-white/15 rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl relative text-left max-h-[85vh] overflow-y-auto space-y-4 text-slate-200">
+            <div className="flex items-center justify-between border-b border-white/10 pb-4">
+              <div className="flex items-center gap-2.5">
+                <Shield className="w-5 h-5 text-blue-400" />
+                <h3 className="text-base sm:text-lg font-bold text-white">
+                  Política de Privacidade &amp; Proteção de Dados (LGPD)
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsPrivacyModalOpen(false)}
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-slate-300 flex items-center justify-center font-bold text-xs cursor-pointer transition shrink-0"
+                aria-label="Fechar Política de Privacidade"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs text-slate-300 leading-relaxed">
+              <p>
+                A <strong>ALF Automação</strong> atua em conformidade com a Lei Geral de Proteção de Dados Pessoais (Lei nº 13.709/2018 — LGPD).
+              </p>
+              <p>
+                <strong>1. Coleta de Informações:</strong> Coletamos apenas os dados fornecidos voluntariamente no formulário comercial (nome, e-mail, telefone/WhatsApp e empresa) exclusivamente para retorno e atendimento solicitado.
+              </p>
+              <p>
+                <strong>2. Segurança:</strong> Não comercializamos nem cedemos dados a terceiros.
+              </p>
+            </div>
+
+            <div className="pt-3 border-t border-white/10 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setIsPrivacyModalOpen(false)}
+                className="alf-lp-btn-blue !py-2 !px-5 text-xs"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL COMERCIAL DE SOLICITAÇÃO / CONTRATAÇÃO (PRESERVADO) */}
+      {isInterestModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md">
+          <div className="bg-[#0B1220] border border-white/15 rounded-3xl max-w-md w-full p-5 sm:p-8 shadow-2xl relative text-left text-white max-h-[92vh] overflow-y-auto">
+            <button
+              type="button"
+              onClick={() => setIsInterestModalOpen(false)}
+              className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-slate-300 flex items-center justify-center font-bold text-xs cursor-pointer transition"
+              aria-label="Fechar"
+            >
+              ✕
+            </button>
+
+            {!interestSubmittedSuccess ? (
+              <form onSubmit={handleInterestSubmit} className="space-y-4">
+                <div className="flex items-center gap-3 pr-8">
+                  <div className="alf-lp-brand-emblem">
+                    <img
+                      src={ALF_LOGO_DATA_URI}
+                      alt="ALF Automação"
+                      className="w-full h-full object-contain"
+                    />
+                  </div>
+                  <div>
+                    <span className="alf-lp-kicker text-blue-400 block">
+                      SOLICITAÇÃO COMERCIAL
+                    </span>
+                    <h3 className="text-base sm:text-lg font-bold text-white mt-0.5">
+                      Iniciar atendimento
+                    </h3>
+                  </div>
+                </div>
+
+                <div className="bg-[#101D32] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-slate-200">
+                  Opção selecionada: <strong className="text-white">{interestTopic}</strong>
+                </div>
+
+                {/* Honeypot anti-bot */}
+                <input
+                  type="text"
+                  name="company_website_url_trap"
+                  tabIndex={-1}
+                  autoComplete="off"
+                  value={honeypotWebsite}
+                  onChange={(e) => setHoneypotWebsite(e.target.value)}
+                  className="hidden"
+                />
+
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-300 uppercase tracking-wider mb-1">
+                      Nome completo *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={interestName}
+                      onChange={(e) => setInterestName(e.target.value)}
+                      placeholder="Seu nome"
+                      className="w-full bg-[#101D32] border border-white/15 focus:border-[#2563EB] rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-400 focus:outline-hidden transition"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-300 uppercase tracking-wider mb-1">
+                      E-mail *
+                    </label>
+                    <input
+                      type="email"
+                      required
+                      value={interestEmail}
+                      onChange={(e) => setInterestEmail(e.target.value)}
+                      placeholder="contato@empresa.com.br"
+                      className="w-full bg-[#101D32] border border-white/15 focus:border-[#2563EB] rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-400 focus:outline-hidden transition"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-300 uppercase tracking-wider mb-1">
+                      WhatsApp (com DDD) *
+                    </label>
+                    <input
+                      type="tel"
+                      required
+                      value={interestPhone}
+                      onChange={(e) => setInterestPhone(e.target.value)}
+                      placeholder="(14) 99999-9999"
+                      className="w-full bg-[#101D32] border border-white/15 focus:border-[#2563EB] rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-400 focus:outline-hidden transition"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-300 uppercase tracking-wider mb-1">
+                        Empresa
+                      </label>
+                      <input
+                        type="text"
+                        value={interestCompany}
+                        onChange={(e) => setInterestCompany(e.target.value)}
+                        placeholder="Nome do negócio"
+                        className="w-full bg-[#101D32] border border-white/15 focus:border-[#2563EB] rounded-xl px-3 py-2 text-xs text-white placeholder-slate-400 focus:outline-hidden transition"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-300 uppercase tracking-wider mb-1">
+                        Segmento
+                      </label>
+                      <input
+                        type="text"
+                        value={interestNicheInput}
+                        onChange={(e) => setInterestNicheInput(e.target.value)}
+                        placeholder="Ex: Clínica, Café..."
+                        className="w-full bg-[#101D32] border border-white/15 focus:border-[#2563EB] rounded-xl px-3 py-2 text-xs text-white placeholder-slate-400 focus:outline-hidden transition"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {interestError && (
+                  <div className="p-3 rounded-xl bg-rose-950/80 border border-rose-500/40 text-rose-200 text-xs font-medium">
+                    {interestError}
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={isSubmittingInterest}
+                  className="alf-lp-btn-blue w-full justify-center disabled:opacity-50"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>
+                    {isSubmittingInterest ? 'Enviando...' : 'Continuar solicitação'}
+                  </span>
+                </button>
+
+                <div className="pt-1 text-center">
+                  <a
+                    href={`https://wa.me/5514981304973?text=${encodeURIComponent(
+                      `Olá ALF Automação! Tenho interesse em: ${interestTopic}.`
+                    )}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-slate-300 hover:text-white inline-flex items-center gap-1.5 transition"
+                  >
+                    <MessageCircle className="w-3.5 h-3.5 text-blue-400" />
+                    <span>Prefiro falar diretamente no WhatsApp</span>
+                  </a>
+                </div>
+              </form>
+            ) : (
+              <div className="text-center space-y-4 py-3">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 border border-emerald-500/40 text-emerald-400 flex items-center justify-center mx-auto">
+                  <CheckCircle2 className="w-6 h-6" />
+                </div>
+                <div className="space-y-1">
+                  <h4 className="text-lg font-bold text-white">
+                    Solicitação registrada, {interestName.split(' ')[0]}!
+                  </h4>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    Recebemos seu contato para <strong>{interestTopic}</strong>.
+                  </p>
+                </div>
+
+                <div className="pt-2 space-y-2.5">
+                  <a
+                    href={`https://wa.me/5514981304973?text=${encodeURIComponent(
+                      `Olá ALF Automação! Me chamo ${interestName}. Registrei meu interesse no site sobre: ${interestTopic}.`
+                    )}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="alf-lp-btn-blue w-full justify-center"
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                    <span>Concluir pelo WhatsApp</span>
+                  </a>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsInterestModalOpen(false)}
+                    className="alf-lp-btn-ghost-dark w-full justify-center text-xs"
+                  >
+                    Fechar
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE DEMONSTRAÇÃO INTERATIVA DOS BIO SITES — 100% ADAPTADO PARA SMARTPHONES */}
+      {fullscreenEmulationMockup && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-2xl flex flex-col overflow-hidden"
+        >
+          <div className="w-full bg-[#0B1220] border-b border-white/10 px-3 sm:px-5 py-2.5 shrink-0 z-20 space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0 flex-1">
+                <span className="text-base sm:text-xl shrink-0">{fullscreenEmulationMockup.emoji}</span>
+                <div className="text-left min-w-0 flex-1">
+                  <span className="text-[10px] sm:text-[11px] font-medium text-blue-400 block truncate">
+                    Demonstração — {fullscreenEmulationMockup.category}
+                  </span>
+                  <strong className="text-xs sm:text-sm font-semibold text-white block truncate">
+                    {fullscreenEmulationMockup.config.companyName || fullscreenEmulationMockup.title}
+                  </strong>
+                </div>
+              </div>
+
+              <div className="hidden xl:flex items-center gap-1.5 bg-[#101D32] p-1 rounded-xl border border-white/10">
+                {publicShowcaseModels.map((m) => {
+                  const active = m.id === fullscreenEmulationMockup.id;
+                  return (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => {
+                        setFullscreenEmulationMockup(m);
+                        setSelectedShowcaseMockupId(m.id);
+                      }}
+                      className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer flex items-center gap-1 ${
+                        active
+                          ? 'bg-[#2563EB] text-white'
+                          : 'text-slate-300 hover:text-white hover:bg-white/5'
+                      }`}
+                    >
+                      <span>{m.emoji}</span>
+                      <span>{m.category.split(' ')[0]}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const chosen = fullscreenEmulationMockup;
+                    setFullscreenEmulationMockup(null);
+                    openInterestModal(
+                      `Bio Site + Cartão NFC — Modelo: ${chosen.category} (${chosen.title})`
+                    );
+                  }}
+                  className="alf-lp-btn-blue !py-1.5 sm:!py-2 !px-2.5 sm:!px-4 !text-[11px] sm:!text-xs !rounded-lg sm:!rounded-xl whitespace-nowrap"
+                >
+                  <span>Quero este modelo</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setFullscreenEmulationMockup(null)}
+                  className="px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-lg sm:rounded-xl bg-white/10 hover:bg-white/15 text-white font-medium text-[11px] sm:text-xs flex items-center gap-1 border border-white/15 cursor-pointer transition shrink-0"
+                  aria-label="Fechar demonstração"
+                >
+                  <X className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  <span className="hidden sm:inline">Fechar</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Seletor Rápido Mobile/Tablet dentro da Demonstração */}
+            <div className="xl:hidden flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
+              {publicShowcaseModels.map((m) => {
+                const active = m.id === fullscreenEmulationMockup.id;
+                return (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => {
+                      setFullscreenEmulationMockup(m);
+                      setSelectedShowcaseMockupId(m.id);
+                    }}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-medium whitespace-nowrap transition cursor-pointer flex items-center gap-1 shrink-0 ${
+                      active
+                        ? 'bg-[#2563EB] text-white'
+                        : 'bg-[#101D32] text-slate-300 border border-white/10'
+                    }`}
+                  >
+                    <span>{m.emoji}</span>
+                    <span>{m.category}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto bg-black">
+            <MiniSiteViewer
+              key={`fullscreen-${fullscreenEmulationMockup.id}`}
+              standalone={true}
+              config={fullscreenEmulationMockup.config}
+              leadId={fullscreenEmulationMockup.id}
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
